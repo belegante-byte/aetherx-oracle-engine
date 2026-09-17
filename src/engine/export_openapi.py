@@ -5,7 +5,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from src.api.main import app, PRODUCTION_URL
+from src.api.main import app, API_DESCRIPTION, PRODUCTION_URL
+
+LOGO_URL = "https://raw.githubusercontent.com/belegante-byte/aetherx-mcp/main/assets/logo.png"
 
 
 EXAMPLE_RESPONSE = {
@@ -44,28 +46,47 @@ def _minimal_spec():
         "openapi": "3.0.3",
         "info": {
             "title": "Aether-X Port Congestion Oracle",
-            "description": "Algorithmic predictive port delay & congestion scores for global trade and quantitative funds.",
+            "description": API_DESCRIPTION,
             "version": "0.2.0",
+            "termsOfService": f"{PRODUCTION_URL}/terms",
+            "contact": {
+                "name": "Aether-X",
+                "url": PRODUCTION_URL,
+                "email": "contato@aether-grid.io",
+            },
+            "x-logo": {"url": LOGO_URL, "altText": "Aether-X Port Congestion Oracle"},
         },
         "servers": [{"url": PRODUCTION_URL, "description": "Production (Railway)"}],
+        "tags": [
+            {
+                "name": "Port Risk",
+                "description": "Predictive congestion, ETA delay and freight volatility signals per port.",
+            }
+        ],
         "paths": {
             "/v1/port-risk": {
                 "get": {
-                    "summary": "Get Port Risk",
-                    "description": "Returns the predictive congestion signal for a given global port.",
+                    "tags": ["Port Risk"],
+                    "summary": "Get port risk",
+                    "description": (
+                        "Returns the predictive congestion signal for a single global port: "
+                        "`congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels` and "
+                        "`freight_volatility_index`. Unknown ports return a global statistical "
+                        'estimate with `country="Global"`.'
+                    ),
                     "operationId": "getPortRisk",
                     "parameters": [
                         {
                             "name": "port_id",
                             "in": "query",
                             "required": True,
-                            "description": "UN/LOCODE do porto (ex: BRSSZ - Santos, CNSHA - Shanghai)",
+                            "description": "UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai), NLRTM (Rotterdam).",
                             "schema": {"type": "string", "example": "BRSSZ"},
                         }
                     ],
                     "responses": {
                         "200": {
-                            "description": "Successful Response",
+                            "description": "The current congestion signal for the requested port.",
                             "content": {
                                 "application/json": {
                                     "schema": RESPONSE_SCHEMA,
@@ -95,6 +116,7 @@ def generate_openapi():
     rapidapi = copy.deepcopy(openapi_data)
     rapidapi["openapi"] = "3.0.3"
     rapidapi["servers"] = [{"url": PRODUCTION_URL, "description": "Production (Railway)"}]
+    rapidapi["info"]["x-logo"] = {"url": LOGO_URL, "altText": "Aether-X Port Congestion Oracle"}
 
     for path_item in rapidapi["paths"].values():
         for operation in path_item.values():

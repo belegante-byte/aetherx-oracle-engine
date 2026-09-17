@@ -2,13 +2,22 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Aether-X Port Congestion Oracle",
-    "description": "Algorithmic predictive port delay & congestion scores for global trade and quantitative funds.",
+    "description": "Predictive port congestion signals for global trade, supply chain and quantitative finance.\n\nAether-X turns public port telemetry into machine-readable congestion scores, ETA delay estimates and freight volatility indices for the world's largest ports \u2014 so trading desks, logistics teams and autonomous agents can react before the market prices the delay in.\n\n**The signal** \u2014 `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0\u20131.0 risk of operational congestion |\n| `eta_delay_days` | Expected delay applied to incoming vessels |\n| `waiting_vessels` | Ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n\n**Free tier** \u2014 $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint)\n\n**Coverage** \u2014 15 ports: BRSSZ, BRRIO, CNSHA, CNNGB, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
     "termsOfService": "https://aether-x-oracle-production.up.railway.app/terms",
+    "contact": {
+      "name": "Aether-X",
+      "url": "https://aether-x-oracle-production.up.railway.app/",
+      "email": "contato@aether-grid.io"
+    },
     "license": {
       "name": "Machine-to-Machine Data Distribution (see /terms)",
       "url": "https://aether-x-oracle-production.up.railway.app/terms"
     },
-    "version": "0.2.0"
+    "version": "0.2.0",
+    "x-logo": {
+      "url": "https://raw.githubusercontent.com/belegante-byte/aetherx-mcp/main/assets/logo.png",
+      "altText": "Aether-X Port Congestion Oracle"
+    }
   },
   "servers": [
     {
@@ -19,7 +28,10 @@
   "paths": {
     "/v1/port-risk": {
       "get": {
-        "summary": "Get Port Risk",
+        "tags": [
+          "Port Risk"
+        ],
+        "summary": "Get port risk",
         "operationId": "get_port_risk_v1_port_risk_get",
         "parameters": [
           {
@@ -28,15 +40,18 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "UN/LOCODE do porto (ex: BRSSZ - Santos, CNSHA - Shanghai)",
+              "description": "UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai), NLRTM (Rotterdam).",
+              "examples": [
+                "BRSSZ"
+              ],
               "title": "Port Id"
             },
-            "description": "UN/LOCODE do porto (ex: BRSSZ - Santos, CNSHA - Shanghai)"
+            "description": "UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai), NLRTM (Rotterdam)."
           }
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "The current congestion signal for the requested port.",
             "content": {
               "application/json": {
                 "schema": {
@@ -110,5 +125,11 @@
         "title": "PortRiskResponse"
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Port Risk",
+      "description": "Predictive congestion, ETA delay and freight volatility signals per port."
+    }
+  ]
 }
