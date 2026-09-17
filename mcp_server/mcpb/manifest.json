@@ -1,0 +1,69 @@
+{
+  "manifest_version": "0.4",
+  "name": "aetherx-mcp",
+  "display_name": "Aether-X Port Congestion Oracle",
+  "version": "0.1.1",
+  "description": "Predictive port congestion signals for global trade, supply chain and quantitative finance.",
+  "long_description": "Exposes the Aether-X Port Congestion Oracle to MCP-compatible agents (Claude Desktop, Cursor, VS Code, custom LLM agents).\n\nTools:\n- `get_port_risk`: predictive congestion signal for a single port (UN/LOCODE).\n- `get_ports_risk`: scan a portfolio of ports in parallel.\n- `list_supported_ports`: list the 15 pre-seeded global ports.\n\nCovers 15 major ports including Santos, Shanghai, Rotterdam, Singapore, Los Angeles and Hamburg. Forecasts and risk scores are produced by the Aether-X engine and served over the production API.",
+  "author": {
+    "name": "Aether-X"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/belegante-byte/aetherx-mcp.git"
+  },
+  "homepage": "https://aether-x-oracle-production.up.railway.app",
+  "documentation": "https://aether-x-oracle-production.up.railway.app/docs",
+  "support": "https://github.com/belegante-byte/aetherx-mcp/issues",
+  "server": {
+    "type": "uv",
+    "entry_point": "src/server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "src/server.py"],
+      "env": {
+        "RAPIDAPI_KEY": "${user_config.rapidapi_key}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "get_port_risk",
+      "description": "Return the predictive congestion signal for a single port."
+    },
+    {
+      "name": "get_ports_risk",
+      "description": "Return congestion signals for several ports in parallel."
+    },
+    {
+      "name": "list_supported_ports",
+      "description": "List the 15 ports pre-seeded in the oracle (id, name, country)."
+    }
+  ],
+  "user_config": {
+    "rapidapi_key": {
+      "type": "string",
+      "title": "RapidAPI Key",
+      "description": "RapidAPI key for metered access to the Aether-X Port Congestion Oracle. Optional; without it the server calls the public API directly.",
+      "sensitive": true,
+      "required": false
+    }
+  },
+  "keywords": [
+    "mcp",
+    "port",
+    "congestion",
+    "shipping",
+    "logistics",
+    "supply-chain",
+    "trade",
+    "finance"
+  ],
+  "license": "MIT",
+  "compatibility": {
+    "platforms": ["darwin", "linux", "win32"],
+    "runtimes": {
+      "python": ">=3.10"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
@@ -9,6 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
+from src.api.mcp_app import build_http_app
+from src.api.mcp_app import mcp as mcp_server
 from src.engine.risk_model import calculate_port_risk
 
 PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aether-x-oracle-production.up.railway.app")
@@ -30,7 +33,17 @@ class PortRiskResponse(BaseModel):
     updated_at: str
 
 
+mcp_http_app = build_http_app()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with mcp_server.session_manager.run():
+        yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Aether-X Port Congestion Oracle",
     description="Algorithmic predictive port delay & congestion scores for global trade and quantitative funds.",
     version="0.2.0",
@@ -50,6 +63,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["mcp-session-id"],
     allow_credentials=False,
 )
 
@@ -94,3 +108,6 @@ def get_port_risk(
         return calculate_port_risk(port_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+app.mount("/", mcp_http_app)
