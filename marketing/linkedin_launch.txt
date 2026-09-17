@@ -1,0 +1,31 @@
+Port congestion is a market signal. Most desks and logistics teams still read it too late.
+
+Today we're launching Aether-X Port Congestion Oracle — an API that turns public port telemetry into machine-readable congestion scores, ETA delay estimates and freight volatility indices for the world's largest ports.
+
+One HTTP call. A validated, typed payload. Ready for quants, bots and control towers.
+
+Why it matters:
+- A backup at Santos, Shanghai or Rotterdam moves freight rates and delivery SLAs within hours.
+- Aether-X compresses that into a single signal: congestion_score, eta_delay_days, waiting_vessels, freight_volatility_index.
+- 15 strategic global ports covered, with graceful fallback for any UN/LOCODE not yet in the dataset.
+- Built on FastAPI + DuckDB, deployed on Railway, with public OpenAPI docs.
+
+For quantitative funds and algo traders:
+- Python SDK, one line to install: pip install aetherx-oracle
+- Async batch mode: query an entire port portfolio in parallel and rank by risk
+- Clean, validated objects — no scraping, no fragile parsing
+
+For logistics and supply chain professionals:
+- Early-warning signals to protect SLAs and re-route cargo
+- Freight volatility pressure indicator to anticipate repricing
+
+Get started:
+pip install aetherx-oracle
+API docs: https://aether-x-oracle-production.up.railway.app/docs
+PyPI: https://pypi.org/project/aetherx-oracle/
+
+The signals are provided "AS IS" and do not constitute investment advice.
+
+If you work in quant trading, freight or supply chain, I'd love your feedback — what ports and metrics matter most to you?
+
+#QuantitativeFinance #AlgoTrading #SupplyChain #Logistics #MaritimeData #Python #DuckDB #Freight
