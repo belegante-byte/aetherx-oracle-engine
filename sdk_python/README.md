@@ -85,3 +85,7 @@ asyncio.run(main())
 ## Termos de uso
 
 Os sinais são fornecidos "AS IS", sem garantia e **não constituem aconselhamento de investimento**. Consulte os [Termos de Serviço](https://aether-x-oracle-production.up.railway.app/terms).
+
+## Licença
+
+O código deste SDK é distribuído sob a licença **MIT** (veja [LICENSE](LICENSE)). O uso da API hospedada está sujeito aos Termos de Serviço.

@@ -8,7 +8,7 @@ version = "0.3.0"
 description = "Python SDK for the Aether-X Port Congestion Oracle API"
 readme = "README.md"
 requires-python = ">=3.8"
-license = { text = "Proprietary - Machine-to-Machine Data Distribution" }
+license = { text = "MIT" }
 authors = [{ name = "Aether-X Oracle Engine" }]
 keywords = ["port", "congestion", "oracle", "logistics", "shipping", "quant", "freight"]
 dependencies = [
@@ -22,6 +22,7 @@ test = ["pytest>=7.0", "responses>=0.23", "httpx>=0.24.0"]
 
 [project.urls]
 Homepage = "https://aether-x-oracle-production.up.railway.app"
+Repository = "https://github.com/belegante-byte/aetherx-oracle"
 Documentation = "https://aether-x-oracle-production.up.railway.app/docs"
 Terms = "https://aether-x-oracle-production.up.railway.app/terms"
 
