@@ -102,6 +102,21 @@ Base URL (production): `https://aether-x-oracle-production.up.railway.app`
 }
 ```
 
+## Pricing & Free Tier
+
+Aether-X is free to evaluate. Every developer gets a **Free Tier — $0.00** for development, prototyping, CI and testing, up to the monthly request limit of the plan. **No credit card required to start.**
+
+| Plan | Price | Best for |
+|------|-------|----------|
+| **Free (Basic)** | **$0.00** | Development, prototypes, CI and evaluation — up to the plan's monthly request limit |
+| **Pay-as-you-go** | **$0.02 / query** | Production traffic beyond the free tier |
+
+Grab a key on the **Aether-X Port Congestion Oracle** listing in the [RapidAPI Hub](https://rapidapi.com/hub), then:
+
+```bash
+pip install --upgrade aetherx-oracle
+```
+
 ## Supported Ports
 
 `BRSSZ` `BRRIO` `CNSHA` `CNNGB` `SGSIN` `NLRTM` `USLAX` `USNYC` `DEHAM` `MPTNG` `AEDXB` `KRPUS` `GBLGP` `ZACPT` `MXZLO`

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, Query, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
@@ -42,6 +43,14 @@ app = FastAPI(
         "name": "Machine-to-Machine Data Distribution (see /terms)",
         "url": "https://aether-x-oracle-production.up.railway.app/terms"
     }
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=False,
 )
 
 
