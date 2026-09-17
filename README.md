@@ -27,6 +27,7 @@ Global trade runs on a handful of chokepoints. When Santos, Shanghai or Rotterda
 │   ├── engine/       # Predictive model, DuckDB seeding, OpenAPI export
 │   └── ingestion/    # Public port line-up collectors (UPSERT by IMO)
 ├── sdk_python/       # aetherx-oracle Python SDK (PyPI)
+├── mcp_server/       # aetherx-mcp MCP server for AI agents (PyPI)
 ├── docs/             # OpenAPI specs + Terms of Service
 ├── marketing/        # Launch content (Dev.to, LinkedIn, B2B cold email)
 ├── tests/            # pytest suite for the API

@@ -1,0 +1,84 @@
+# aetherx-mcp
+
+**MCP server for the [Aether-X Port Congestion Oracle](https://aether-x-oracle-production.up.railway.app)** — gives any MCP-compatible agent (Claude Desktop, Cursor, VS Code, custom LLM agents) predictive port congestion signals for global trade and quantitative finance.
+
+## Install
+
+```bash
+pip install aetherx-mcp
+# or run without installing (recommended for MCP clients):
+uvx aetherx-mcp
+```
+
+## Configure your MCP client
+
+### Claude Desktop (`claude_desktop_config.json`)
+
+```json
+{
+  "mcpServers": {
+    "aetherx-oracle": {
+      "command": "uvx",
+      "args": ["aetherx-mcp"],
+      "env": { "RAPIDAPI_KEY": "SUA_RAPIDAPI_KEY" }
+    }
+  }
+}
+```
+
+### Cursor (`~/.cursor/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "aetherx-oracle": {
+      "command": "uvx",
+      "args": ["aetherx-mcp"],
+      "env": { "RAPIDAPI_KEY": "SUA_RAPIDAPI_KEY" }
+    }
+  }
+}
+```
+
+## Tools
+
+| Tool | Arguments | Returns |
+|------|-----------|---------|
+| `get_port_risk` | `port_id` (UN/LOCODE) | Congestion score, ETA delay, waiting vessels, freight volatility |
+| `get_ports_risk` | `port_ids` (list) | Same, for a whole portfolio, fetched in parallel |
+| `list_supported_ports` | — | The 15 pre-seeded ports (id, name, country) |
+
+Every response is a typed payload:
+
+```json
+{
+  "port_id": "BRSSZ",
+  "port_name": "Santos",
+  "country": "Brasil",
+  "congestion_score": 0.78,
+  "eta_delay_days": 1.6,
+  "waiting_vessels": 12,
+  "freight_volatility_index": 0.42,
+  "updated_at": "2026-09-17 15:46:53"
+}
+```
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RAPIDAPI_KEY` | — | When set, requests are routed through the RapidAPI gateway (metered billing) |
+| `RAPIDAPI_HOST` | `aether-x-port-congestion-oracle.p.rapidapi.com` | RapidAPI host |
+| `AETHERX_BASE_URL` | `https://aether-x-oracle-production.up.railway.app` | Direct API base URL |
+
+Without `RAPIDAPI_KEY`, the server calls the public production API directly.
+
+## Example agent prompts
+
+- *"What's the congestion risk at Santos right now?"*
+- *"Rank these ports by congestion: BRSSZ, CNSHA, NLRTM, USLAX."*
+- *"Which of my Asian ports has the highest freight volatility index?"*
+
+## License
+
+MIT — see [LICENSE](LICENSE). The signals are provided "AS IS" and do not constitute investment advice. See the [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms).

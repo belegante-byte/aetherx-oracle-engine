@@ -1,0 +1,15 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      rapidApiKey:
+        type: string
+        description: "RapidAPI key for metered access. Optional; without it the server calls the public API directly."
+    required: []
+  commandFunction: |-
+    (config) => ({
+      command: "uvx",
+      args: ["aetherx-mcp"],
+      env: config.rapidApiKey ? { RAPIDAPI_KEY: config.rapidApiKey } : {}
+    })

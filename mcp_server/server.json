@@ -1,0 +1,42 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.belegante-byte/aetherx-oracle",
+  "description": "Predictive port congestion signals for global trade, supply chain and quantitative finance.",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/belegante-byte/aetherx-oracle",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "aetherx-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "RAPIDAPI_KEY",
+          "description": "RapidAPI key for metered access. Optional; without it the server calls the public API directly.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "RAPIDAPI_HOST",
+          "description": "RapidAPI host (default: aether-x-port-congestion-oracle.p.rapidapi.com).",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "AETHERX_BASE_URL",
+          "description": "Direct API base URL (default: https://aether-x-oracle-production.up.railway.app).",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}
