@@ -1,5 +1,7 @@
 # aetherx-mcp
 
+<!-- mcp-name: io.github.belegante-byte/aetherx-mcp -->
+
 **MCP server for the [Aether-X Port Congestion Oracle](https://aether-x-oracle-production.up.railway.app)** — gives any MCP-compatible agent (Claude Desktop, Cursor, VS Code, custom LLM agents) predictive port congestion signals for global trade and quantitative finance.
 
 ## Install
