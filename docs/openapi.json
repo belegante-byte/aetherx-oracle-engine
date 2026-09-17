@@ -1,27 +1,26 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Aether-X Oracle API",
-    "description": "Algorithmic Predictive Port Congestion Signal Engine",
+    "title": "Aether-X Port Congestion Oracle",
+    "description": "Algorithmic predictive port delay & congestion scores for global trade and quantitative funds.",
+    "termsOfService": "https://aether-x-oracle-production.up.railway.app/terms",
+    "license": {
+      "name": "Machine-to-Machine Data Distribution (see /terms)",
+      "url": "https://aether-x-oracle-production.up.railway.app/terms"
+    },
     "version": "0.1.0"
   },
-  "paths": {
-    "/": {
-      "get": {
-        "summary": "Health Check",
-        "operationId": "health_check__get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
+  "servers": [
+    {
+      "url": "https://aether-x-oracle-production.up.railway.app",
+      "description": "Production (Railway)"
     },
+    {
+      "url": "http://127.0.0.1:8000",
+      "description": "Local development"
+    }
+  ],
+  "paths": {
     "/v1/port-risk": {
       "get": {
         "summary": "Get Port Risk",
