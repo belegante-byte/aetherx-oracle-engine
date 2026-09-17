@@ -11,21 +11,27 @@ Why it matters:
 - Built on FastAPI + DuckDB, deployed on Railway, with public OpenAPI docs.
 
 For quantitative funds and algo traders:
-- Python SDK, one line to install: pip install aetherx-oracle
+- Python SDK (v0.3.1), one line to install: pip install --upgrade aetherx-oracle
 - Async batch mode: query an entire port portfolio in parallel and rank by risk
 - Clean, validated objects — no scraping, no fragile parsing
+
+For data engineers:
+- MIT-licensed SDK, typed responses, sync + async clients
+- Idempotent ingestion, DuckDB analytical engine, public OpenAPI 3.0 spec
+- Predictable per-query pricing — easy to embed in a pipeline or an agent
 
 For logistics and supply chain professionals:
 - Early-warning signals to protect SLAs and re-route cargo
 - Freight volatility pressure indicator to anticipate repricing
 
 Get started:
-pip install aetherx-oracle
+pip install --upgrade aetherx-oracle
+GitHub (MIT): https://github.com/belegante-byte/aetherx-oracle
 API docs: https://aether-x-oracle-production.up.railway.app/docs
 PyPI: https://pypi.org/project/aetherx-oracle/
 
 The signals are provided "AS IS" and do not constitute investment advice.
 
-If you work in quant trading, freight or supply chain, I'd love your feedback — what ports and metrics matter most to you?
+If you work in quant trading, data engineering, freight or supply chain, I'd love your feedback — what ports and metrics matter most to you?
 
-#QuantitativeFinance #AlgoTrading #SupplyChain #Logistics #MaritimeData #Python #DuckDB #Freight
+#QuantitativeFinance #AlgoTrading #SupplyChain #Logistics #MaritimeData #DataEngineering #Python #DuckDB #Freight

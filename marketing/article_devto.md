@@ -1,6 +1,6 @@
-# Predicting Port Congestion with Python + Aether-X
+# Predicting Global Port Congestion in Real-Time with Python & DuckDB
 
-> How to turn public port telemetry into machine-readable congestion signals your trading or logistics stack can consume in one HTTP call.
+> How to turn public port telemetry into machine-readable congestion signals your trading or logistics stack can consume in one HTTP call — using the `aetherx-oracle` Python SDK (v0.3.1).
 
 Every global supply chain bottleneck starts the same way: ships stack up outside a port, berth windows slip, and freight rates reprice before most operators notice. By the time the delay shows up in a spreadsheet, the market has already moved.
 
@@ -37,8 +37,10 @@ The response is a compact, machine-readable payload:
 ## Install
 
 ```bash
-pip install aetherx-oracle
+pip install --upgrade aetherx-oracle   # v0.3.1
 ```
+
+The SDK is MIT-licensed and Python 3.8+.
 
 ## First call (synchronous)
 
@@ -104,20 +106,36 @@ Request a port that isn't in the dataset and you still get a valid payload, back
 
 ## How it works under the hood
 
-Aether-X runs on a small, fast stack:
+Aether-X is intentionally a small, fast stack — no heavyweight orchestrator, no distributed database. The whole signal pipeline fits in four components:
 
-- **FastAPI** for the REST surface, with a validated Pydantic response model
-- **DuckDB** as the analytical engine, holding the `port_metrics` table
-- **Idempotent ingestion** — public line-ups are upserted by IMO, so re-runs never duplicate vessels
-- **Railway** for zero-friction deployment, seeding the oracle at boot
+```
+ public port data          ingestion               storage              delivery
+ ────────────────   ─────────────────────   ─────────────────   ────────────────────
+  line-ups,         UPSERT by IMO           DuckDB              FastAPI
+  berth/anchorage   (idempotent,           ┌───────────────┐   ┌──────────────────┐
+  telemetry    ───▶  re-runs never    ───▶ │ port_metrics  │──▶ │ GET /v1/port-risk│──▶ SDK / bots
+                    duplicate)             └───────────────┘   └──────────────────┘
+                                                  ▲                    │
+                                                  └── seeded at boot ──┘  (Railway)
+```
+
+- **Ingestion** — public line-ups are normalized and **upserted by IMO**, so re-running a collector never duplicates a vessel. This is what keeps the dataset trustworthy over time.
+- **DuckDB** — a columnar analytical engine that holds the `port_metrics` table. It answers the scoring query in single-digit milliseconds with zero external infrastructure, which is why the API stays cheap to serve.
+- **FastAPI** — exposes the REST surface and validates every response through a Pydantic model, so clients receive a stable, typed contract (`PortRisk`).
+- **Railway** — deploys the service and seeds the oracle idempotently at boot, so a fresh instance is never empty.
+
+The upshot: each call is a cheap, deterministic read from an analytical database, wrapped in a validated API contract. That combination — low cost per query and a typed payload — is what makes it practical to poll a whole portfolio of ports on a tight loop.
+
+Because the SDK is a thin, typed client over that contract (MIT-licensed), you can embed it in anything: a quant signal, a logistics control tower, or an autonomous agent.
 
 ## Get started
 
 ```bash
-pip install aetherx-oracle
+pip install --upgrade aetherx-oracle   # v0.3.1
 ```
 
 - PyPI: https://pypi.org/project/aetherx-oracle/
+- GitHub (MIT SDK): https://github.com/belegante-byte/aetherx-oracle
 - Live API: https://aether-x-oracle-production.up.railway.app/v1/port-risk?port_id=BRSSZ
 
 The signals are provided "AS IS" and do not constitute investment advice. See the Terms of Service.

@@ -1,0 +1,78 @@
+====================================================================
+ Aether-X Oracle — Cold Email B2B (logtechs / freight / supply chain)
+====================================================================
+ Placeholders em {{ }} — personalize antes de enviar.
+ Regra de ouro: e-mail curto (<150 palavras), 1 ideia, 1 CTA.
+====================================================================
+
+
+--------------------------------------------------------------------
+ASSUNTOS (teste A/B)
+--------------------------------------------------------------------
+A) {{Company}} — congestion signal de porto por US$ 0,02/query
+B) Corte o risco de ETA nos seus SLAs com uma chamada de API
+C) Dados de congestionamento portuário para o seu {{Product}}
+
+
+--------------------------------------------------------------------
+E-MAIL PRINCIPAL
+--------------------------------------------------------------------
+Oi {{FirstName}},
+
+Vi que a {{Company}} {{personal_trigger: ex. "opera rotas saindo de Santos e Rotterdam"}}. Congestionamento nesses hubs costuma virar atraso de ETA e reprecificação de frete — quase sempre depois que o cliente já percebeu.
+
+A Aether-X entrega esse sinal via API: congestion score, ETA delay, navios em espera e índice de volatilidade de frete para 15 portos globais.
+
+- US$ 0,02 por consulta, com latência de poucas dezenas de ms
+- Payload tipado e validado (sem scraping, sem parsing frágil)
+- SDK Python MIT: `pip install aetherx-oracle` — sync e async em lote
+
+Em vez de montar um pipeline de scraping e mantê-lo quebrando, você pluga uma chamada e tem o sinal pronto para alertas, roteamento ou hedge.
+
+Faz sentido eu te mostrar uma chamada real para um porto da sua malha? Respondo com um exemplo de {{Port}} em JSON — 2 minutos.
+
+Abraço,
+{{SenderName}}
+{{Title}} — Aether-X
+{{Email}} · {{CalendarLink}}
+
+PS: docs e OpenAPI públicos: https://aether-x-oracle-production.up.railway.app/docs
+
+
+--------------------------------------------------------------------
+FOLLOW-UP 1 (2–3 dias depois, responda na mesma thread)
+--------------------------------------------------------------------
+Oi {{FirstName}}, só retomando — segue um retorno real do endpoint:
+
+GET /v1/port-risk?port_id=BRSSZ
+{
+  "congestion_score": 0.78,
+  "eta_delay_days": 1.6,
+  "waiting_vessels": 12,
+  "freight_volatility_index": 0.42
+}
+
+É esse payload que você consumiria a US$ 0,02/query. Quer que eu rode para os portos que a {{Company}} mais usa?
+
+
+--------------------------------------------------------------------
+FOLLOW-UP 2 (quebra de padrão, 3–4 dias depois)
+--------------------------------------------------------------------
+Oi {{FirstName}},
+
+Fecho aqui para não lotar sua caixa. Se fizer sentido avaliar depois, deixo dois atalhos:
+
+- Testar agora: pip install --upgrade aetherx-oracle
+- Docs: https://aether-x-oracle-production.up.railway.app/docs
+
+Se não for prioridade, é só me dizer que eu paro. 🙂
+
+
+--------------------------------------------------------------------
+DICAS DE PERSONALIZAÇÃO
+--------------------------------------------------------------------
+- {{personal_trigger}}: use algo concreto (rota, porto, contratação, post). Sem isso, é spam.
+- Segmento "logtech": enfatize custo/query e integração (evita manter scraper).
+- Segmento "fundo quant": enfatize async em lote, payload tipado e baixa latência.
+- Nunca prometa retorno financeiro — os sinais são "AS IS", não são aconselhamento de investimento.
+- Ajuste latência ("poucas dezenas de ms") para o número real medido antes de enviar.

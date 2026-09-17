@@ -1,7 +1,9 @@
 # Aether-X Port Congestion Oracle
 
 [![PyPI version](https://img.shields.io/pypi/v/aetherx-oracle?color=blue)](https://pypi.org/project/aetherx-oracle/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/aetherx-oracle)](https://pypi.org/project/aetherx-oracle/)
 [![Python versions](https://img.shields.io/pypi/pyversions/aetherx-oracle)](https://pypi.org/project/aetherx-oracle/)
+[![SDK License: MIT](https://img.shields.io/badge/SDK%20License-MIT-yellow)](sdk_python/LICENSE)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0.3-green)](docs/openapi.rapidapi.json)
 [![Status](https://img.shields.io/badge/status-live-brightgreen)](https://aether-x-oracle-production.up.railway.app/)
 [![Made with DuckDB](https://img.shields.io/badge/DuckDB-analytical%20engine-yellow)](https://duckdb.org/)
@@ -26,7 +28,7 @@ Global trade runs on a handful of chokepoints. When Santos, Shanghai or Rotterda
 │   └── ingestion/    # Public port line-up collectors (UPSERT by IMO)
 ├── sdk_python/       # aetherx-oracle Python SDK (PyPI)
 ├── docs/             # OpenAPI specs + Terms of Service
-├── marketing/        # Launch content (Dev.to, LinkedIn)
+├── marketing/        # Launch content (Dev.to, LinkedIn, B2B cold email)
 ├── tests/            # pytest suite for the API
 ├── Procfile          # Railway start command
 └── railway.json      # Railway deployment config
@@ -34,8 +36,10 @@ Global trade runs on a handful of chokepoints. When Santos, Shanghai or Rotterda
 
 ## Quickstart
 
+Latest SDK: **v0.3.1** — Python 3.8+.
+
 ```bash
-pip install aetherx-oracle
+pip install --upgrade aetherx-oracle
 ```
 
 ### Synchronous
@@ -130,4 +134,6 @@ The signals are provided **"AS IS"**, without warranty, and **do not constitute 
 
 ## License
 
-Proprietary — Machine-to-Machine Data Distribution. See the Terms of Service.
+The **Python SDK** (`sdk_python/`) is released under the **MIT** license — see [`sdk_python/LICENSE`](sdk_python/LICENSE). Install it freely and ship it in commercial products.
+
+The **API, predictive engine and ingestion pipeline** (`src/`) are **proprietary** — Machine-to-Machine Data Distribution. Hosted usage is governed by the Terms of Service.
