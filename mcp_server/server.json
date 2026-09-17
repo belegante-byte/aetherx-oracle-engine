@@ -6,7 +6,7 @@
     "url": "https://github.com/belegante-byte/aetherx-mcp",
     "source": "github"
   },
-  "version": "0.1.1",
+  "version": "0.1.2",
   "packages": [
     {
       "registryType": "pypi",
@@ -38,6 +38,12 @@
           "name": "AETHERX_BASE_URL"
         }
       ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://aether-x-oracle-production.up.railway.app/mcp"
     }
   ]
 }
