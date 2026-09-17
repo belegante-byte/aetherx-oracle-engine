@@ -46,7 +46,7 @@ aetherx-mcp = "aetherx_mcp.server:main"
 
 [project.urls]
 Homepage = "https://aether-x-oracle-production.up.railway.app"
-Repository = "https://github.com/belegante-byte/aetherx-oracle"
+Repository = "https://github.com/belegante-byte/aetherx-mcp"
 Documentation = "https://aether-x-oracle-production.up.railway.app/docs"
 Terms = "https://aether-x-oracle-production.up.railway.app/terms"
 

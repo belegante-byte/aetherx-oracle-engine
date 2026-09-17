@@ -1,10 +1,10 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
-  "name": "io.github.belegante-byte/aetherx-oracle",
+  "name": "io.github.belegante-byte/aetherx-mcp",
   "description": "Predictive port congestion signals for global trade, supply chain and quantitative finance.",
   "status": "active",
   "repository": {
-    "url": "https://github.com/belegante-byte/aetherx-oracle",
+    "url": "https://github.com/belegante-byte/aetherx-mcp",
     "source": "github"
   },
   "version": "0.1.0",
