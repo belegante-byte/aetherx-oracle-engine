@@ -1,6 +1,7 @@
 """Aether-X Port Congestion Oracle - Python SDK client."""
 
-from typing import Optional
+import asyncio
+from typing import List, Optional
 
 import requests
 from pydantic import BaseModel, Field
@@ -60,6 +61,51 @@ class OracleClient:
             ValueError: se port_id for vazio.
             requests.HTTPError: se a API retornar um status de erro.
         """
+        url, headers, params = self._build_request(port_id)
+        response = requests.get(
+            url, headers=headers, params=params, timeout=self.timeout
+        )
+        response.raise_for_status()
+        return PortRisk.model_validate(response.json())
+
+    async def get_port_risk_async(self, port_id: str) -> PortRisk:
+        """Versão assíncrona de :meth:`get_port_risk` (requer o extra ``async``).
+
+        Uso:
+            >>> import asyncio
+            >>> client = OracleClient(api_key="SUA_RAPIDAPI_KEY")
+            >>> risk = asyncio.run(client.get_port_risk_async("BRSSZ"))
+
+        Instale com: ``pip install aetherx-oracle[async]``
+        """
+        try:
+            import httpx
+        except ImportError as exc:  # pragma: no cover - depende do ambiente
+            raise ImportError(
+                "httpx é necessário para métodos assíncronos. "
+                "Instale com: pip install aetherx-oracle[async]"
+            ) from exc
+
+        url, headers, params = self._build_request(port_id)
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            return PortRisk.model_validate(response.json())
+
+    async def get_ports_risk_async(self, port_ids: List[str]) -> List[PortRisk]:
+        """Consulta vários portos em paralelo via ``asyncio.gather``.
+
+        Ideal para fundos quantitativos e bots que monitoram uma carteira de portos.
+        """
+        if not port_ids:
+            return []
+        return list(
+            await asyncio.gather(
+                *(self.get_port_risk_async(port_id) for port_id in port_ids)
+            )
+        )
+
+    def _build_request(self, port_id: str):
         if not port_id:
             raise ValueError("port_id é obrigatório (ex: 'BRSSZ').")
 
@@ -69,9 +115,4 @@ class OracleClient:
             "x-rapidapi-host": self.host,
         }
         params = {"port_id": port_id}
-
-        response = requests.get(
-            url, headers=headers, params=params, timeout=self.timeout
-        )
-        response.raise_for_status()
-        return PortRisk.model_validate(response.json())
+        return url, headers, params

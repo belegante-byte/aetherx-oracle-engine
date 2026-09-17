@@ -49,9 +49,38 @@ client = OracleClient(
 )
 ```
 
+## Portos suportados
+
 Portos com dados de exemplo: `BRSSZ`, `BRRIO`, `CNSHA`, `CNNGB`, `SGSIN`, `NLRTM`, `USLAX`, `USNYC`, `DEHAM`, `MPTNG`, `AEDXB`, `KRPUS`, `GBLGP`, `ZACPT`, `MXZLO`.
 
 Portos não cadastrados retornam uma estimativa global (`country="Global"`).
+
+## Uso assíncrono (async)
+
+Para consultar múltiplos portos em paralelo (ideal para bots e fundos quantitativos). Requer o extra `async`:
+
+```bash
+pip install "aetherx-oracle[async]"
+```
+
+```python
+import asyncio
+from aetherx import OracleClient
+
+async def main():
+    client = OracleClient(api_key="SUA_RAPIDAPI_KEY")
+
+    # Um porto
+    risk = await client.get_port_risk_async("BRSSZ")
+    print(risk.congestion_score)
+
+    # Vários portos em paralelo
+    risks = await client.get_ports_risk_async(["BRSSZ", "CNSHA", "NLRTM"])
+    for r in risks:
+        print(r.port_id, r.congestion_score)
+
+asyncio.run(main())
+```
 
 ## Termos de uso
 
