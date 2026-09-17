@@ -8,7 +8,7 @@
       "name": "Machine-to-Machine Data Distribution (see /terms)",
       "url": "https://aether-x-oracle-production.up.railway.app/terms"
     },
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "servers": [
     {
@@ -32,10 +32,10 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "UN/LOCODE do porto (ex: BRSSZ - Santos)",
+              "description": "UN/LOCODE do porto (ex: BRSSZ - Santos, CNSHA - Shanghai)",
               "title": "Port Id"
             },
-            "description": "UN/LOCODE do porto (ex: BRSSZ - Santos)"
+            "description": "UN/LOCODE do porto (ex: BRSSZ - Santos, CNSHA - Shanghai)"
           }
         ],
         "responses": {
@@ -43,7 +43,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PortRiskResponse"
+                }
               }
             }
           },
@@ -75,6 +77,54 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "PortRiskResponse": {
+        "properties": {
+          "port_id": {
+            "type": "string",
+            "title": "Port Id"
+          },
+          "port_name": {
+            "type": "string",
+            "title": "Port Name"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "congestion_score": {
+            "type": "number",
+            "title": "Congestion Score"
+          },
+          "eta_delay_days": {
+            "type": "number",
+            "title": "Eta Delay Days"
+          },
+          "waiting_vessels": {
+            "type": "integer",
+            "title": "Waiting Vessels"
+          },
+          "freight_volatility_index": {
+            "type": "number",
+            "title": "Freight Volatility Index"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "port_id",
+          "port_name",
+          "country",
+          "congestion_score",
+          "eta_delay_days",
+          "waiting_vessels",
+          "freight_volatility_index",
+          "updated_at"
+        ],
+        "title": "PortRiskResponse"
       },
       "ValidationError": {
         "properties": {
