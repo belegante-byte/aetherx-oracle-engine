@@ -14,10 +14,6 @@
     {
       "url": "https://aether-x-oracle-production.up.railway.app",
       "description": "Production (Railway)"
-    },
-    {
-      "url": "http://127.0.0.1:8000",
-      "description": "Local development"
     }
   ],
   "paths": {
@@ -45,16 +41,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PortRiskResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                },
+                "example": {
+                  "port_id": "BRSSZ",
+                  "port_name": "Santos",
+                  "country": "Brasil",
+                  "congestion_score": 0.78,
+                  "eta_delay_days": 1.6,
+                  "waiting_vessels": 12,
+                  "freight_volatility_index": 0.42,
+                  "updated_at": "2026-09-17 15:46:53"
                 }
               }
             }
@@ -65,19 +61,6 @@
   },
   "components": {
     "schemas": {
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
-          }
-        },
-        "type": "object",
-        "title": "HTTPValidationError"
-      },
       "PortRiskResponse": {
         "properties": {
           "port_id": {
@@ -125,46 +108,6 @@
           "updated_at"
         ],
         "title": "PortRiskResponse"
-      },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Location"
-          },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
-          }
-        },
-        "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError"
       }
     }
   }
