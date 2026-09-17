@@ -1,16 +1,19 @@
+import json
 import os
 import time
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, Query, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
 from src.engine.risk_model import calculate_port_risk
 
 PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aether-x-oracle-production.up.railway.app")
-TERMS_PATH = Path(__file__).resolve().parent.parent.parent / "docs" / "TERMS_OF_SERVICE.md"
+DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
+TERMS_PATH = DOCS_DIR / "TERMS_OF_SERVICE.md"
+RAPIDAPI_SPEC_PATH = DOCS_DIR / "openapi.rapidapi.min.json"
 
 
 class PortRiskResponse(BaseModel):
@@ -53,6 +56,11 @@ def health_check():
 @app.get("/terms", include_in_schema=False)
 def terms_of_service():
     return PlainTextResponse(TERMS_PATH.read_text(encoding="utf-8"))
+
+
+@app.get("/openapi.rapidapi.json", include_in_schema=False)
+def rapidapi_spec():
+    return JSONResponse(json.loads(RAPIDAPI_SPEC_PATH.read_text(encoding="utf-8")))
 
 
 @app.get("/v1/port-risk", response_model=PortRiskResponse)
