@@ -19,6 +19,66 @@ EXAMPLE_RESPONSE = {
     "updated_at": "2026-09-17 15:46:53",
 }
 
+RESPONSE_SCHEMA = {
+    "type": "object",
+    "required": [
+        "port_id", "port_name", "country", "congestion_score",
+        "eta_delay_days", "waiting_vessels", "freight_volatility_index", "updated_at",
+    ],
+    "properties": {
+        "port_id": {"type": "string", "example": "BRSSZ"},
+        "port_name": {"type": "string", "example": "Santos"},
+        "country": {"type": "string", "example": "Brasil"},
+        "congestion_score": {"type": "number", "format": "double", "example": 0.78},
+        "eta_delay_days": {"type": "number", "format": "double", "example": 1.6},
+        "waiting_vessels": {"type": "integer", "example": 12},
+        "freight_volatility_index": {"type": "number", "format": "double", "example": 0.42},
+        "updated_at": {"type": "string", "example": "2026-09-17 15:46:53"},
+    },
+}
+
+
+def _minimal_spec():
+    """Spec mínima e autossuficiente para máxima compatibilidade com o importador RapidAPI."""
+    return {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Aether-X Port Congestion Oracle",
+            "description": "Algorithmic predictive port delay & congestion scores for global trade and quantitative funds.",
+            "version": "0.2.0",
+        },
+        "servers": [{"url": PRODUCTION_URL, "description": "Production (Railway)"}],
+        "paths": {
+            "/v1/port-risk": {
+                "get": {
+                    "summary": "Get Port Risk",
+                    "description": "Returns the predictive congestion signal for a given global port.",
+                    "operationId": "getPortRisk",
+                    "parameters": [
+                        {
+                            "name": "port_id",
+                            "in": "query",
+                            "required": True,
+                            "description": "UN/LOCODE do porto (ex: BRSSZ - Santos, CNSHA - Shanghai)",
+                            "schema": {"type": "string", "example": "BRSSZ"},
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "Successful Response",
+                            "content": {
+                                "application/json": {
+                                    "schema": RESPONSE_SCHEMA,
+                                    "example": EXAMPLE_RESPONSE,
+                                }
+                            },
+                        }
+                    },
+                }
+            }
+        },
+    }
+
 
 def generate_openapi():
     docs_dir = "docs"
@@ -53,6 +113,11 @@ def generate_openapi():
     with open(rapidapi_path, "w", encoding="utf-8") as f:
         json.dump(rapidapi, f, indent=2)
     print(f"[AETHER-X DOCS] Especificação OpenAPI (3.0.3 / RapidAPI) gerada em: {rapidapi_path}")
+
+    minimal_path = os.path.join(docs_dir, "openapi.rapidapi.min.json")
+    with open(minimal_path, "w", encoding="utf-8") as f:
+        json.dump(_minimal_spec(), f, indent=2)
+    print(f"[AETHER-X DOCS] Especificação OpenAPI (3.0.3 / RapidAPI minimal) gerada em: {minimal_path}")
 
 
 if __name__ == "__main__":
