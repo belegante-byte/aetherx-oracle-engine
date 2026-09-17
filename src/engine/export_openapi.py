@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import sys
@@ -10,14 +11,21 @@ from src.api.main import app
 def generate_openapi():
     docs_dir = "docs"
     os.makedirs(docs_dir, exist_ok=True)
-    
+
     openapi_data = app.openapi()
-    output_path = os.path.join(docs_dir, "openapi.json")
-    
-    with open(output_path, "w", encoding="utf-8") as f:
+
+    native_path = os.path.join(docs_dir, "openapi.json")
+    with open(native_path, "w", encoding="utf-8") as f:
         json.dump(openapi_data, f, indent=2)
-        
-    print(f"[AETHER-X DOCS] Especificação OpenAPI gerada com sucesso em: {output_path}")
+    print(f"[AETHER-X DOCS] Especificação OpenAPI (3.1.0) gerada em: {native_path}")
+
+    # Cópia compatível com o importador do RapidAPI (que não aceita OpenAPI 3.1)
+    rapidapi_data = copy.deepcopy(openapi_data)
+    rapidapi_data["openapi"] = "3.0.3"
+    rapidapi_path = os.path.join(docs_dir, "openapi.rapidapi.json")
+    with open(rapidapi_path, "w", encoding="utf-8") as f:
+        json.dump(rapidapi_data, f, indent=2)
+    print(f"[AETHER-X DOCS] Especificação OpenAPI (3.0.3 / RapidAPI) gerada em: {rapidapi_path}")
 
 
 if __name__ == "__main__":

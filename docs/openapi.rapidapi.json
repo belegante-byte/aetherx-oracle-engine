@@ -1,0 +1,171 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Aether-X Port Congestion Oracle",
+    "description": "Algorithmic predictive port delay & congestion scores for global trade and quantitative funds.",
+    "termsOfService": "https://aether-x-oracle-production.up.railway.app/terms",
+    "license": {
+      "name": "Machine-to-Machine Data Distribution (see /terms)",
+      "url": "https://aether-x-oracle-production.up.railway.app/terms"
+    },
+    "version": "0.2.0"
+  },
+  "servers": [
+    {
+      "url": "https://aether-x-oracle-production.up.railway.app",
+      "description": "Production (Railway)"
+    },
+    {
+      "url": "http://127.0.0.1:8000",
+      "description": "Local development"
+    }
+  ],
+  "paths": {
+    "/v1/port-risk": {
+      "get": {
+        "summary": "Get Port Risk",
+        "operationId": "get_port_risk_v1_port_risk_get",
+        "parameters": [
+          {
+            "name": "port_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UN/LOCODE do porto (ex: BRSSZ - Santos, CNSHA - Shanghai)",
+              "title": "Port Id"
+            },
+            "description": "UN/LOCODE do porto (ex: BRSSZ - Santos, CNSHA - Shanghai)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortRiskResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PortRiskResponse": {
+        "properties": {
+          "port_id": {
+            "type": "string",
+            "title": "Port Id"
+          },
+          "port_name": {
+            "type": "string",
+            "title": "Port Name"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "congestion_score": {
+            "type": "number",
+            "title": "Congestion Score"
+          },
+          "eta_delay_days": {
+            "type": "number",
+            "title": "Eta Delay Days"
+          },
+          "waiting_vessels": {
+            "type": "integer",
+            "title": "Waiting Vessels"
+          },
+          "freight_volatility_index": {
+            "type": "number",
+            "title": "Freight Volatility Index"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "port_id",
+          "port_name",
+          "country",
+          "congestion_score",
+          "eta_delay_days",
+          "waiting_vessels",
+          "freight_volatility_index",
+          "updated_at"
+        ],
+        "title": "PortRiskResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
