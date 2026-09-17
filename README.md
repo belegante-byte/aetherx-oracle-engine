@@ -10,7 +10,7 @@
 
 **Algorithmic predictive port congestion signals for global trade, supply chain and quantitative finance.**
 
-Aether-X turns public port telemetry and line-up data into machine-readable congestion scores, ETA delay estimates and freight volatility indices for the world's largest ports — delivered through a REST API, an MCP-style SDK and a Python client.
+Aether-X turns public port telemetry and line-up data into machine-readable congestion scores, ETA delay estimates and freight volatility indices for the world's largest ports — delivered through a REST API, a typed Python SDK and a remote MCP server for AI agents.
 
 ---
 
@@ -23,13 +23,15 @@ Global trade runs on a handful of chokepoints. When Santos, Shanghai or Rotterda
 ```
 .
 ├── src/
-│   ├── api/          # FastAPI application (REST endpoints)
+│   ├── api/          # FastAPI application (REST endpoints + remote MCP endpoint)
 │   ├── engine/       # Predictive model, DuckDB seeding, OpenAPI export
 │   └── ingestion/    # Public port line-up collectors (UPSERT by IMO)
 ├── sdk_python/       # aetherx-oracle Python SDK (PyPI)
 ├── mcp_server/       # aetherx-mcp MCP server for AI agents (PyPI)
 ├── docs/             # OpenAPI specs + Terms of Service
 ├── marketing/        # Launch content (Dev.to, LinkedIn, B2B cold email)
+├── data/dataset/     # Public snapshot dataset (CC BY 4.0)
+├── scripts/          # Publishing and automation helpers
 ├── tests/            # pytest suite for the API
 ├── Procfile          # Railway start command
 └── railway.json      # Railway deployment config
@@ -84,6 +86,7 @@ Base URL (production): `https://aether-x-oracle-production.up.railway.app`
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/v1/port-risk?port_id=BRSSZ` | Congestion score, ETA delay and freight volatility for a port |
+| `POST` | `/mcp` | Remote MCP endpoint (Streamable HTTP) — the same signal for AI agents |
 | `GET` | `/terms` | Terms of Service |
 | `GET` | `/openapi.json` | OpenAPI specification |
 
@@ -101,6 +104,31 @@ Base URL (production): `https://aether-x-oracle-production.up.railway.app`
   "updated_at": "2026-09-17 15:46:53"
 }
 ```
+
+## MCP server (AI agents)
+
+The same signal is exposed over the Model Context Protocol, so agents can call
+`get_port_risk`, `get_ports_risk` and `list_supported_ports` directly.
+
+| Transport | How to connect |
+|-----------|----------------|
+| Remote (Streamable HTTP) | `https://aether-x-oracle-production.up.railway.app/mcp` |
+| stdio (local) | `uvx aetherx-mcp` |
+| Smithery gateway | [`belegante/aetherx-mcp`](https://smithery.ai/servers/belegante/aetherx-mcp) |
+
+```json
+{
+  "mcpServers": {
+    "aetherx": {
+      "command": "uvx",
+      "args": ["aetherx-mcp"]
+    }
+  }
+}
+```
+
+Published as `io.github.belegante-byte/aetherx-mcp` in the
+[Official MCP Registry](https://registry.modelcontextprotocol.io).
 
 ## Pricing & Free Tier
 
@@ -122,6 +150,17 @@ pip install --upgrade aetherx-oracle
 `BRSSZ` `BRRIO` `CNSHA` `CNNGB` `SGSIN` `NLRTM` `USLAX` `USNYC` `DEHAM` `MPTNG` `AEDXB` `KRPUS` `GBLGP` `ZACPT` `MXZLO`
 
 Unknown ports fall back to a global statistical estimate (`country="Global"`).
+
+## Dataset
+
+A frozen snapshot of the 15-port signal is published on Hugging Face for
+research, backtesting and dashboards (**CC BY 4.0**):
+
+- https://huggingface.co/datasets/Aether-x/aetherx-port-congestion-metrics
+
+## Writing
+
+- [Predicting Global Port Congestion in Real-Time with Python, DuckDB and MCP](https://dev.to/giovanni_belegante_2b04c5/predicting-global-port-congestion-in-real-time-with-python-duckdb-and-mcp-1ahm) — DEV Community
 
 ## Development
 

@@ -13,7 +13,18 @@
 
 - [Python SDK (PyPI)](https://pypi.org/project/aetherx-oracle/): `pip install aetherx-oracle` — sync + async client
 - [MCP server (PyPI)](https://pypi.org/project/aetherx-mcp/): `uvx aetherx-mcp` — gives AI agents the `get_port_risk` tool
+- [Remote MCP endpoint](https://aether-x-oracle-production.up.railway.app/mcp): Streamable HTTP, no install
+- [Smithery gateway](https://smithery.ai/servers/belegante/aetherx-mcp): hosted MCP connection
+- [Official MCP Registry](https://registry.modelcontextprotocol.io): `io.github.belegante-byte/aetherx-mcp`
 - [Source (GitHub, MIT)](https://github.com/belegante-byte/aetherx-oracle)
+
+## Dataset
+
+- [Aether-X Global Port Congestion Snapshot (Hugging Face)](https://huggingface.co/datasets/Aether-x/aetherx-port-congestion-metrics): frozen 15-port CSV, CC BY 4.0
+
+## Writing
+
+- [Predicting Global Port Congestion in Real-Time with Python, DuckDB and MCP](https://dev.to/giovanni_belegante_2b04c5/predicting-global-port-congestion-in-real-time-with-python-duckdb-and-mcp-1ahm): DEV Community
 
 ## Supported ports
 
