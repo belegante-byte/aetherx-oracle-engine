@@ -1,0 +1,27 @@
+# Aether-X Port Congestion Oracle
+
+> Predictive port congestion signals for global trade, supply chain and quantitative finance. REST API, Python SDK and MCP server. Returns congestion score, ETA delay, waiting vessels and freight volatility for 15 global ports.
+
+## API
+
+- [OpenAPI 3.0.3 spec](https://aether-x-oracle-production.up.railway.app/openapi.rapidapi.json): machine-readable contract (RapidAPI-compatible)
+- [Example call](https://aether-x-oracle-production.up.railway.app/v1/port-risk?port_id=BRSSZ): GET /v1/port-risk?port_id=BRSSZ
+- [Interactive docs](https://aether-x-oracle-production.up.railway.app/docs): Swagger UI
+- [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)
+
+## SDKs and integrations
+
+- [Python SDK (PyPI)](https://pypi.org/project/aetherx-oracle/): `pip install aetherx-oracle` — sync + async client
+- [MCP server (PyPI)](https://pypi.org/project/aetherx-mcp/): `uvx aetherx-mcp` — gives AI agents the `get_port_risk` tool
+- [Source (GitHub, MIT)](https://github.com/belegante-byte/aetherx-oracle)
+
+## Supported ports
+
+AEDXB, BRRIO, BRSSZ, CNNGB, CNSHA, DEHAM, GBLGP, KRPUS, MPTNG, MXZLO, NLRTM, SGSIN, USLAX, USNYC, ZACPT
+
+Unknown ports fall back to a global statistical estimate (`country="Global"`).
+
+## Notes
+
+- Signals are provided "AS IS" and do not constitute investment advice.
+- Metered access is available through the RapidAPI gateway (X-RapidAPI-Key).

@@ -14,6 +14,8 @@ PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aether-x-oracle-production
 DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
 TERMS_PATH = DOCS_DIR / "TERMS_OF_SERVICE.md"
 RAPIDAPI_SPEC_PATH = DOCS_DIR / "openapi.rapidapi.min.json"
+LLMS_TXT_PATH = DOCS_DIR / "llms.txt"
+AI_PLUGIN_PATH = DOCS_DIR / "ai-plugin.json"
 
 
 class PortRiskResponse(BaseModel):
@@ -61,6 +63,18 @@ def terms_of_service():
 @app.get("/openapi.rapidapi.json", include_in_schema=False)
 def rapidapi_spec():
     return JSONResponse(json.loads(RAPIDAPI_SPEC_PATH.read_text(encoding="utf-8")))
+
+
+@app.get("/llms.txt", include_in_schema=False)
+def llms_txt():
+    return PlainTextResponse(
+        LLMS_TXT_PATH.read_text(encoding="utf-8"), media_type="text/plain"
+    )
+
+
+@app.get("/.well-known/ai-plugin.json", include_in_schema=False)
+def ai_plugin_manifest():
+    return JSONResponse(json.loads(AI_PLUGIN_PATH.read_text(encoding="utf-8")))
 
 
 @app.get("/v1/port-risk", response_model=PortRiskResponse)
