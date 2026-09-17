@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aetherx-oracle"
+version = "0.2.0"
+description = "Python SDK for the Aether-X Port Congestion Oracle API"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "Proprietary - Machine-to-Machine Data Distribution" }
+authors = [{ name = "Aether-X Oracle Engine" }]
+keywords = ["port", "congestion", "oracle", "logistics", "shipping", "quant", "freight"]
+dependencies = [
+    "requests>=2.25.0",
+    "pydantic>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://aether-x-oracle-production.up.railway.app"
+Documentation = "https://aether-x-oracle-production.up.railway.app/docs"
+Terms = "https://aether-x-oracle-production.up.railway.app/terms"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["aetherx*"]

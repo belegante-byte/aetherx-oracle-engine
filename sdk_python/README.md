@@ -1,0 +1,58 @@
+# aetherx-oracle
+
+SDK Python oficial para a **Aether-X Port Congestion Oracle API** — sinais preditivos de congestão portuária, atraso de ETA e volatilidade de frete para portos globais.
+
+## Instalação
+
+```bash
+pip install aetherx-oracle
+```
+
+## Uso rápido
+
+```python
+from aetherx import OracleClient
+
+client = OracleClient(api_key="SUA_RAPIDAPI_KEY")
+
+risk = client.get_port_risk("BRSSZ")
+
+print(risk.port_name)                 # Santos
+print(risk.country)                   # Brasil
+print(risk.congestion_score)          # 0.78
+print(risk.eta_delay_days)            # 1.6
+print(risk.waiting_vessels)           # 12
+print(risk.freight_volatility_index)  # 0.42
+print(risk.updated_at)                # 2026-09-17 15:46:53
+```
+
+## Campos retornados (`PortRisk`)
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `port_id` | `str` | UN/LOCODE do porto (ex: `BRSSZ`) |
+| `port_name` | `str` | Nome do porto |
+| `country` | `str` | País do porto |
+| `congestion_score` | `float` | Score de congestão (0.0 a 1.0) |
+| `eta_delay_days` | `float` | Atraso estimado de ETA em dias |
+| `waiting_vessels` | `int` | Navios aguardando/ancorados |
+| `freight_volatility_index` | `float` | Índice de volatilidade de frete |
+| `updated_at` | `str` | Timestamp da última atualização |
+
+## Configuração avançada
+
+```python
+client = OracleClient(
+    api_key="SUA_RAPIDAPI_KEY",
+    host="aether-x-port-congestion-oracle.p.rapidapi.com",  # default
+    timeout=30.0,                                            # segundos
+)
+```
+
+Portos com dados de exemplo: `BRSSZ`, `BRRIO`, `CNSHA`, `CNNGB`, `SGSIN`, `NLRTM`, `USLAX`, `USNYC`, `DEHAM`, `MPTNG`, `AEDXB`, `KRPUS`, `GBLGP`, `ZACPT`, `MXZLO`.
+
+Portos não cadastrados retornam uma estimativa global (`country="Global"`).
+
+## Termos de uso
+
+Os sinais são fornecidos "AS IS", sem garantia e **não constituem aconselhamento de investimento**. Consulte os [Termos de Serviço](https://aether-x-oracle-production.up.railway.app/terms).
