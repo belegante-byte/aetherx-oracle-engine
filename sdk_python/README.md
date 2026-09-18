@@ -23,7 +23,25 @@ print(risk.congestion_score)          # 0.78
 print(risk.eta_delay_days)            # 1.6
 print(risk.waiting_vessels)           # 12
 print(risk.freight_volatility_index)  # 0.42
+print(risk.estimated_daily_demurrage_usd)  # 63200 (USD/dia)
 print(risk.updated_at)                # 2026-09-17 15:46:53
+```
+
+## Tendência 24/48/72h
+
+```python
+trend = client.get_port_trend("NLRTM")
+print(trend.trend)                 # estavel / acelerando / descongestionando
+print(trend.projection["h48"].congestion_score)
+print(trend.projection["h72"].estimated_daily_demurrage_usd)
+```
+
+## Consulta em lote (uma única chamada)
+
+```python
+ports = client.get_ports_risk(["BRSSZ", "CNSHA", "NLRTM", "USLAX"])
+for p in ports:
+    print(p.port_id, p.congestion_score, p.estimated_daily_demurrage_usd)
 ```
 
 ## Campos retornados (`PortRisk`)
@@ -37,6 +55,7 @@ print(risk.updated_at)                # 2026-09-17 15:46:53
 | `eta_delay_days` | `float` | Atraso estimado de ETA em dias |
 | `waiting_vessels` | `int` | Navios aguardando/ancorados |
 | `freight_volatility_index` | `float` | Índice de volatilidade de frete |
+| `estimated_daily_demurrage_usd` | `int` | Demurrage diária estimada (USD) |
 | `updated_at` | `str` | Timestamp da última atualização |
 
 ## Configuração avançada
@@ -51,7 +70,7 @@ client = OracleClient(
 
 ## Portos suportados
 
-Portos com dados de exemplo: `BRSSZ`, `BRRIO`, `CNSHA`, `CNNGB`, `SGSIN`, `NLRTM`, `USLAX`, `USNYC`, `DEHAM`, `MPTNG`, `AEDXB`, `KRPUS`, `GBLGP`, `ZACPT`, `MXZLO`.
+Portos com dados de exemplo: `BRSSZ`, `BRRIO`, `CNSHA`, `CNNGB`, `CNTAO`, `SGSIN`, `NLRTM`, `USLAX`, `USNYC`, `DEHAM`, `MPTNG`, `AEDXB`, `KRPUS`, `GBLGP`, `ZACPT`, `MXZLO`.
 
 Portos não cadastrados retornam uma estimativa global (`country="Global"`).
 
@@ -78,6 +97,10 @@ async def main():
     risks = await client.get_ports_risk_async(["BRSSZ", "CNSHA", "NLRTM"])
     for r in risks:
         print(r.port_id, r.congestion_score)
+
+    # Tendência async
+    trend = await client.get_port_trend_async("BRSSZ")
+    print(trend.trend)
 
 asyncio.run(main())
 ```
