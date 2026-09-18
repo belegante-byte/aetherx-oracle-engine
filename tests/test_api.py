@@ -236,10 +236,31 @@ def test_metrics_classify():
     assert _classify("/mcp", "some-agent/1.0") == "mcp"
     assert _classify("/v1/port-risk", "python-requests/2.32") == "rest"
     assert _classify("/openapi.json", "curl/8.6") == "discovery"
-    assert _classify("/port-congestion-santos", "Mozilla/5.0 Googlebot/2.1") == "seo"
+    assert _classify("/port-congestion-santos", "Mozilla/5.0 Googlebot/2.1") == "bot"
+    assert _classify("/mcp", "mcpbeat/0.1 liveness check") == "bot"
+    assert _classify("/mcp", "SentinelOracle/0.1 liveness-only") == "bot"
     assert _classify("/", "Mozilla/5.0 (Macintosh; Intel Mac OS X)") is None
     assert _classify("/health", "curl/8.6") is None
     assert _classify("/v1/port-risk", "belegante-aetherx/1.0") is None
+
+
+def test_metrics_tracks_repeat_machines():
+    from src.api import metrics
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/v1/port-risk",
+        "headers": [(b"user-agent", b"python-requests/2.32")],
+        "client": ("203.0.113.7", 1000),
+    }
+    metrics.record_http(scope)
+    metrics.record_http(dict(scope))
+    snap = metrics.metrics_snapshot()
+    assert "repeat_machines" in snap
+    assert "second_call_rate" in snap
+    assert snap["repeat_machines"].get("rest", 0) >= 1
+    assert snap["second_call_rate"]["rest"] > 0.0
 
 
 def test_internal_metrics_protected():

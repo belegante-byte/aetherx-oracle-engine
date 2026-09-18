@@ -4,6 +4,10 @@
 > Meta de saída: `0 → 10 → 50 → 100` usuários. Objetivo inicial não é receita — é descobrir qual canal gera os primeiros usuários.
 >
 > **Modelo de aquisição M2M:** a lista de prospects humanos foi substituída por superfícies de integração — ver [`m2m/README.md`](m2m/README.md) e [`m2m/surfaces.csv`](m2m/surfaces.csv).
+>
+> **Protocolo do experimento de 7 dias:** [`m2m/ritual-7d.md`](m2m/ritual-7d.md) — dia 0 = baseline, só distribuição, nenhuma mudança de produto.
+> **Métrica decisiva:** *External Second Call Rate* (`repeat_machines`/`unique_machines`, do `/internal/metrics`).
+> **Bots/crawlers não contam:** canais `bot` são medidos à parte e excluídos do funil (SentinelOracle, mcpbeat, Googlebot, …).
 
 ## Ritual
 A cada **7 dias**, preencher a tabela abaixo e guardar o snapshot. Fonte de cada métrica indicada na coluna "Fonte".

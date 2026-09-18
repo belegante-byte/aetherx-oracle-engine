@@ -6,6 +6,7 @@ durável no Railway) e atualiza contadores em memória, expostos em
 "External Machine Calls" por ecossistema — MCP, REST, discovery e SEO de bots.
 """
 
+import collections
 import hashlib
 import json
 import logging
@@ -27,6 +28,15 @@ _DISCOVERY_PATHS = (
     "/robots.txt",
 )
 
+# Bot/crawler/liveness: NÃO contam como usuário máquina externo para o funil
+# M2M (ex.: SentinelOracle, mcpbeat, Googlebot). São medidos à parte em "bot".
+_BOT_TOKENS = (
+    "sentineloracle", "mcpbeat", "googlebot", "bingbot", "slurp",
+    "duckduckbot", "baiduspider", "yandex", "lighthouse", "gtmetrix",
+    "uptimerobot", "pingdom", "statuscake", "monitoring", "pingbot",
+    "facebookexternalhit", "twitterbot", "linkedinbot",
+)
+
 # Firma de user-agent indica máquina (bot/agente/cliente HTTP), não humano.
 _MACHINE_TOKENS = (
     "bot", "spider", "crawl", "curl", "httpx", "requests", "aiohttp",
@@ -38,9 +48,10 @@ _MACHINE_TOKENS = (
 _SELF_TOKENS = ("belegante-aetherx",)
 
 _lock = threading.Lock()
-_counts = {}    # {channel: int}
-_uniq = {}      # {channel: set[str]}  hash do IP do cliente
-_paths = {}     # {path: int}
+_counts = {}      # {channel: int}
+_uniq = {}        # {channel: set[str]}   hash do IP do cliente
+_machines = {}    # {channel: collections.Counter[str]}  chamadas por máquina
+_paths = {}       # {path: int}
 _t0 = time.time()
 
 
@@ -56,6 +67,8 @@ def _classify(path: str, ua: str) -> str | None:
         return None
     if path_l.startswith(_SKIP_PREFIXES):
         return None
+    if any(t in ua_l for t in _BOT_TOKENS):
+        return "bot"
     if path_l.startswith("/mcp"):
         return "mcp"
     if path_l.startswith("/v1/"):
@@ -101,6 +114,7 @@ def record_http(scope) -> None:
     with _lock:
         _counts[channel] = _counts.get(channel, 0) + 1
         _uniq.setdefault(channel, set()).add(key)
+        _machines.setdefault(channel, collections.Counter())[key] += 1
         _paths[path] = _paths.get(path, 0) + 1
     logger.info(
         "AETHERX_METRIC %s",
@@ -119,9 +133,18 @@ def record_http(scope) -> None:
 
 def metrics_snapshot() -> dict:
     with _lock:
+        uniq = {k: len(v) for k, v in _uniq.items()}
+        repeat = {k: sum(1 for c in cnt.values() if c >= 2) for k, cnt in _machines.items()}
+        second_call_rate = {
+            k: (repeat[k] / uniq[k] if uniq.get(k) else 0.0)
+            for k in repeat
+        }
         return {
             "uptime_seconds": int(time.time() - _t0),
             "total": dict(_counts),
-            "unique_machines": {k: len(v) for k, v in _uniq.items()},
+            "bot_calls": _counts.get("bot", 0),
+            "unique_machines": uniq,
+            "repeat_machines": repeat,
+            "second_call_rate": second_call_rate,
             "top_paths": sorted(_paths.items(), key=lambda x: -x[1])[:20],
         }
