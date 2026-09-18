@@ -146,6 +146,11 @@ def test_guard_exempts_public_paths():
     assert public.get("/openapi.rapidapi.json").status_code == 200
     assert public.get("/llms.txt").status_code == 200
     assert public.get("/terms").status_code == 200
+    assert public.get("/sitemap.xml").status_code == 200
+    assert public.get("/mcp-page").status_code == 200
+    assert public.get("/port-congestion-api").status_code == 200
+    assert public.get("/santos-port-congestion-api").status_code == 200
+    assert public.get("/port-congestion-python").status_code == 200
 
 
 def test_guard_exempts_mcp():

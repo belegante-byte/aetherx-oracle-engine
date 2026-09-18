@@ -61,6 +61,11 @@ class RapidAPIGuard:
                 "/openapi.rapidapi.json",
                 "/llms.txt",
                 "/terms",
+                "/sitemap.xml",
+                "/mcp-page",
+                "/port-congestion-api",
+                "/santos-port-congestion-api",
+                "/port-congestion-python",
             }
             or path.startswith(("/docs", "/redoc", "/mcp"))
             or path == "/.well-known/ai-plugin.json"
