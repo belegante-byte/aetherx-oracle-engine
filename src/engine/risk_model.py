@@ -1,3 +1,4 @@
+import functools
 import math
 import os
 
@@ -8,6 +9,17 @@ from dotenv import load_dotenv
 
 load_dotenv("config/.env")
 DB_PATH = os.getenv("DATABASE_PATH", "data/oracle.duckdb")
+
+_CONN: "duckdb.DuckDBPyConnection | None" = None
+
+
+def _get_conn() -> "duckdb.DuckDBPyConnection":
+    """Conexão singleton read-only: o dataset é estático, abre 1x e reutiliza sempre."""
+    global _CONN
+    if _CONN is None:
+        _CONN = duckdb.connect(DB_PATH, read_only=True)
+    return _CONN
+
 
 # Estimativa fallback baseada em estatísticas globais genéricas de congestão portuária
 GLOBAL_ESTIMATE = {
@@ -31,16 +43,20 @@ def _estimate_demurrage(congestion_score: float) -> int:
     return int(DEMURRAGE_BASE_USD_PER_DAY * (1 + 1.25 * congestion_score))
 
 
+@functools.lru_cache(maxsize=1024)
 def calculate_port_risk(port_id: str) -> dict:
     """
     Lê os dados reais do porto em port_metrics no DuckDB.
     Caso o porto não exista, retorna uma estimativa baseada em estatísticas globais.
+
+    Cacheado em memória: o dataset é estático (seed roda uma única vez), então
+    hits repetidos são servidos sem I/O após o primeiro acesso.
     """
     port_id = port_id.upper()
     now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 
     try:
-        conn = duckdb.connect(DB_PATH)
+        conn = _get_conn()
         row = conn.execute("""
             SELECT port_id, port_name, country, congestion_score,
                    eta_delay_days, waiting_vessels, freight_volatility_index,
@@ -48,7 +64,6 @@ def calculate_port_risk(port_id: str) -> dict:
             FROM port_metrics
             WHERE port_id = ?
         """, [port_id]).fetchone()
-        conn.close()
     except duckdb.Error:
         row = None
 
@@ -92,6 +107,7 @@ def _trend_label(delta: float) -> str:
     return "estável"
 
 
+@functools.lru_cache(maxsize=1024)
 def calculate_port_trend(port_id: str, horizons: tuple = TREND_HORIZONS) -> dict:
     """Projeta o congestionamento do porto para os próximos horizontes (24/48/72h).
 
