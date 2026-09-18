@@ -4,16 +4,16 @@ MCP ecosystem,Glama,MCP,Listed connector,https://glama.ai/mcp/connectors/io.gith
 MCP ecosystem,Smithery,MCP,Listed server,https://smithery.ai/servers/belegante/aetherx-mcp,Smithery account,live,,,,
 MCP ecosystem,PulseMCP,MCP,Registry ingestion,https://www.pulsemcp.com,auto-ingest from registry,pending,,,,submissions paused
 MCP ecosystem,awesome-remote-mcp-servers,MCP,GitHub PR #403,https://github.com/punkpeye/awesome-remote-mcp-servers,PR review,submitted,,,,
-MCP ecosystem,mcp.so,MCP,Submit server,https://mcp.so,submit form,not_started,,,,
-MCP ecosystem,mcpservers.org,MCP,Submit server,https://mcpservers.org,submit form,not_started,,,,
+MCP ecosystem,mcp.so,MCP,Submit server (FREE — paid $39 declined),https://mcp.so,submit form + review,submitted,,,,free via GitHub issue chatmcp/mcpso#4236 (paid tier $39 rejected)
+MCP ecosystem,mcpservers.org,MCP,Submit server (FREE),https://mcpservers.org,submit form + review,not_started,,,,
 MCP ecosystem,Cline MCP Marketplace,MCP,Publish listing,https://cline.bot/mcp-marketplace,repo + manifest,not_started,,,,
 MCP ecosystem,Cursor MCP directory,MCP,Submit server,https://cursor.directory/mcp,submit form,not_started,,,,
 MCP ecosystem,Continue.dev MCP Hub,MCP,Registry listing,https://hub.continue.dev,submit form,not_started,,,,
 MCP ecosystem,OpenTools MCP,MCP,Submit server,https://opentools.com,submit form,not_started,,,,
-MCP ecosystem,awesome-mcp-servers,MCP,GitHub list PR,https://github.com/punkpeye/awesome-mcp-servers,PR,not_started,,,,
+MCP ecosystem,awesome-mcp-servers,MCP,GitHub list PR,https://github.com/punkpeye/awesome-mcp-servers,PR,submitted,,,,"PR #14670 (Travel & Transportation)"
 API aggregator,RapidAPI,REST,Metered listing,https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle,listing + plans,live,,,,Free/Pro/Ultra/Mega
 API aggregator,APIs.guru,REST/OpenAPI,OpenAPI directory,https://apis.guru,openapi spec,not_started,,,,
-API aggregator,Public APIs (GitHub),REST,GitHub list PR,https://github.com/public-apis/public-apis,PR,not_started,,,,
+API aggregator,Public APIs (GitHub),REST,GitHub list PR,https://github.com/public-apis/public-apis,PR,submitted,,,,"PR #7425 (Transportation; base master)"
 API aggregator,apilist.fun,REST,Directory submit,https://apilist.fun,submit form,not_started,,,,
 API aggregator,APIs.io,REST,Directory submit,https://apis.io,submit form,not_started,,,,
 API aggregator,OpenAPI Directory,REST,Spec submit,https://github.com/APIs-guru/openapi-directory,PR,not_started,,,,
