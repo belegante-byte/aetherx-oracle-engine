@@ -76,9 +76,49 @@ awesome-remote-mcp-servers (PR #403) · RapidAPI · PyPI SDK/MCP · GitHub · Hu
 
 | Dia | Superfícies submetidas | Discovery | First calls | Second calls | Repeat users | Notas |
 |---|---|---|---|---|---|---|
-| D0 | — | — | 0 | 0 | 0 | baseline |
+| D0 | — | — | 1 | 0 | 0 | **Marco D0**: 1ª external machine call (channel `mcp`, path `/mcp`, `ua=Python/3.11 aiohttp/3.14.3`, `ip_hash=a66721dc1c181b2e`, ts ≈ 1789751525, slot Brasil). Evento preservado; sem identificação, sem conclusão. |
+| D1 | — | 0 | 1 | 1 | 1 | A máquina do D0 **voltou** — 2ª chamada `/mcp` (mesma UA, mesmo `ip_hash`, ts +569s). Funil MCP: first=1, second=1, External Second Call Rate=1.0 (**observação única, sem conclusão**). Bots exc luídos (mcpbeat, SentinelOracle — liveness). `seo`=2 é ruído próprio (nossos curls de verificação). RapidAPI/PyPI/GitHub/SEO externo = 0. |
 
 (fazer nova linha por dia; fechar tabela no D7)
+
+## Registro do evento D0 → D1 (fac-símile preservado)
+
+| Campo | Valor |
+|---|---|
+| Timestamp D0 (first) | 1789751525 (slot Brasil) |
+| Timestamp D1 (second) | 1789752094 |
+| Intervalo | **569 s** (< 10 min) |
+| Canal | `mcp` |
+| Endpoint | `/mcp` (inaugural; ferramentas invocadas: **n.d.** — log atual não registra tools) |
+| Client | `aiohttp` (Python/3.11) |
+| Resultado HTTP | **n.d.** (logs atuais não capturam status) |
+| Região | Brasil [HIP — inferido de timezone] |
+| Classificação | external machine |
+| Identificação | anônima (`ip_hash=a66721dc1c181b2e`) |
+| Status | **observação positiva, evidência insuficiente (n=1)** |
+
+## Comparação D0 → D1
+
+| Métrica | D0 | D1 | Variação |
+|---|---|---|---|
+| External machine | 1 | 1 | — |
+| Canal | MCP | MCP | — |
+| First call | 1 | 1 | — |
+| Second call | — | 1 | **+1** |
+| Repeat | — | 1 | **+1** |
+| Paid | 0 | 0 | — |
+| Receita | $0 | $0 | — |
+
+## Instrumentação operacional (autorizada; a partir de D2)
+
+- `scripts/m2m_ritual.py` lê `/internal/metrics` com **User-Agent próprio**
+  (`belegante-aetherx-operational/0.1`) → o produto o exclui dos contadores
+  (token `_SELF_TOKENS`).
+- **Regra:** o header serve exclusivamente para identificar tráfego
+  operacional/teste interno e é **excluído dos indicadores de aquisição**,
+  sem reclassificar retrospectivamente eventos já registrados (D0/D1 preservados).
+- Comparações de D2 em diante são **acumulativas** (D0→D1→D2, …), não
+  só "últimas 24h".
 
 ## Interpretação dos resultados
 
