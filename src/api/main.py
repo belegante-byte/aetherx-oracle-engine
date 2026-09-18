@@ -54,6 +54,7 @@ class RapidAPIGuard:
         return (
             path in {
                 "/",
+                "/health",
                 "/openapi.json",
                 "/openapi.rapidapi.json",
                 "/llms.txt",
@@ -390,6 +391,11 @@ def landing_page():
     return HTMLResponse(
         LANDING_HTML.replace("__LIVE_SNAPSHOT__", _render_live_snapshot())
     )
+
+
+@app.get("/health", include_in_schema=False)
+def health_check():
+    return {"status": "ok", "service": "aether-x-oracle", "version": "0.2.0"}
 
 
 @app.get("/terms", include_in_schema=False)
