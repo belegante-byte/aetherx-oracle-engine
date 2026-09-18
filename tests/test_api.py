@@ -21,6 +21,11 @@ def test_health_check():
     assert "https://aether-x-oracle-production.up.railway.app/mcp" in resp.text
     assert 'href="/docs"' in resp.text
     assert 'href="/llms.txt"' in resp.text
+    assert "Live Intelligence Snapshot" in resp.text
+    assert "BRSSZ" in resp.text
+    assert "NLRTM" in resp.text
+    assert "estimated_daily_demurrage_usd" in resp.text
+    assert "Raw JSON" in resp.text
 
 
 def test_port_risk_known_port():

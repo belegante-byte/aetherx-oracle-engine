@@ -1,3 +1,4 @@
+import html
 import json
 import os
 from contextlib import asynccontextmanager
@@ -49,6 +50,21 @@ code{font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monos
 .links-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:0.6rem;margin-top:0.2rem}
 .link-card{background:#161b22;border:1px solid #21262d;border-radius:6px;padding:0.55rem 0.8rem;font-size:0.82rem;color:#e6edf3;display:block}
 .link-card:hover{border-color:#58a6ff55;text-decoration:none}
+.snapshot-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:0.5rem}
+@media(max-width:640px){.snapshot-grid{grid-template-columns:1fr}}
+.sample-card{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:0.9rem;margin-bottom:1.4rem}
+.sample-head{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.7rem;flex-wrap:wrap}
+.sample-code{color:#8b949e;font-family:'SF Mono',SFMono-Regular,Consolas,monospace;font-size:0.7rem;background:#0d1117;padding:0.15rem 0.4rem;border-radius:4px}
+.sample-score{background:#1f6feb22;color:#58a6ff;font-family:'SF Mono',SFMono-Regular,Consolas,monospace;font-weight:700;font-size:0.75rem;padding:0.15rem 0.5rem;border-radius:999px}
+.sample-trend{font-size:0.75rem;font-weight:600;margin-left:auto}
+.trend-acc{color:#f85149}.trend-stable{color:#58a6ff}.trend-dec{color:#00d992}
+.sample-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0.4rem;margin-bottom:0.7rem}
+.metric span{display:block;font-size:0.62rem;color:#8b949e;text-transform:uppercase;letter-spacing:.05em}
+.metric b{font-size:0.85rem;font-variant-numeric:tabular-nums}
+.hint-inline{text-transform:none;letter-spacing:0;font-weight:400;font-size:0.72rem;color:#8b949e;margin-left:0.5rem}
+details.raw summary{cursor:pointer;font-size:0.72rem;color:#8b949e;user-select:none}
+details.raw summary:hover{color:#e6edf3}
+details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
 .footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid #21262d;color:#8b949e;font-size:0.75rem}
 </style>
 </head>
@@ -61,7 +77,7 @@ code{font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monos
   </div>
 
   <h1>Aether-X Port Congestion Oracle</h1>
-  <p class="subtitle">MCP &amp; REST Engine &mdash; predictive congestion, ETA delay and freight volatility for 15 global ports.</p>
+  <p class="subtitle">MCP &amp; REST Engine &mdash; predictive congestion, ETA delay and freight volatility for 16 global ports.</p>
 
   <p class="section-title">Connect in 5 seconds</p>
 
@@ -93,6 +109,9 @@ code{font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monos
   }
 }</code></pre>
   </div>
+
+  <p class="section-title" style="margin-top:2rem">Live Intelligence Snapshot <span class="hint-inline">computed in-process at every request</span></p>
+  __LIVE_SNAPSHOT__
 
   <p class="section-title" style="margin-top:2rem">Protocol &amp; Docs</p>
   <div class="links-grid">
@@ -233,9 +252,53 @@ app.add_middleware(
 )
 
 
+def _fmt_usd(value: int) -> str:
+    return f"${value:,}/day"
+
+
+def _render_live_snapshot() -> str:
+    """Renderiza 'Live Intelligence Snapshot' com risco e tendência reais in-process."""
+    cards = []
+    trend_styles = {
+        "acelerando": "trend-acc",
+        "estável": "trend-stable",
+        "descongestionando": "trend-dec",
+    }
+    for port_id in ("BRSSZ", "NLRTM"):
+        risk = calculate_port_risk(port_id)
+        trend = calculate_port_trend(port_id)
+        proj = trend["projection"]
+        tclass = trend_styles.get(trend["trend"], "trend-stable")
+        code = html.escape(
+            json.dumps({"risk": risk, "trend": trend}, ensure_ascii=False, indent=2)
+        )
+        cards.append(
+            '<div class="sample-card">'
+            '<div class="sample-head">'
+            f'<strong>{html.escape(risk["port_name"])}</strong>'
+            f'<span class="sample-code">{port_id}</span>'
+            f'<span class="sample-score">{risk["congestion_score"]:.2f}</span>'
+            f'<span class="sample-trend {tclass}">{trend["trend"]}</span>'
+            "</div>"
+            '<div class="sample-metrics">'
+            f'<div class="metric"><span>24h</span><b>{proj["h24"]["congestion_score"]:.2f}</b></div>'
+            f'<div class="metric"><span>48h</span><b>{proj["h48"]["congestion_score"]:.2f}</b></div>'
+            f'<div class="metric"><span>72h</span><b>{proj["h72"]["congestion_score"]:.2f}</b></div>'
+            f'<div class="metric"><span>Demurrage</span><b>{_fmt_usd(risk["estimated_daily_demurrage_usd"])}</b></div>'
+            f'<div class="metric"><span>Waiting</span><b>{risk["waiting_vessels"]}</b></div>'
+            "</div>"
+            '<details class="raw"><summary>Raw JSON</summary>'
+            f"<pre><code>{code}</code></pre></details>"
+            "</div>"
+        )
+    return '<div class="snapshot-grid">' + "".join(cards) + "</div>"
+
+
 @app.get("/", include_in_schema=False)
 def landing_page():
-    return HTMLResponse(LANDING_HTML)
+    return HTMLResponse(
+        LANDING_HTML.replace("__LIVE_SNAPSHOT__", _render_live_snapshot())
+    )
 
 
 @app.get("/terms", include_in_schema=False)
