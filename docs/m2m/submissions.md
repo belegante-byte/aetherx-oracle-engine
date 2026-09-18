@@ -2,13 +2,14 @@
 
 Cruzamento de `surfaces.csv` (status `not_started`/`submitted`) com o passo a passo de submissão.
 > Regra: cada submissão leva ~2-5 min. Faça em lotes de 5 e marque o status no CSV (`first_calls` depois de 7d).
+> **Política do projeto: FREE-ONLY** — nenhum custo de submissão. Tiers pagos de diretórios (ex.: mcp.so $39 one-time) são recusados por padrão; só com decisão explícita do operador.
 
 ## Lote 1 — Diretórios MCP (maior prioridade, 5 min)
 
 1. **mcp.so** → abrir https://mcp.so e clicar "Submit server". Preencher com o package `aetherx-mcp` (GitHub: `belegante-byte`). O registrador da MCP usa o `mcp.discover.json`/metadata do package; apontar a "Homepage" para https://pypi.org/project/aetherx-mcp/ e o "Endpoint" para `https://aether-x-oracle-production.up.railway.app/mcp`.
 2. **mcpservers.org** → https://mcpservers.org (form) — mesmos dados acima.
 3. **Cursor MCP directory** → https://cursor.directory/mcp → "Add" → preencher `aetherx-oracle`.
-4. **Continue.dev Hub** → https://hub.continue.dev → registrar servidor com metadata mcp-name `io.github.belegante-byte/aetherx-mcp`.
+4. **Continue.dev Hub** → ⚠️ hub.continue.dev descontinuado (NXDOMAIN) e `continue.dev/explore/mcp` removido (404). Não é mais superfície de submissão — coberto pelo **MCP Registry oficial** (`io.github.belegante-byte/aetherx-mcp` v0.2.1 active + remote streamable-http), que clients Continue consomem.
 5. **OpenTools** → https://opentools.com → submit server (mesmo metadata).
 
 ## Lote 2 — PulseMCP + agregados
