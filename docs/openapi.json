@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Aether-X Port Congestion Oracle",
-    "description": "Predictive port congestion signals for global trade, supply chain and quantitative finance.\n\nAether-X turns public port telemetry into machine-readable congestion scores, ETA delay estimates and freight volatility indices for the world's largest ports \u2014 so trading desks, logistics teams and autonomous agents can react before the market prices the delay in.\n\n**The signal** \u2014 `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0\u20131.0 risk of operational congestion |\n| `eta_delay_days` | Expected delay applied to incoming vessels |\n| `waiting_vessels` | Ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n\n**Free tier** \u2014 $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint)\n\n**Coverage** \u2014 15 ports: BRSSZ, BRRIO, CNSHA, CNNGB, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
+    "description": "Predictive port congestion signals for global trade, supply chain and quantitative finance.\n\nAether-X turns public port telemetry into machine-readable congestion scores, ETA delay estimates and freight volatility indices for the world's largest ports \u2014 so trading desks, logistics teams and autonomous agents can react before the market prices the delay in.\n\n**The signal** \u2014 `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0\u20131.0 risk of operational congestion |\n| `eta_delay_days` | Expected delay applied to incoming vessels |\n| `waiting_vessels` | Ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n| `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |\n\n**Trend (24h/48h/72h)** \u2014 `GET /v1/port-trend?port_id=BRSSZ` returns the congestion projection with a `trend` label: `acelerando`, `est\u00e1vel` or `descongestionando`.\n\n**Free tier** \u2014 $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) \u2014 tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`\n\n**Coverage** \u2014 16 ports: BRSSZ, BRRIO, CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
     "termsOfService": "https://aether-x-oracle-production.up.railway.app/terms",
     "contact": {
       "name": "Aether-X",
@@ -72,6 +72,53 @@
           }
         }
       }
+    },
+    "/v1/port-trend": {
+      "get": {
+        "tags": [
+          "Port Risk"
+        ],
+        "summary": "Get port risk trend",
+        "operationId": "get_port_trend_v1_port_trend_get",
+        "parameters": [
+          {
+            "name": "port_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai), NLRTM (Rotterdam).",
+              "examples": [
+                "BRSSZ"
+              ],
+              "title": "Port Id"
+            },
+            "description": "UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai), NLRTM (Rotterdam)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The 24h, 48h and 72h congestion projections for the requested port.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortTrendResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -119,6 +166,10 @@
             "type": "number",
             "title": "Freight Volatility Index"
           },
+          "estimated_daily_demurrage_usd": {
+            "type": "integer",
+            "title": "Estimated Daily Demurrage Usd"
+          },
           "updated_at": {
             "type": "string",
             "title": "Updated At"
@@ -133,9 +184,79 @@
           "eta_delay_days",
           "waiting_vessels",
           "freight_volatility_index",
+          "estimated_daily_demurrage_usd",
           "updated_at"
         ],
         "title": "PortRiskResponse"
+      },
+      "PortTrendResponse": {
+        "properties": {
+          "port_id": {
+            "type": "string",
+            "title": "Port Id"
+          },
+          "port_name": {
+            "type": "string",
+            "title": "Port Name"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "trend": {
+            "type": "string",
+            "title": "Trend"
+          },
+          "congestion_score": {
+            "type": "number",
+            "title": "Congestion Score"
+          },
+          "projection": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TrendPoint"
+            },
+            "type": "object",
+            "title": "Projection"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "port_id",
+          "port_name",
+          "country",
+          "trend",
+          "congestion_score",
+          "projection",
+          "updated_at"
+        ],
+        "title": "PortTrendResponse"
+      },
+      "TrendPoint": {
+        "properties": {
+          "congestion_score": {
+            "type": "number",
+            "title": "Congestion Score"
+          },
+          "eta_delay_days": {
+            "type": "number",
+            "title": "Eta Delay Days"
+          },
+          "estimated_daily_demurrage_usd": {
+            "type": "integer",
+            "title": "Estimated Daily Demurrage Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "congestion_score",
+          "eta_delay_days",
+          "estimated_daily_demurrage_usd"
+        ],
+        "title": "TrendPoint"
       },
       "ValidationError": {
         "properties": {

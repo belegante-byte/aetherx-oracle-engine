@@ -20,6 +20,7 @@ PORTS = [
     {"port_id": "BRRIO", "port_name": "Rio de Janeiro", "country": "Brasil", "congestion_score": 0.45, "eta_delay_days": 0.9, "waiting_vessels": 5, "freight_volatility_index": 0.31},
     {"port_id": "CNSHA", "port_name": "Shanghai", "country": "China", "congestion_score": 0.72, "eta_delay_days": 1.5, "waiting_vessels": 18, "freight_volatility_index": 0.38},
     {"port_id": "CNNGB", "port_name": "Ningbo-Zhoushan", "country": "China", "congestion_score": 0.55, "eta_delay_days": 1.1, "waiting_vessels": 9, "freight_volatility_index": 0.35},
+    {"port_id": "CNTAO", "port_name": "Qingdao", "country": "China", "congestion_score": 0.60, "eta_delay_days": 1.0, "waiting_vessels": 10, "freight_volatility_index": 0.41},
     {"port_id": "SGSIN", "port_name": "Singapore", "country": "Cingapura", "congestion_score": 0.62, "eta_delay_days": 1.2, "waiting_vessels": 14, "freight_volatility_index": 0.40},
     {"port_id": "NLRTM", "port_name": "Rotterdam", "country": "Holanda", "congestion_score": 0.40, "eta_delay_days": 0.8, "waiting_vessels": 6, "freight_volatility_index": 0.29},
     {"port_id": "USLAX", "port_name": "Los Angeles", "country": "EUA", "congestion_score": 0.58, "eta_delay_days": 1.1, "waiting_vessels": 10, "freight_volatility_index": 0.44},
@@ -35,7 +36,7 @@ PORTS = [
 
 
 def seed_port_metrics():
-    """Recria a tabela port_metrics e semeia o oráculo global com 15 portos estratégicos."""
+    """Recria a tabela port_metrics e semeia o oráculo global com 16 portos estratégicos."""
     conn = duckdb.connect(DB_PATH)
 
     conn.execute("DROP TABLE IF EXISTS port_metrics")

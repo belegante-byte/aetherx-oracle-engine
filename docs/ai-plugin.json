@@ -2,8 +2,8 @@
   "schema_version": "v1",
   "name_for_human": "Aether-X Port Congestion Oracle",
   "name_for_model": "aetherx_oracle",
-  "description_for_human": "Predictive port congestion, ETA delay and freight volatility signals for 15 global ports.",
-  "description_for_model": "Returns predictive congestion signals for global ports. Call GET /v1/port-risk with a UN/LOCODE port_id (e.g. BRSSZ for Santos, CNSHA for Shanghai, NLRTM for Rotterdam) to get congestion_score (0-1), eta_delay_days, waiting_vessels and freight_volatility_index. Unknown ports fall back to a global estimate with country='Global'. Signals are provided AS IS and are not investment advice.",
+  "description_for_human": "Predictive port congestion, ETA delay, freight volatility and demurrage estimates for 16 global ports.",
+  "description_for_model": "Returns predictive congestion signals for global ports. Call GET /v1/port-risk with a UN/LOCODE port_id (e.g. BRSSZ for Santos, CNSHA for Shanghai, NLRTM for Rotterdam) to get congestion_score (0-1), eta_delay_days, waiting_vessels, freight_volatility_index and estimated_daily_demurrage_usd. Call GET /v1/port-trend for the 24h/48h/72h congestion projection with a trend label (acelerando, estável, descongestionando). Unknown ports fall back to a global estimate with country='Global'. Signals are provided AS IS and are not investment advice.",
   "auth": {
     "type": "none"
   },

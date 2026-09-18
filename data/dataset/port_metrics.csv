@@ -1,16 +1,17 @@
 port_id,port_name,country,congestion_score,eta_delay_days,waiting_vessels,freight_volatility_index,updated_at
-AEDXB,Dubai / Jebel Ali,EAU,0.5,1.0,8,0.37,2026-09-17 15:45:24
-BRRIO,Rio de Janeiro,Brasil,0.45,0.9,5,0.31,2026-09-17 15:45:24
-BRSSZ,Santos,Brasil,0.78,1.6,12,0.42,2026-09-17 15:45:24
-CNNGB,Ningbo-Zhoushan,China,0.55,1.1,9,0.35,2026-09-17 15:45:24
-CNSHA,Shanghai,China,0.72,1.5,18,0.38,2026-09-17 15:45:24
-DEHAM,Hamburg,Alemanha,0.44,0.9,7,0.3,2026-09-17 15:45:24
-GBLGP,London Gateway,Reino Unido,0.37,0.7,4,0.28,2026-09-17 15:45:24
-KRPUS,Busan,Coreia do Sul,0.48,0.9,8,0.33,2026-09-17 15:45:24
-MPTNG,Tanger Med,Marrocos,0.3,0.5,3,0.22,2026-09-17 15:45:24
-MXZLO,Manzanillo,México,0.53,1.0,7,0.39,2026-09-17 15:45:24
-NLRTM,Rotterdam,Holanda,0.4,0.8,6,0.29,2026-09-17 15:45:24
-SGSIN,Singapore,Cingapura,0.62,1.2,14,0.4,2026-09-17 15:45:24
-USLAX,Los Angeles,EUA,0.58,1.1,10,0.44,2026-09-17 15:45:24
-USNYC,New York,EUA,0.34,0.6,4,0.26,2026-09-17 15:45:24
-ZACPT,Cape Town,África do Sul,0.66,1.4,11,0.36,2026-09-17 15:45:24
+AEDXB,Dubai / Jebel Ali,EAU,0.5,1.0,8,0.37,2026-09-18 12:27:54
+BRRIO,Rio de Janeiro,Brasil,0.45,0.9,5,0.31,2026-09-18 12:27:54
+BRSSZ,Santos,Brasil,0.78,1.6,12,0.42,2026-09-18 12:27:54
+CNNGB,Ningbo-Zhoushan,China,0.55,1.1,9,0.35,2026-09-18 12:27:54
+CNSHA,Shanghai,China,0.72,1.5,18,0.38,2026-09-18 12:27:54
+CNTAO,Qingdao,China,0.6,1.0,10,0.41,2026-09-18 12:27:54
+DEHAM,Hamburg,Alemanha,0.44,0.9,7,0.3,2026-09-18 12:27:54
+GBLGP,London Gateway,Reino Unido,0.37,0.7,4,0.28,2026-09-18 12:27:54
+KRPUS,Busan,Coreia do Sul,0.48,0.9,8,0.33,2026-09-18 12:27:54
+MPTNG,Tanger Med,Marrocos,0.3,0.5,3,0.22,2026-09-18 12:27:54
+MXZLO,Manzanillo,México,0.53,1.0,7,0.39,2026-09-18 12:27:54
+NLRTM,Rotterdam,Holanda,0.4,0.8,6,0.29,2026-09-18 12:27:54
+SGSIN,Singapore,Cingapura,0.62,1.2,14,0.4,2026-09-18 12:27:54
+USLAX,Los Angeles,EUA,0.58,1.1,10,0.44,2026-09-18 12:27:54
+USNYC,New York,EUA,0.34,0.6,4,0.26,2026-09-18 12:27:54
+ZACPT,Cape Town,África do Sul,0.66,1.4,11,0.36,2026-09-18 12:27:54

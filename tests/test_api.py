@@ -34,6 +34,7 @@ def test_port_risk_known_port():
     assert body["eta_delay_days"] == 1.6
     assert body["waiting_vessels"] == 12
     assert body["freight_volatility_index"] == 0.42
+    assert body["estimated_daily_demurrage_usd"] == 63200
     assert body["updated_at"]
 
 
@@ -47,6 +48,7 @@ def test_port_risk_fallback_unknown_port():
     assert body["congestion_score"] == 0.45
     assert body["waiting_vessels"] == 6
     assert body["freight_volatility_index"] == 0.35
+    assert body["estimated_daily_demurrage_usd"] == 50000
 
 
 def test_port_risk_missing_param():
@@ -58,7 +60,8 @@ def test_engine_returns_all_required_fields():
     data = calculate_port_risk("CNSHA")
     expected_fields = {
         "port_id", "port_name", "country", "congestion_score",
-        "eta_delay_days", "waiting_vessels", "freight_volatility_index", "updated_at"
+        "eta_delay_days", "waiting_vessels", "freight_volatility_index",
+        "estimated_daily_demurrage_usd", "updated_at"
     }
     assert expected_fields <= set(data.keys())
 
@@ -67,3 +70,25 @@ def test_openapi_contains_response_schema():
     schema = app.openapi()
     assert "PortRiskResponse" in schema["components"]["schemas"]
     assert "/v1/port-risk" in schema["paths"]
+
+
+def test_qingdao_new_port_supported():
+    resp = client.get("/v1/port-risk", params={"port_id": "CNTAO"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["port_name"] == "Qingdao"
+    assert body["country"] == "China"
+    assert body["estimated_daily_demurrage_usd"] == 56000
+
+
+def test_port_trend_projection():
+    resp = client.get("/v1/port-trend", params={"port_id": "brssz"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["port_id"] == "BRSSZ"
+    assert body["trend"] in {"acelerando", "estável", "descongestionando"}
+    assert set(body["projection"].keys()) == {"h24", "h48", "h72"}
+    point = body["projection"]["h24"]
+    assert set(point.keys()) == {
+        "congestion_score", "eta_delay_days", "estimated_daily_demurrage_usd",
+    }

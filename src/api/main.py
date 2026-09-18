@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from src.api.mcp_app import build_http_app
 from src.api.mcp_app import mcp as mcp_server
-from src.engine.risk_model import calculate_port_risk
+from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 
 PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aether-x-oracle-production.up.railway.app")
 DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
@@ -140,6 +140,23 @@ class PortRiskResponse(BaseModel):
     eta_delay_days: float
     waiting_vessels: int
     freight_volatility_index: float
+    estimated_daily_demurrage_usd: int
+    updated_at: str
+
+
+class TrendPoint(BaseModel):
+    congestion_score: float
+    eta_delay_days: float
+    estimated_daily_demurrage_usd: int
+
+
+class PortTrendResponse(BaseModel):
+    port_id: str
+    port_name: str
+    country: str
+    trend: str
+    congestion_score: float
+    projection: dict[str, TrendPoint]
     updated_at: str
 
 
@@ -155,14 +172,17 @@ Aether-X turns public port telemetry into machine-readable congestion scores, ET
 | `eta_delay_days` | Expected delay applied to incoming vessels |
 | `waiting_vessels` | Ships anchored or queued |
 | `freight_volatility_index` | Pressure indicator for freight pricing |
+| `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |
+
+**Trend (24h/48h/72h)** — `GET /v1/port-trend?port_id=BRSSZ` returns the congestion projection with a `trend` label: `acelerando`, `estável` or `descongestionando`.
 
 **Free tier** — $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.
 
 **Other ways to consume it**
 - Python SDK: `pip install aetherx-oracle`
-- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint)
+- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) — tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`
 
-**Coverage** — 15 ports: BRSSZ, BRRIO, CNSHA, CNNGB, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country="Global"`).
+**Coverage** — 16 ports: BRSSZ, BRRIO, CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country="Global"`).
 
 Signals are provided "AS IS" and do not constitute investment advice.
 """
@@ -256,6 +276,26 @@ def get_port_risk(
 ):
     try:
         return calculate_port_risk(port_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/port-trend",
+    response_model=PortTrendResponse,
+    tags=["Port Risk"],
+    summary="Get port risk trend",
+    response_description="The 24h, 48h and 72h congestion projections for the requested port.",
+)
+def get_port_trend(
+    port_id: str = Query(
+        ...,
+        description="UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai), NLRTM (Rotterdam).",
+        examples=["BRSSZ"],
+    )
+):
+    try:
+        return calculate_port_trend(port_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
