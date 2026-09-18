@@ -7,6 +7,7 @@
 - [OpenAPI 3.0.3 spec](https://aether-x-oracle-production.up.railway.app/openapi.rapidapi.json): machine-readable contract (RapidAPI-compatible)
 - [Example call](https://aether-x-oracle-production.up.railway.app/v1/port-risk?port_id=BRSSZ): GET /v1/port-risk?port_id=BRSSZ
 - [Trend example](https://aether-x-oracle-production.up.railway.app/v1/port-trend?port_id=BRSSZ): GET /v1/port-trend?port_id=BRSSZ
+- [Batch example](https://aether-x-oracle-production.up.railway.app/v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM): GET /v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM
 - [Interactive docs](https://aether-x-oracle-production.up.railway.app/docs): Swagger UI
 - [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)
 
@@ -16,8 +17,9 @@
 - [MCP server (PyPI)](https://pypi.org/project/aetherx-mcp/): `uvx aetherx-mcp` — gives AI agents the `get_port_risk`, `get_ports_risk` and `get_port_trend` tools
 - [Remote MCP endpoint](https://aether-x-oracle-production.up.railway.app/mcp): Streamable HTTP, no install
 - [Smithery gateway](https://smithery.ai/servers/belegante/aetherx-mcp): hosted MCP connection
-- [Official MCP Registry](https://registry.modelcontextprotocol.io): `io.github.belegante-byte/aetherx-mcp`
 - [Source (GitHub, MIT)](https://github.com/belegante-byte/aetherx-oracle)
+
+> Note: the official MCP Registry submission for `io.github.belegante-byte/aetherx-mcp` is in progress — until it is live, install directly with `uvx aetherx-mcp` (already on PyPI) or use the hosted `/mcp` endpoint.
 
 ## Dataset
 
