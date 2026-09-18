@@ -13,6 +13,9 @@ LOGO_URL = "https://raw.githubusercontent.com/belegante-byte/aetherx-mcp/main/as
 # Exemplos derivados do motor real para nunca divergirem da implementação
 EXAMPLE_RESPONSE = calculate_port_risk("BRSSZ")
 EXAMPLE_TREND_RESPONSE = calculate_port_trend("BRSSZ")
+EXAMPLE_BATCH_RESPONSE = {
+    "results": [EXAMPLE_RESPONSE, calculate_port_risk("CNSHA")]
+}
 
 RESPONSE_SCHEMA = {
     "type": "object",
@@ -58,6 +61,14 @@ TREND_RESPONSE_SCHEMA = {
             "additionalProperties": TREND_PROJECTION_SCHEMA,
         },
         "updated_at": {"type": "string", "example": "2026-09-17 15:46:53"},
+    },
+}
+
+BATCH_RESPONSE_SCHEMA = {
+    "type": "object",
+    "required": ["results"],
+    "properties": {
+        "results": {"type": "array", "items": RESPONSE_SCHEMA},
     },
 }
 
@@ -150,6 +161,38 @@ def _minimal_spec():
                         }
                     },
                 }
+            },
+            "/v1/ports-risk": {
+                "get": {
+                    "tags": ["Port Risk"],
+                    "summary": "Get congestion risk for multiple ports in one call",
+                    "description": (
+                        "Returns the congestion signals for up to 20 ports in a single "
+                        "request, preserving the order of the `port_ids` (comma-separated "
+                        "UN/LOCODEs)."
+                    ),
+                    "operationId": "getPortsRisk",
+                    "parameters": [
+                        {
+                            "name": "port_ids",
+                            "in": "query",
+                            "required": True,
+                            "description": "Comma-separated UN/LOCODEs, e.g. BRSSZ,CNSHA,NLRTM (max 20).",
+                            "schema": {"type": "string", "example": "BRSSZ,CNSHA,NLRTM"},
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "The congestion signals, one per requested port.",
+                            "content": {
+                                "application/json": {
+                                    "schema": BATCH_RESPONSE_SCHEMA,
+                                    "example": EXAMPLE_BATCH_RESPONSE,
+                                }
+                            },
+                        }
+                    },
+                }
             }
         },
     }
@@ -175,6 +218,7 @@ def generate_openapi():
     examples_by_path = {
         "/v1/port-risk": EXAMPLE_RESPONSE,
         "/v1/port-trend": EXAMPLE_TREND_RESPONSE,
+        "/v1/ports-risk": EXAMPLE_BATCH_RESPONSE,
     }
     for path, path_item in rapidapi["paths"].items():
         for operation in path_item.values():
@@ -195,6 +239,11 @@ def generate_openapi():
     with open(rapidapi_path, "w", encoding="utf-8") as f:
         json.dump(rapidapi, f, indent=2)
     print(f"[AETHER-X DOCS] Especificação OpenAPI (3.0.3 / RapidAPI) gerada em: {rapidapi_path}")
+
+    root_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "openapi.rapidapi.json")
+    with open(root_path, "w", encoding="utf-8") as f:
+        json.dump(rapidapi, f, indent=2)
+    print(f"[AETHER-X DOCS] Especificação OpenAPI (3.0.3 / RapidAPI) exportada na raiz: {root_path}")
 
     minimal_path = os.path.join(docs_dir, "openapi.rapidapi.min.json")
     with open(minimal_path, "w", encoding="utf-8") as f:

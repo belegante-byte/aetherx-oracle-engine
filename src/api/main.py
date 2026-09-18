@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from src.api.mcp_app import build_http_app
 from src.api.mcp_app import mcp as mcp_server
@@ -16,9 +16,82 @@ from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aether-x-oracle-production.up.railway.app")
 DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
 TERMS_PATH = DOCS_DIR / "TERMS_OF_SERVICE.md"
-RAPIDAPI_SPEC_PATH = DOCS_DIR / "openapi.rapidapi.min.json"
+RAPIDAPI_SPEC_PATH = Path(__file__).resolve().parent.parent.parent / "openapi.rapidapi.json"
 LLMS_TXT_PATH = DOCS_DIR / "llms.txt"
 AI_PLUGIN_PATH = DOCS_DIR / "ai-plugin.json"
+
+EXAMPLE_RISK_RESPONSE = calculate_port_risk("BRSSZ")
+EXAMPLE_TREND_RESPONSE = calculate_port_trend("BRSSZ")
+EXAMPLE_BATCH_RESPONSE = {
+    "results": [EXAMPLE_RISK_RESPONSE, calculate_port_risk("CNSHA")]
+}
+ERROR_401_EXAMPLE = {"detail": "Missing or invalid X-RapidAPI-Proxy-Secret header."}
+ERROR_422_EXAMPLE = {
+    "detail": [
+        {
+            "type": "missing",
+            "loc": ["query", "port_id"],
+            "msg": "Field required",
+            "input": None,
+        }
+    ]
+}
+ERROR_400_EXAMPLE = {"detail": "port_ids accepts at most 20 ports per call."}
+
+
+class RapidAPIGuard:
+    """Exige o header `X-RapidAPI-Proxy-Secret` fora dos caminhos públicos.
+
+    Ativo apenas quando `RAPIDAPI_PROXY_SECRET` está definido no ambiente.
+    """
+
+    def __init__(self, app):
+        self.app = app
+        self.secret = os.getenv("RAPIDAPI_PROXY_SECRET")
+
+    @staticmethod
+    def is_public_path(path: str) -> bool:
+        return (
+            path in {
+                "/",
+                "/openapi.json",
+                "/openapi.rapidapi.json",
+                "/llms.txt",
+                "/terms",
+            }
+            or path.startswith(("/docs", "/redoc", "/mcp"))
+            or path == "/.well-known/ai-plugin.json"
+        )
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        if not self.secret or scope.get("method") == "OPTIONS":
+            await self.app(scope, receive, send)
+            return
+        if self.is_public_path(scope.get("path", "/")):
+            await self.app(scope, receive, send)
+            return
+        headers = dict(
+            (k.decode("latin-1").lower(), v.decode("latin-1"))
+            for k, v in scope.get("headers", [])
+        )
+        if headers.get("x-rapidapi-proxy-secret") == self.secret:
+            await self.app(scope, receive, send)
+            return
+        payload = json.dumps(ERROR_401_EXAMPLE).encode("utf-8")
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 401,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(payload)).encode()),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": payload})
 
 
 LANDING_HTML = """<!DOCTYPE html>
@@ -152,6 +225,8 @@ function copyText(btn){
 
 
 class PortRiskResponse(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"examples": [EXAMPLE_RISK_RESPONSE]})
+
     port_id: str
     port_name: str
     country: str
@@ -170,6 +245,8 @@ class TrendPoint(BaseModel):
 
 
 class PortTrendResponse(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"examples": [EXAMPLE_TREND_RESPONSE]})
+
     port_id: str
     port_name: str
     country: str
@@ -177,6 +254,12 @@ class PortTrendResponse(BaseModel):
     congestion_score: float
     projection: dict[str, TrendPoint]
     updated_at: str
+
+
+class PortsRiskResponse(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"examples": [EXAMPLE_BATCH_RESPONSE]})
+
+    results: list[PortRiskResponse]
 
 
 API_DESCRIPTION = """Predictive port congestion signals for global trade, supply chain and quantitative finance.
@@ -241,6 +324,8 @@ app = FastAPI(
         }
     ],
 )
+
+app.add_middleware(RapidAPIGuard)
 
 app.add_middleware(
     CORSMiddleware,
@@ -327,8 +412,31 @@ def ai_plugin_manifest():
     "/v1/port-risk",
     response_model=PortRiskResponse,
     tags=["Port Risk"],
-    summary="Get port risk",
+    summary="Get port congestion risk for a single port",
+    description=(
+        "Returns the predictive congestion signal for a single global port: "
+        "`congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, "
+        "`freight_volatility_index` and the estimated `estimated_daily_demurrage_usd`. "
+        "Coverage: 16 ports (BRSSZ, CNSHA, CNTAO, NLRTM, ...). Unknown ports fall back "
+        'to a global statistical estimate with `country="Global"`. Requests are protected '
+        "by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header."
+    ),
     response_description="The current congestion signal for the requested port.",
+    responses={
+        200: {
+            "model": PortRiskResponse,
+            "description": "The current congestion signal for the requested port.",
+            "content": {"application/json": {"example": EXAMPLE_RISK_RESPONSE}},
+        },
+        401: {
+            "description": "Missing or invalid X-RapidAPI-Proxy-Secret header.",
+            "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
+        },
+        422: {
+            "description": "Validation error: the port_id query parameter is required.",
+            "content": {"application/json": {"example": ERROR_422_EXAMPLE}},
+        },
+    },
 )
 def get_port_risk(
     port_id: str = Query(
@@ -348,7 +456,29 @@ def get_port_risk(
     response_model=PortTrendResponse,
     tags=["Port Risk"],
     summary="Get port risk trend",
+    description=(
+        "Returns the 24h, 48h and 72h congestion projections for a single global port, "
+        "with a `trend` label (`acelerando`, `estável` or `descongestionando`). Each "
+        "projection point includes `congestion_score`, `eta_delay_days` and the estimated "
+        "`estimated_daily_demurrage_usd`. Requests are protected by the RapidAPI proxy "
+        "secret and must send the `X-RapidAPI-Proxy-Secret` header."
+    ),
     response_description="The 24h, 48h and 72h congestion projections for the requested port.",
+    responses={
+        200: {
+            "model": PortTrendResponse,
+            "description": "The 24h, 48h and 72h congestion projections for the requested port.",
+            "content": {"application/json": {"example": EXAMPLE_TREND_RESPONSE}},
+        },
+        401: {
+            "description": "Missing or invalid X-RapidAPI-Proxy-Secret header.",
+            "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
+        },
+        422: {
+            "description": "Validation error: the port_id query parameter is required.",
+            "content": {"application/json": {"example": ERROR_422_EXAMPLE}},
+        },
+    },
 )
 def get_port_trend(
     port_id: str = Query(
@@ -359,6 +489,56 @@ def get_port_trend(
 ):
     try:
         return calculate_port_trend(port_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/ports-risk",
+    response_model=PortsRiskResponse,
+    tags=["Port Risk"],
+    summary="Get congestion risk for multiple ports in one call",
+    description=(
+        "Returns the congestion signals for up to 20 ports in a single request, preserving "
+        "the order of the `port_ids` (comma-separated UN/LOCODEs). Unknown ports fall back "
+        "to the global statistical estimate. Requests are protected by the RapidAPI proxy "
+        "secret and must send the `X-RapidAPI-Proxy-Secret` header."
+    ),
+    response_description="A list of congestion signals, one per requested port, in the same order.",
+    responses={
+        200: {
+            "model": PortsRiskResponse,
+            "description": "The congestion signals, one per requested port.",
+            "content": {"application/json": {"example": EXAMPLE_BATCH_RESPONSE}},
+        },
+        400: {
+            "description": "More than 20 ports requested in port_ids.",
+            "content": {"application/json": {"example": ERROR_400_EXAMPLE}},
+        },
+        401: {
+            "description": "Missing or invalid X-RapidAPI-Proxy-Secret header.",
+            "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
+        },
+        422: {
+            "description": "Validation error: the port_ids query parameter is required.",
+            "content": {"application/json": {"example": ERROR_422_EXAMPLE}},
+        },
+    },
+)
+def get_ports_risk(
+    port_ids: str = Query(
+        ...,
+        description="Comma-separated UN/LOCODEs, e.g. BRSSZ,CNSHA,NLRTM (max 20).",
+        examples=["BRSSZ,CNSHA,NLRTM"],
+    )
+):
+    ids = [pid.strip().upper() for pid in port_ids.split(",") if pid.strip()]
+    if len(ids) > 20:
+        raise HTTPException(
+            status_code=400, detail=ERROR_400_EXAMPLE["detail"]
+        )
+    try:
+        return {"results": [calculate_port_risk(pid) for pid in ids]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
