@@ -310,7 +310,7 @@ app = FastAPI(
     lifespan=lifespan,
     title="Aether-X Port Congestion Oracle",
     description=API_DESCRIPTION,
-    version="0.2.0",
+    version="0.2.1",
     servers=[
         {"url": PRODUCTION_URL, "description": "Production (Railway)"},
         {"url": "http://127.0.0.1:8000", "description": "Local development"}
@@ -396,7 +396,7 @@ def landing_page():
 
 @app.get("/health", include_in_schema=False)
 def health_check():
-    return {"status": "ok", "service": "aether-x-oracle", "version": "0.2.0"}
+    return {"status": "ok", "service": "aether-x-oracle", "version": "0.2.1"}
 
 
 @app.get("/health/", include_in_schema=False)

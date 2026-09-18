@@ -44,7 +44,7 @@ mcp = MCPServer(
         "get_ports_risk to scan a portfolio of ports in parallel and "
         "get_port_trend for the 24h/48h/72h congestion projection."
     ),
-    version="0.2.0",
+    version="0.2.1",
     website_url="https://aether-x-oracle-production.up.railway.app",
 )
 

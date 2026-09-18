@@ -20,7 +20,7 @@
 - [Smithery gateway](https://smithery.ai/servers/belegante/aetherx-mcp): hosted MCP connection
 - [Source (GitHub, MIT)](https://github.com/belegante-byte/aetherx-oracle)
 
-> Note: the official MCP Registry submission for `io.github.belegante-byte/aetherx-mcp` is in progress — until it is live, install directly with `uvx aetherx-mcp` (already on PyPI) or use the hosted `/mcp` endpoint.
+- Official MCP Registry: `io.github.belegante-byte/aetherx-mcp` v0.2.1 (live) — install via `uvx aetherx-mcp` or remote `https://aether-x-oracle-production.up.railway.app/mcp`.
 
 ## Dataset
 
