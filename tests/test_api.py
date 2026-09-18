@@ -16,8 +16,11 @@ client = TestClient(app)
 def test_health_check():
     resp = client.get("/")
     assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "online"
+    assert "text/html" in resp.headers["content-type"]
+    assert "Aether-X Port Congestion Oracle" in resp.text
+    assert "https://aether-x-oracle-production.up.railway.app/mcp" in resp.text
+    assert 'href="/docs"' in resp.text
+    assert 'href="/llms.txt"' in resp.text
 
 
 def test_port_risk_known_port():

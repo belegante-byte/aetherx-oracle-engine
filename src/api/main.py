@@ -1,13 +1,11 @@
 import json
 import os
-import time
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
 
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
 from src.api.mcp_app import build_http_app
@@ -20,6 +18,118 @@ TERMS_PATH = DOCS_DIR / "TERMS_OF_SERVICE.md"
 RAPIDAPI_SPEC_PATH = DOCS_DIR / "openapi.rapidapi.min.json"
 LLMS_TXT_PATH = DOCS_DIR / "llms.txt"
 AI_PLUGIN_PATH = DOCS_DIR / "ai-plugin.json"
+
+
+LANDING_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aether-X Port Congestion Oracle</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0a0e14;color:#e6edf3;line-height:1.6;min-height:100vh}
+a{color:#58a6ff;text-decoration:none}
+a:hover{text-decoration:underline}
+.container{max-width:720px;margin:0 auto;padding:3rem 1.5rem}
+.badge-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem}
+.pill{font-size:0.75rem;padding:3px 12px;border-radius:20px;font-weight:600}
+.pill-green{background:#00d9921a;color:#00d992;border:1px solid #00d99244}
+.pill-blue{background:#58a6ff1a;color:#58a6ff;border:1px solid #58a6ff44}
+h1{font-size:1.6rem;font-weight:700;margin-bottom:0.4rem}
+.subtitle{color:#8b949e;font-size:0.95rem;margin-bottom:2.2rem}
+.section-title{font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em;color:#8b949e;font-weight:600;margin-bottom:0.75rem}
+.snippet-card{background:#161b22;border:1px solid #21262d;border-radius:8px;margin-bottom:1rem;overflow:hidden}
+.card-header{display:flex;justify-content:space-between;align-items:center;gap:0.6rem;padding:0.5rem 0.9rem;border-bottom:1px solid #21262d;font-size:0.8rem;font-weight:600}
+.card-header .hint{color:#8b949e;font-weight:400;margin-left:auto}
+.copy-btn{background:none;border:1px solid #30363d;color:#8b949e;font-size:0.7rem;padding:2px 8px;border-radius:5px;cursor:pointer;font-family:inherit}
+.copy-btn:hover{color:#e6edf3;border-color:#8b949e}
+pre{margin:0;padding:0.9rem;font-size:0.82rem;line-height:1.55;overflow-x:auto;color:#e6edf3}
+code{font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace}
+.links-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:0.6rem;margin-top:0.2rem}
+.link-card{background:#161b22;border:1px solid #21262d;border-radius:6px;padding:0.55rem 0.8rem;font-size:0.82rem;color:#e6edf3;display:block}
+.link-card:hover{border-color:#58a6ff55;text-decoration:none}
+.footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid #21262d;color:#8b949e;font-size:0.75rem}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="badge-row">
+    <span class="pill pill-green">● Remote MCP Server Live</span>
+    <span class="pill pill-blue">Glama Grade A</span>
+  </div>
+
+  <h1>Aether-X Port Congestion Oracle</h1>
+  <p class="subtitle">MCP &amp; REST Engine &mdash; predictive congestion, ETA delay and freight volatility for 15 global ports.</p>
+
+  <p class="section-title">Connect in 5 seconds</p>
+
+  <div class="snippet-card">
+    <div class="card-header"><span>Remote Streamable HTTP</span><span class="hint">no install</span><button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+    <pre><code>https://aether-x-oracle-production.up.railway.app/mcp</code></pre>
+  </div>
+
+  <div class="snippet-card">
+    <div class="card-header"><span>Claude Desktop / Cursor / any stdio client</span><span class="hint">uvx aetherx-mcp</span><button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+    <pre><code>{
+  "mcpServers": {
+    "aetherx-oracle": {
+      "command": "uvx",
+      "args": ["aetherx-mcp"]
+    }
+  }
+}</code></pre>
+  </div>
+
+  <div class="snippet-card">
+    <div class="card-header"><span>VS Code Cline</span><span class="hint">remote http</span><button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+    <pre><code>{
+  "mcpServers": {
+    "aetherx-oracle": {
+      "type": "url",
+      "url": "https://aether-x-oracle-production.up.railway.app/mcp"
+    }
+  }
+}</code></pre>
+  </div>
+
+  <p class="section-title" style="margin-top:2rem">Protocol &amp; Docs</p>
+  <div class="links-grid">
+    <a class="link-card" href="/docs">Swagger UI</a>
+    <a class="link-card" href="/openapi.json">OpenAPI 3.1</a>
+    <a class="link-card" href="/openapi.rapidapi.json">OpenAPI (RapidAPI)</a>
+    <a class="link-card" href="/llms.txt">llms.txt</a>
+    <a class="link-card" href="/.well-known/ai-plugin.json">ai-plugin.json</a>
+    <a class="link-card" href="/terms">Terms of Service</a>
+    <a class="link-card" href="https://glama.ai/mcp/connectors/io.github.belegante-byte/aetherx-mcp">Glama Connector (Grade A)</a>
+    <a class="link-card" href="https://smithery.ai/servers/belegante/aetherx-mcp">Smithery Gateway</a>
+    <a class="link-card" href="https://pypi.org/project/aetherx-mcp/">PyPI &mdash; aetherx-mcp</a>
+    <a class="link-card" href="https://pypi.org/project/aetherx-oracle/">PyPI &mdash; aetherx-oracle (SDK)</a>
+    <a class="link-card" href="https://github.com/belegante-byte/aetherx-mcp">GitHub &mdash; MCP server</a>
+    <a class="link-card" href="https://registry.modelcontextprotocol.io">Official MCP Registry</a>
+  </div>
+
+  <div class="footer">
+    Aether-X Port Congestion Oracle v0.2.0 &middot; MIT &middot; Free tier $0.00
+    &middot; <a href="mailto:contato@aether-grid.io">contato@aether-grid.io</a>
+  </div>
+</div>
+<script>
+function copyText(btn){
+  var code = btn.closest('.snippet-card').querySelector('code');
+  if (!code) return;
+  (navigator.clipboard ? navigator.clipboard.writeText(code.textContent) : Promise.reject())
+    .then(function(){
+      var t = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.style.color = '#00d992';
+      setTimeout(function(){ btn.textContent = t; btn.style.color = ''; }, 1200);
+    });
+}
+</script>
+</body>
+</html>"""
 
 
 class PortRiskResponse(BaseModel):
@@ -104,13 +214,8 @@ app.add_middleware(
 
 
 @app.get("/", include_in_schema=False)
-def health_check():
-    return {
-        "status": "online",
-        "system": "Aether-X Oracle",
-        "mode": "monorepo_local",
-        "timestamp": int(time.time())
-    }
+def landing_page():
+    return HTMLResponse(LANDING_HTML)
 
 
 @app.get("/terms", include_in_schema=False)
