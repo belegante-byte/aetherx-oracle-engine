@@ -399,6 +399,11 @@ def health_check():
     return {"status": "ok", "service": "aether-x-oracle", "version": "0.2.0"}
 
 
+@app.get("/health/", include_in_schema=False)
+def health_check_trailing_slash():
+    return health_check()
+
+
 @app.get("/terms", include_in_schema=False)
 def terms_of_service():
     return PlainTextResponse(TERMS_PATH.read_text(encoding="utf-8"))
