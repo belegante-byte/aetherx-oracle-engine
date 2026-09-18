@@ -1,0 +1,52 @@
+ecosystem,surface,m2m_method,distribution_action,url,requirements,status,first_calls,repeat_calls,paid,notes
+MCP ecosystem,Official MCP Registry,MCP,Published via mcp-publisher,https://registry.modelcontextprotocol.io,namespace verification,live,,,,io.github.belegante-byte/aetherx-mcp v0.2.1
+MCP ecosystem,Glama,MCP,Listed connector,https://glama.ai/mcp/connectors/io.github.belegante-byte/aetherx-mcp,none,live,,,,Grade A
+MCP ecosystem,Smithery,MCP,Listed server,https://smithery.ai/servers/belegante/aetherx-mcp,Smithery account,live,,,,
+MCP ecosystem,PulseMCP,MCP,Registry ingestion,https://www.pulsemcp.com,auto-ingest from registry,pending,,,,submissions paused
+MCP ecosystem,awesome-remote-mcp-servers,MCP,GitHub PR #403,https://github.com/punkpeye/awesome-remote-mcp-servers,PR review,submitted,,,,
+MCP ecosystem,mcp.so,MCP,Submit server,https://mcp.so,submit form,not_started,,,,
+MCP ecosystem,mcpservers.org,MCP,Submit server,https://mcpservers.org,submit form,not_started,,,,
+MCP ecosystem,Cline MCP Marketplace,MCP,Publish listing,https://cline.bot/mcp-marketplace,repo + manifest,not_started,,,,
+MCP ecosystem,Cursor MCP directory,MCP,Submit server,https://cursor.directory/mcp,submit form,not_started,,,,
+MCP ecosystem,Continue.dev MCP Hub,MCP,Registry listing,https://hub.continue.dev,submit form,not_started,,,,
+MCP ecosystem,OpenTools MCP,MCP,Submit server,https://opentools.com,submit form,not_started,,,,
+MCP ecosystem,awesome-mcp-servers,MCP,GitHub list PR,https://github.com/punkpeye/awesome-mcp-servers,PR,not_started,,,,
+API aggregator,RapidAPI,REST,Metered listing,https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle,listing + plans,live,,,,Free/Pro/Ultra/Mega
+API aggregator,APIs.guru,REST/OpenAPI,OpenAPI directory,https://apis.guru,openapi spec,not_started,,,,
+API aggregator,Public APIs (GitHub),REST,GitHub list PR,https://github.com/public-apis/public-apis,PR,not_started,,,,
+API aggregator,apilist.fun,REST,Directory submit,https://apilist.fun,submit form,not_started,,,,
+API aggregator,APIs.io,REST,Directory submit,https://apis.io,submit form,not_started,,,,
+API aggregator,OpenAPI Directory,REST,Spec submit,https://github.com/APIs-guru/openapi-directory,PR,not_started,,,,
+API aggregator,Postman Public API Network,REST,Collection publish,https://www.postman.com/explore,collection,not_started,,,,
+API aggregator,AnyAPI,REST,Directory submit,https://any-api.com,submit form,not_started,,,,
+GitHub,awesome-supply-chain,code,GitHub list PR,https://github.com/topics/awesome-supply-chain,PR,not_started,,,,
+GitHub,awesome-logistics,code,GitHub list PR,https://github.com/topics/awesome-logistics,PR,not_started,,,,
+GitHub,awesome-quant,code,GitHub list PR,https://github.com/wilsonfreitas/awesome-quant,PR,not_started,,,,
+GitHub,awesome-maritime / shipping,code,GitHub list PR,https://github.com/topics/awesome-maritime,PR,not_started,,,,
+GitHub,GitHub Topics,code,Topic tags,https://github.com/topics,mcp + port-congestion tags,not_started,,,,repo topics on aetherx-oracle
+GitHub,GitHub repo (engine),code,Public README + badges,https://github.com/belegante-byte/aetherx-oracle,public repo,live,,,,
+GitHub,Sourcegraph code search,code,Indexed public repo,https://sourcegraph.com,public repo,not_started,,,,
+Agent framework,LangChain,Python tool,Tool integration example,https://python.langchain.com,example + PR,not_started,,,,
+Agent framework,LlamaIndex,Python tool,Tool integration example,https://docs.llamaindex.ai,example + PR,not_started,,,,
+Agent framework,CrewAI,Python tool,Tool integration example,https://docs.crewai.com,example + PR,not_started,,,,
+Agent framework,PydanticAI,Python tool,Tool integration example,https://ai.pydantic.dev,example + PR,not_started,,,,
+Agent framework,Composio,Agent tool,Register toolkit,https://composio.dev,toolkit,not_started,,,,
+Agent framework,Pipedream,Workflow component,Build component,https://pipedream.com,component PR,not_started,,,,
+Agent framework,n8n,Workflow node,Community node,https://n8n.io,node,not_started,,,,
+Agent framework,Flowise,Workflow tool,Community tool,https://flowiseai.com,tool,not_started,,,,
+Agent framework,Dify,Agent tool,Tool integration,https://dify.ai,tool,not_started,,,,
+Agent framework,OpenRouter,LLM tool,Function/tool schema,https://openrouter.ai,tool schema,not_started,,,,
+Agent framework,StackOne,MCP gateway,Connector,https://stackone.com,connector,not_started,,,,
+Agent framework,Zapier,Workflow integration,Integration app,https://zapier.com,app,not_started,,,,
+Data ecosystem,Hugging Face Datasets,dataset,Publish dataset,https://huggingface.co/datasets/Aether-x/aetherx-port-congestion-metrics,dataset,live,,,,CC BY 4.0
+Data ecosystem,Hugging Face Spaces,static dashboard,Publish static space,https://huggingface.co/spaces/Aether-x/aetherx-port-congestion-dashboard,HF free tier + static SDK,live,,,,static Space; fetches live /public/ports + bundled snapshot
+Data ecosystem,Kaggle Datasets,dataset,Publish dataset,https://www.kaggle.com/datasets,dataset,not_started,,,,
+Data ecosystem,AWS Data Exchange,dataset,List product,https://aws.amazon.com/data-exchange/,listing,not_started,,,,
+Data ecosystem,Google Cloud Datasets,dataset,List dataset,https://cloud.google.com/datasets,listing,not_started,,,,
+Data ecosystem,Snowflake Marketplace,dataset,List listing,https://www.snowflake.com/en/data-cloud/marketplace/,listing,not_started,,,,
+Data ecosystem,data.world,dataset,Publish dataset,https://data.world,dataset,not_started,,,,
+Data ecosystem,IMF PortWatch,data,Cross-reference / benchmark,https://portwatch.imf.org,open data,not_started,,,,free benchmark
+Data ecosystem,World Bank / UNCTAD,data,Open-data catalog,https://data.worldbank.org,open data,not_started,,,,
+Data ecosystem,Zenodo,dataset,DOI archive,https://zenodo.org,dataset + DOI,not_started,,,,
+Data ecosystem,Mendeley Data,dataset,Publish dataset,https://data.mendeley.com,dataset,not_started,,,,
+Data ecosystem,Porto de Santos open data,data,Backlink / cross-link,https://www.portodesantos.com.br,open data,not_started,,,,

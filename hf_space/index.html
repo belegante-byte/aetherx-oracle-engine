@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aether-X Port Congestion Oracle — Live Dashboard</title>
+<meta name="description" content="Live port congestion, ETA delay and demurrage intelligence for 16 global ports. REST API, Python SDK and MCP server.">
+<style>
+:root{--bg:#0a0e14;--panel:#161b22;--border:#21262d;--text:#e6edf3;--muted:#8b949e;--blue:#58a6ff;--green:#00d992;--red:#f85149;--amber:#d29922}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+.wrap{max-width:960px;margin:0 auto;padding:2.2rem 1.4rem 3rem}
+h1{font-size:1.55rem;margin-bottom:.2rem}
+.sub{color:var(--muted);font-size:.92rem;margin-bottom:1.4rem}
+.badge{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.2rem}
+.pill{font-size:.72rem;padding:3px 10px;border-radius:20px;font-weight:600;border:1px solid}
+.pill-green{background:#00d9921a;color:var(--green);border-color:#00d99244}
+.pill-blue{background:#58a6ff1a;color:var(--blue);border-color:#58a6ff44}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem;margin-bottom:1rem}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th,td{padding:.5rem .6rem;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:600;text-transform:uppercase;font-size:.68rem;letter-spacing:.05em}
+td:last-child,th:last-child{text-align:right}
+.slug{font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted);font-size:.74rem}
+.bar{height:8px;border-radius:4px;background:#21262d;overflow:hidden;min-width:70px}
+.bar i{display:block;height:100%;border-radius:4px}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.4rem;margin-bottom:1.6rem}
+.metric{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:.7rem}
+.metric span{display:block;font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.metric b{font-size:.95rem;font-variant-numeric:tabular-nums}
+pre{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:.8rem;font-size:.78rem;overflow-x:auto;font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+.footer{margin-top:2rem;padding-top:1.2rem;border-top:1px solid var(--border);color:var(--muted);font-size:.74rem}
+@media(max-width:640px){.metrics{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🚢 Aether-X Port Congestion Oracle</h1>
+  <p class="sub">Live congestion, ETA delay and demurrage for 16 global ports — via REST API, Python SDK and MCP.</p>
+  <div class="badge">
+    <span class="pill pill-green">● Remote MCP Server Live</span>
+    <span class="pill pill-blue">REST API · RapidAPI</span>
+    <span class="pill pill-blue">PyPI: aetherx-oracle</span>
+  </div>
+
+  <div id="live" class="metrics">
+    <div class="metric"><span>Tracked ports</span><b>16</b></div>
+    <div class="metric"><span>Snapshot as-of</span><b id="asof">—</b></div>
+    <div class="metric"><span>Data status</span><b id="datastatus">loading…</b></div>
+    <div class="metric"><span>Mode</span><b>live feed</b></div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Port</th><th>Score</th><th>ETA delay</th><th>Waiting</th><th>Demurrage/day</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <h2 style="margin:1.4rem 0 .5rem">Connect</h2>
+  <div class="card">
+    <pre>{
+  "mcpServers": {
+    "aetherx-oracle": {
+      "url": "https://aether-x-oracle-production.up.railway.app/mcp"
+    }
+  }
+}</pre>
+    <p style="margin-top:.6rem;font-size:.85rem">Public dashboards: <a href="https://aether-x-oracle-production.up.railway.app/port-congestion-santos">per-port pages</a> · <a href="https://aether-x-oracle-production.up.railway.app/mcp-page">MCP page</a> · <a href="https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle">Get a free API key</a></p>
+  </div>
+
+  <p class="footer">Aether-X Port Congestion Oracle · MIT · Free tier $0.00 · Signals provided AS IS, not investment advice.</p>
+</div>
+<script>
+const LIVE = "https://aether-x-oracle-production.up.railway.app/public/ports";
+function color(score){return score>=0.6?"var(--red)":score>=0.45?"var(--amber)":"var(--green)"}
+function money(v){return "$"+Number(v).toLocaleString("en-US")}
+async function load(){
+  let data=null, mode="live";
+  try{const r=await fetch(LIVE,{headers:{Accept:"application/json"}});if(r.ok)data=await r.json()}catch(e){}
+  if(!data){try{data=await(await fetch("ports.json")).json();mode="bundled snapshot"}catch(e){data={results:[]}}}
+  document.getElementById("datastatus").textContent=mode;
+  const rows=document.getElementById("rows");
+  rows.innerHTML="";
+  const items=(data.results||[]).slice().sort((a,b)=>b.congestion_score-a.congestion_score);
+  for(const r of items){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${r.port_name} <span class="slug">${r.port_id}</span></td>`+
+      `<td><div class="bar"><i style="width:${Math.round(r.congestion_score*100)}%;background:${color(r.congestion_score)}"></i></div></td>`+
+      `<td>${r.eta_delay_days.toFixed(1)} days</td>`+
+      `<td>${r.waiting_vessels}</td>`+
+      `<td>${money(r.estimated_daily_demurrage_usd)}</td>`;
+    rows.appendChild(tr);
+  }
+  const as=document.getElementById("asof");
+  as.textContent=(data.as_of||"—").slice(0,10);
+}
+load();
+</script>
+</body>
+</html>

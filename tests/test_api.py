@@ -52,7 +52,33 @@ def test_sitemap_lists_all_content_pages():
     resp = client.get("/sitemap.xml")
     assert resp.status_code == 200
     assert "application/xml" in resp.headers["content-type"]
-    assert resp.text.count("<url>") == 5
+    assert resp.text.count("<url>") == 21
+
+
+def test_robots_txt():
+    resp = client.get("/robots.txt")
+    assert resp.status_code == 200
+    assert "text/plain" in resp.headers["content-type"]
+    assert "Sitemap: https://aether-x-oracle-production.up.railway.app/sitemap.xml" in resp.text
+
+
+def test_port_detail_pages_live_for_all_monitored_ports():
+    from src.api.content_pages import PORT_METAS
+
+    for meta in PORT_METAS:
+        resp = client.get(f"/port-congestion-{meta['slug']}")
+        assert resp.status_code == 200, meta["slug"]
+        assert "text/html" in resp.headers["content-type"], meta["slug"]
+        assert meta["port_name"] in resp.text, meta["slug"]
+        assert meta["port_id"] in resp.text, meta["slug"]
+        assert "congestion_score" in resp.text, meta["slug"]
+        assert 'rel="canonical"' in resp.text, meta["slug"]
+        assert f'/port-congestion-{meta["slug"]}' in resp.text, meta["slug"]
+
+
+def test_port_detail_unknown_slug_404():
+    resp = client.get("/port-congestion-nao-existe")
+    assert resp.status_code == 404
 
 
 def test_port_risk_known_port():
@@ -147,10 +173,13 @@ def test_guard_exempts_public_paths():
     assert public.get("/llms.txt").status_code == 200
     assert public.get("/terms").status_code == 200
     assert public.get("/sitemap.xml").status_code == 200
+    assert public.get("/robots.txt").status_code == 200
     assert public.get("/mcp-page").status_code == 200
     assert public.get("/port-congestion-api").status_code == 200
     assert public.get("/santos-port-congestion-api").status_code == 200
     assert public.get("/port-congestion-python").status_code == 200
+    assert public.get("/port-congestion-santos").status_code == 200
+    assert public.get("/public/ports").status_code == 200
 
 
 def test_guard_exempts_mcp():
@@ -199,3 +228,44 @@ def test_openapi_enriched_metadata():
     example = op["responses"]["200"]["content"]["application/json"]["example"]
     assert example["port_id"] == "BRSSZ"
     assert schema["components"]["schemas"]["PortsRiskResponse"]
+
+
+def test_metrics_classify():
+    from src.api.metrics import _classify
+
+    assert _classify("/mcp", "some-agent/1.0") == "mcp"
+    assert _classify("/v1/port-risk", "python-requests/2.32") == "rest"
+    assert _classify("/openapi.json", "curl/8.6") == "discovery"
+    assert _classify("/port-congestion-santos", "Mozilla/5.0 Googlebot/2.1") == "seo"
+    assert _classify("/", "Mozilla/5.0 (Macintosh; Intel Mac OS X)") is None
+    assert _classify("/health", "curl/8.6") is None
+    assert _classify("/v1/port-risk", "belegante-aetherx/1.0") is None
+
+
+def test_internal_metrics_protected():
+    pub = TestClient(app)
+    assert pub.get("/internal/metrics").status_code == 401
+
+
+def test_internal_metrics_returns_snapshot():
+    resp = client.get("/internal/metrics")
+    assert resp.status_code == 200
+    body = resp.json()
+    for key in ("uptime_seconds", "total", "unique_machines", "top_paths"):
+        assert key in body
+
+
+def test_public_ports_feed():
+    pub = TestClient(app)
+    resp = pub.get("/public/ports")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["count"] == 16
+    assert len(body["results"]) == 16
+    first = body["results"][0]
+    for key in (
+        "port_id", "port_name", "country", "congestion_score",
+        "eta_delay_days", "waiting_vessels", "freight_volatility_index",
+        "estimated_daily_demurrage_usd", "updated_at",
+    ):
+        assert key in first

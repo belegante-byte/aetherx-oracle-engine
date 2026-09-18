@@ -8,6 +8,7 @@
 - [Example call](https://aether-x-oracle-production.up.railway.app/v1/port-risk?port_id=BRSSZ): GET /v1/port-risk?port_id=BRSSZ
 - [Trend example](https://aether-x-oracle-production.up.railway.app/v1/port-trend?port_id=BRSSZ): GET /v1/port-trend?port_id=BRSSZ
 - [Batch example](https://aether-x-oracle-production.up.railway.app/v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM): GET /v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM
+- [Public feed (no key)](https://aether-x-oracle-production.up.railway.app/public/ports): GET /public/ports — all 16 ports, read-only, for widgets/embeds
 - [Interactive docs](https://aether-x-oracle-production.up.railway.app/docs): Swagger UI
 - [RapidAPI marketplace](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle): metered plans (Free / Pro / Ultra / Mega)
 - [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)
@@ -18,6 +19,12 @@
 - [Santos Port Congestion API](https://aether-x-oracle-production.up.railway.app/santos-port-congestion-api)
 - [Port Congestion Monitoring with Python](https://aether-x-oracle-production.up.railway.app/port-congestion-python)
 - [Aether-X MCP server page](https://aether-x-oracle-production.up.railway.app/mcp-page)
+- [Sitemap (all pages)](https://aether-x-oracle-production.up.railway.app/sitemap.xml)
+
+Per-port live pages (one per monitored port):
+
+- [Santos](https://aether-x-oracle-production.up.railway.app/port-congestion-santos) · [Shanghai](https://aether-x-oracle-production.up.railway.app/port-congestion-shanghai) · [Rotterdam](https://aether-x-oracle-production.up.railway.app/port-congestion-rotterdam) · [Singapore](https://aether-x-oracle-production.up.railway.app/port-congestion-singapore) · [Qingdao](https://aether-x-oracle-production.up.railway.app/port-congestion-qingdao) · [Los Angeles](https://aether-x-oracle-production.up.railway.app/port-congestion-los-angeles) · [Ningbo-Zhoushan](https://aether-x-oracle-production.up.railway.app/port-congestion-ningbo-zhoushan) · [Dubai / Jebel Ali](https://aether-x-oracle-production.up.railway.app/port-congestion-dubai-jebel-ali)
+- [New York](https://aether-x-oracle-production.up.railway.app/port-congestion-new-york) · [Hamburg](https://aether-x-oracle-production.up.railway.app/port-congestion-hamburg) · [Busan](https://aether-x-oracle-production.up.railway.app/port-congestion-busan) · [Cape Town](https://aether-x-oracle-production.up.railway.app/port-congestion-cape-town) · [Rio de Janeiro](https://aether-x-oracle-production.up.railway.app/port-congestion-rio-de-janeiro) · [Tanger Med](https://aether-x-oracle-production.up.railway.app/port-congestion-tanger-med) · [London Gateway](https://aether-x-oracle-production.up.railway.app/port-congestion-london-gateway) · [Manzanillo](https://aether-x-oracle-production.up.railway.app/port-congestion-manzanillo)
 
 ## SDKs and integrations
 
@@ -32,6 +39,7 @@
 ## Dataset
 
 - [Aether-X Global Port Congestion Snapshot (Hugging Face)](https://huggingface.co/datasets/Aether-x/aetherx-port-congestion-metrics): frozen 16-port CSV, CC BY 4.0
+- [Aether-X Port Congestion Dashboard (Hugging Face Space)](https://huggingface.co/spaces/Aether-x/aetherx-port-congestion-dashboard): live static dashboard, no key
 
 ## Writing
 

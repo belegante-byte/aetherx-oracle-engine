@@ -12,6 +12,8 @@ from pydantic import BaseModel, ConfigDict
 from src.api.mcp_app import build_http_app
 from src.api.mcp_app import mcp as mcp_server
 from src.api import content_pages
+from src.api.content_pages import PORT_METAS, _SLUG_MAP
+from src.api.metrics import MetricsMiddleware, metrics_snapshot
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 
 PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aether-x-oracle-production.up.railway.app")
@@ -62,12 +64,11 @@ class RapidAPIGuard:
                 "/llms.txt",
                 "/terms",
                 "/sitemap.xml",
-                "/mcp-page",
-                "/port-congestion-api",
+                "/robots.txt",
                 "/santos-port-congestion-api",
-                "/port-congestion-python",
             }
-            or path.startswith(("/docs", "/redoc", "/mcp"))
+            or path.startswith("/port-congestion-")
+            or path.startswith(("/docs", "/redoc", "/mcp", "/public/"))
             or path == "/.well-known/ai-plugin.json"
         )
 
@@ -220,6 +221,26 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
     <a class="link-card" href="https://registry.modelcontextprotocol.io">Official MCP Registry</a>
   </div>
 
+  <p class="section-title" style="margin-top:2rem">Live per-port pages <span class="hint-inline">one page, one port, live data</span></p>
+  <div class="links-grid">
+    <a class="link-card" href="/port-congestion-santos">Santos (BRSSZ)</a>
+    <a class="link-card" href="/port-congestion-shanghai">Shanghai (CNSHA)</a>
+    <a class="link-card" href="/port-congestion-rotterdam">Rotterdam (NLRTM)</a>
+    <a class="link-card" href="/port-congestion-singapore">Singapore (SGSIN)</a>
+    <a class="link-card" href="/port-congestion-qingdao">Qingdao (CNTAO)</a>
+    <a class="link-card" href="/port-congestion-los-angeles">Los Angeles (USLAX)</a>
+    <a class="link-card" href="/port-congestion-ningbo-zhoushan">Ningbo-Zhoushan (CNNGB)</a>
+    <a class="link-card" href="/port-congestion-dubai-jebel-ali">Dubai / Jebel Ali (AEDXB)</a>
+    <a class="link-card" href="/port-congestion-new-york">New York (USNYC)</a>
+    <a class="link-card" href="/port-congestion-hamburg">Hamburg (DEHAM)</a>
+    <a class="link-card" href="/port-congestion-busan">Busan (KRPUS)</a>
+    <a class="link-card" href="/port-congestion-cape-town">Cape Town (ZACPT)</a>
+    <a class="link-card" href="/port-congestion-rio-de-janeiro">Rio de Janeiro (BRRIO)</a>
+    <a class="link-card" href="/port-congestion-tanger-med">Tanger Med (MPTNG)</a>
+    <a class="link-card" href="/port-congestion-london-gateway">London Gateway (GBLGP)</a>
+    <a class="link-card" href="/port-congestion-manzanillo">Manzanillo (MXZLO)</a>
+  </div>
+
   <div class="footer">
     Aether-X Port Congestion Oracle v0.2.1 &middot; MIT &middot; Free tier $0.00
     &middot; <a href="mailto:contato@aether-grid.io">contato@aether-grid.io</a>
@@ -343,6 +364,8 @@ app = FastAPI(
     ],
 )
 
+app.add_middleware(MetricsMiddleware)
+
 app.add_middleware(RapidAPIGuard)
 
 app.add_middleware(
@@ -436,6 +459,11 @@ def sitemap():
     return PlainTextResponse(content_pages.sitemap_xml(), media_type="application/xml")
 
 
+@app.get("/robots.txt", include_in_schema=False)
+def robots_txt():
+    return PlainTextResponse(content_pages.robots_txt_content(), media_type="text/plain")
+
+
 @app.get("/mcp-page", include_in_schema=False)
 def mcp_page():
     return HTMLResponse(content_pages.mcp_page_html())
@@ -454,6 +482,30 @@ def santos_port_congestion_api_page():
 @app.get("/port-congestion-python", include_in_schema=False)
 def port_congestion_python_page():
     return HTMLResponse(content_pages.port_congestion_python_page())
+
+
+@app.get("/port-congestion-{slug}", include_in_schema=False)
+def port_congestion_detail(slug: str):
+    meta = _SLUG_MAP.get(slug)
+    if not meta:
+        raise HTTPException(status_code=404, detail="Port page not found")
+    return HTMLResponse(content_pages.port_detail_page(meta["port_id"], slug))
+
+
+@app.get("/public/ports", include_in_schema=False)
+def public_ports_all():
+    """Feed público read-only: sinal dos 16 portos para widget/embed, sem key."""
+    rows = [calculate_port_risk(m["port_id"]) for m in PORT_METAS]
+    return {
+        "as_of": rows[0]["updated_at"],
+        "count": len(rows),
+        "results": rows,
+    }
+
+
+@app.get("/internal/metrics", include_in_schema=False)
+def internal_metrics():
+    return JSONResponse(metrics_snapshot())
 
 
 @app.get("/.well-known/ai-plugin.json", include_in_schema=False)

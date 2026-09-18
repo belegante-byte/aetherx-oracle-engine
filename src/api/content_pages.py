@@ -19,6 +19,29 @@ PYPI_MCP = "https://pypi.org/project/aetherx-mcp/"
 REMOTE_CFG = '{"mcpServers": {"aetherx-oracle": {"type": "url", "url": "%s/mcp"}}}' % PRODUCTION_URL
 STDIO_CFG = '{"mcpServers": {"aetherx-oracle": {"command": "uvx", "args": ["aetherx-mcp"]}}}'
 
+# 16 portos monitorados, espelhando src/engine/init_prod_db.py. O slug alimenta
+# o SEO programático (/port-congestion-<slug>) e o sitemap.
+PORT_METAS = [
+    {"port_id": "BRSSZ", "slug": "santos", "port_name": "Santos", "country": "Brasil"},
+    {"port_id": "BRRIO", "slug": "rio-de-janeiro", "port_name": "Rio de Janeiro", "country": "Brasil"},
+    {"port_id": "CNSHA", "slug": "shanghai", "port_name": "Shanghai", "country": "China"},
+    {"port_id": "CNNGB", "slug": "ningbo-zhoushan", "port_name": "Ningbo-Zhoushan", "country": "China"},
+    {"port_id": "CNTAO", "slug": "qingdao", "port_name": "Qingdao", "country": "China"},
+    {"port_id": "SGSIN", "slug": "singapore", "port_name": "Singapore", "country": "Cingapura"},
+    {"port_id": "NLRTM", "slug": "rotterdam", "port_name": "Rotterdam", "country": "Holanda"},
+    {"port_id": "USLAX", "slug": "los-angeles", "port_name": "Los Angeles", "country": "EUA"},
+    {"port_id": "USNYC", "slug": "new-york", "port_name": "New York", "country": "EUA"},
+    {"port_id": "DEHAM", "slug": "hamburg", "port_name": "Hamburg", "country": "Alemanha"},
+    {"port_id": "MPTNG", "slug": "tanger-med", "port_name": "Tanger Med", "country": "Marrocos"},
+    {"port_id": "AEDXB", "slug": "dubai-jebel-ali", "port_name": "Dubai / Jebel Ali", "country": "EAU"},
+    {"port_id": "KRPUS", "slug": "busan", "port_name": "Busan", "country": "Coreia do Sul"},
+    {"port_id": "GBLGP", "slug": "london-gateway", "port_name": "London Gateway", "country": "Reino Unido"},
+    {"port_id": "ZACPT", "slug": "cape-town", "port_name": "Cape Town", "country": "África do Sul"},
+    {"port_id": "MXZLO", "slug": "manzanillo", "port_name": "Manzanillo", "country": "México"},
+]
+
+_SLUG_MAP = {m["slug"]: m for m in PORT_METAS}
+
 CSS = """\
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0a0e14;color:#e6edf3;line-height:1.7;min-height:100vh}
@@ -273,6 +296,60 @@ def live_card(port_id: str) -> str:
     return f'<div class="metrics">{metrics}</div>'
 
 
+def port_detail_page(port_id: str, slug: str) -> str:
+    """Página SEO única por porto, com sinal vivo in-process (risco + tendência)."""
+    risk = calculate_port_risk(port_id)
+    trend = calculate_port_trend(port_id)
+    port_name = risk["port_name"]
+    country = risk["country"]
+    proj = trend["projection"]
+    body = f"""<p>Live congestion signal for <strong>{html.escape(port_name)} ({port_id}), {html.escape(country)}</strong> — recomputed in-process at every request.</p>
+{live_card(port_id)}
+<h2>What this data means</h2>
+<ul>
+<li><strong>Congestion score ({risk['congestion_score']:.2f})</strong> — normalized 0.0–1.0 risk of operational congestion.</li>
+<li><strong>ETA delay ({risk['eta_delay_days']:.1f} days)</strong> — expected delay applied to incoming vessels.</li>
+<li><strong>Waiting vessels ({risk['waiting_vessels']})</strong> — ships anchored or queued at the port.</li>
+<li><strong>Freight volatility ({risk['freight_volatility_index']:.2f})</strong> — pressure indicator for freight pricing.</li>
+<li><strong>Daily demurrage (${risk['estimated_daily_demurrage_usd']:,})</strong> — estimated cost for a vessel queued at the port.</li>
+</ul>
+<h2>24 / 48 / 72h projection</h2>
+<div class="metrics">
+<div class="metric"><span>24h</span><b>{proj['h24']['congestion_score']:.2f}</b></div>
+<div class="metric"><span>48h</span><b>{proj['h48']['congestion_score']:.2f}</b></div>
+<div class="metric"><span>72h</span><b>{proj['h72']['congestion_score']:.2f}</b></div>
+<div class="metric"><span>Trend</span><b>{trend['trend']}</b></div>
+</div>
+{_json_pre(risk)}
+<h2>Track {html.escape(port_name)} programmatically</h2>
+<div class="snippet-card"><div class="card-header"><span>Python SDK</span></div><pre><code>pip install --upgrade aetherx-oracle
+
+from aetherx import OracleClient
+
+client = OracleClient(api_key="YOUR_RAPIDAPI_KEY")
+risk = client.get_port_risk("{port_id}")
+print(risk.congestion_score, risk.eta_delay_days)</code></pre></div>
+<p>Add the 24/48/72h trend with <code>client.get_port_trend("{port_id}")</code>, or monitor several ports at once with <code>client.get_ports_risk(["{port_id}", "CNSHA"])</code>. AI agents can consume the same data via the <a href="/mcp-page">Aether-X MCP server</a>.</p>
+<a class="cta" href="{RAPIDAPI_URL}">Get a free API key</a>
+"""
+    return _page(
+        f"{port_name} Port Congestion — Live Risk, ETA Delay & Demurrage",
+        f"{port_name} ({port_id}) port congestion API: live congestion score {risk['congestion_score']:.2f}, ETA delay {risk['eta_delay_days']:.1f} days, {risk['waiting_vessels']} waiting vessels and daily demurrage ${risk['estimated_daily_demurrage_usd']:,} via REST, Python SDK or MCP.",
+        f"{port_name} Port Congestion",
+        f"Live congestion, ETA delay, waiting vessels and demurrage for {port_name} ({port_id}), {country}.",
+        body,
+        f"/port-congestion-{slug}",
+    )
+
+
+def robots_txt_content() -> str:
+    return (
+        "User-agent: *\n"
+        "Allow: /\n\n"
+        f"Sitemap: {PRODUCTION_URL}/sitemap.xml\n"
+    )
+
+
 PAGES = [
     ("/mcp-page", mcp_page_html, "Aether-X MCP — Port Congestion Server for AI Agents"),
     ("/port-congestion-api", port_congestion_api_page, "Port Congestion API — Port Risk, ETA Delay & Demurrage"),
@@ -283,7 +360,9 @@ PAGES = [
 
 def sitemap_xml() -> str:
     lastmod = "2026-09-18"
-    urls = ["/", "/mcp-page", "/port-congestion-api", "/santos-port-congestion-api", "/port-congestion-python"]
+    base_urls = ["/", "/mcp-page", "/port-congestion-api", "/santos-port-congestion-api", "/port-congestion-python"]
+    port_urls = [f"/port-congestion-{m['slug']}" for m in PORT_METAS]
+    urls = base_urls + port_urls
     items = "\n".join(f"  <url><loc>{PRODUCTION_URL}{u}</loc><lastmod>{lastmod}</lastmod></url>" for u in urls)
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
