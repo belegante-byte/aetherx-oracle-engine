@@ -3,64 +3,56 @@
 [![PyPI version](https://img.shields.io/pypi/v/aetherx-oracle?color=blue)](https://pypi.org/project/aetherx-oracle/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/aetherx-oracle)](https://pypi.org/project/aetherx-oracle/)
 [![Python versions](https://img.shields.io/pypi/pyversions/aetherx-oracle)](https://pypi.org/project/aetherx-oracle/)
-[![SDK License: MIT](https://img.shields.io/badge/SDK%20License-MIT-yellow)](sdk_python/LICENSE)
-[![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0.3-green)](docs/openapi.rapidapi.json)
+[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-active-brightgreen)](https://registry.modelcontextprotocol.io)
 [![Status](https://img.shields.io/badge/status-live-brightgreen)](https://aether-x-oracle-production.up.railway.app/)
-[![Made with DuckDB](https://img.shields.io/badge/DuckDB-analytical%20engine-yellow)](https://duckdb.org/)
 
-**Algorithmic predictive port congestion signals for global trade, supply chain and quantitative finance.**
+**Predictive port congestion intelligence for developers, AI agents, logistics systems and quantitative workflows.**
 
-Aether-X turns public port telemetry and line-up data into machine-readable congestion scores, ETA delay estimates and freight volatility indices for the world's largest ports — delivered through a REST API, a typed Python SDK and a remote MCP server for AI agents.
+Aether-X turns public port telemetry into machine-readable congestion scores, ETA delay estimates, freight volatility indices and modeled daily demurrage exposure for 16 global ports — delivered through a **REST API**, a **typed Python SDK** and a **remote MCP server** for AI agents.
+
+Free tier available. No credit card required.
 
 ---
 
-## Why
-
-Global trade runs on a handful of chokepoints. When Santos, Shanghai or Rotterdam backs up, freight rates, delivery SLAs and commodity spreads move within hours. Aether-X compresses that signal into a single HTTP call so trading desks, logistics teams and autonomous agents can react before the market prices it in.
-
-## Monorepo Structure
-
-```
-.
-├── src/
-│   ├── api/          # FastAPI application (REST endpoints + remote MCP endpoint)
-│   ├── engine/       # Predictive model, DuckDB seeding, OpenAPI export
-│   └── ingestion/    # Public port line-up collectors (UPSERT by IMO)
-├── sdk_python/       # aetherx-oracle Python SDK (PyPI)
-├── mcp_server/       # aetherx-mcp MCP server for AI agents (PyPI)
-├── docs/             # OpenAPI specs + Terms of Service
-├── marketing/        # Launch content (Dev.to, LinkedIn, B2B cold email)
-├── data/dataset/     # Public snapshot dataset (CC BY 4.0)
-├── scripts/          # Publishing and automation helpers
-├── tests/            # pytest suite for the API
-├── Procfile          # Railway start command
-└── railway.json      # Railway deployment config
-```
-
-## Quickstart
-
-Latest SDK: **v0.3.1** — Python 3.8+.
+## Quick start (Python) — under 3 minutes
 
 ```bash
 pip install --upgrade aetherx-oracle
 ```
 
-### Synchronous
-
 ```python
 from aetherx import OracleClient
 
-client = OracleClient(api_key="SUA_RAPIDAPI_KEY")
+client = OracleClient(api_key="YOUR_RAPIDAPI_KEY")
+
 risk = client.get_port_risk("BRSSZ")
 
-print(risk.port_name)                 # Santos
-print(risk.congestion_score)          # 0.78
-print(risk.eta_delay_days)            # 1.6
-print(risk.waiting_vessels)           # 12
-print(risk.freight_volatility_index)  # 0.42
+print(risk.port_name)                        # Santos
+print(risk.congestion_score)                 # 0.78
+print(risk.eta_delay_days)                   # 1.6
+print(risk.estimated_daily_demurrage_usd)    # 63200 (USD/day)
 ```
 
-### Asynchronous (batch, in parallel)
+Get a free API key on the **[RapidAPI listing](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle)**.
+
+### Compare many ports in one call
+
+```python
+portfolio = ["BRSSZ", "CNSHA", "NLRTM", "USLAX", "SGSIN"]
+results = client.get_ports_risk(portfolio)
+for r in sorted(results, key=lambda x: x.congestion_score, reverse=True):
+    print(f"{r.port_id:<6} {r.congestion_score:.2f}  {r.estimated_daily_demurrage_usd:,}/day")
+```
+
+### 24/48/72h trend
+
+```python
+trend = client.get_port_trend("NLRTM")
+print(trend.trend)                              # acelerando / estável / descongestionando
+print(trend.projection["h48"].congestion_score)
+```
+
+### Async (parallel batch)
 
 ```bash
 pip install "aetherx-oracle[async]"
@@ -71,26 +63,74 @@ import asyncio
 from aetherx import OracleClient
 
 async def main():
-    client = OracleClient(api_key="SUA_RAPIDAPI_KEY")
+    client = OracleClient(api_key="YOUR_RAPIDAPI_KEY")
     risks = await client.get_ports_risk_async(["BRSSZ", "CNSHA", "NLRTM", "USLAX"])
-    for r in sorted(risks, key=lambda x: x.congestion_score, reverse=True):
-        print(f"{r.port_id:<6} {r.congestion_score:.2f}")
+    for r in risks:
+        print(r.port_id, r.congestion_score)
 
 asyncio.run(main())
 ```
 
+---
+
+## MCP server (for AI agents)
+
+Ask your agent directly:
+
+> "What's the congestion risk at Santos?"
+
+> "Compare Santos, Shanghai and Rotterdam."
+
+> "Which of these ports has the highest modeled demurrage exposure?"
+
+> "Show me the 72-hour congestion trend for Santos."
+
+**Available tools:** `get_port_risk` · `get_ports_risk` · `get_port_trend`
+
+### Remote (no install)
+
+Add to your MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "aetherx-oracle": {
+      "type": "url",
+      "url": "https://aether-x-oracle-production.up.railway.app/mcp"
+    }
+  }
+}
+```
+
+### Local (stdio)
+
+```json
+{
+  "mcpServers": {
+    "aetherx-oracle": {
+      "command": "uvx",
+      "args": ["aetherx-mcp"]
+    }
+  }
+}
+```
+
+Published in the **[Official MCP Registry](https://registry.modelcontextprotocol.io)** as `io.github.belegante-byte/aetherx-mcp`, available on [PyPI](https://pypi.org/project/aetherx-mcp/), [Glama](https://glama.ai/mcp/connectors/io.github.belegante-byte/aetherx-mcp) and [Smithery](https://smithery.ai/servers/belegante/aetherx-mcp).
+
+---
+
 ## REST API
 
-Base URL (production): `https://aether-x-oracle-production.up.railway.app`
+Base URL: `https://aether-x-oracle-production.up.railway.app`
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/v1/port-risk?port_id=BRSSZ` | Congestion score, ETA delay and freight volatility for a port |
-| `POST` | `/mcp` | Remote MCP endpoint (Streamable HTTP) — the same signal for AI agents |
-| `GET` | `/terms` | Terms of Service |
-| `GET` | `/openapi.json` | OpenAPI specification |
+| `GET` | `/v1/port-risk?port_id=BRSSZ` | Congestion score, ETA delay, waiting vessels, freight volatility and daily demurrage for one port |
+| `GET` | `/v1/ports-risk?port_ids=...` | Same signal for up to 20 ports in a single call |
+| `GET` | `/v1/port-trend?port_id=BRSSZ` | 24h / 48h / 72h congestion projection with trend label |
+| `GET` | `/mcp` | Remote MCP endpoint (Streamable HTTP) |
 
-**Response**
+**Example response** (`/v1/port-risk?port_id=BRSSZ`):
 
 ```json
 {
@@ -101,94 +141,77 @@ Base URL (production): `https://aether-x-oracle-production.up.railway.app`
   "eta_delay_days": 1.6,
   "waiting_vessels": 12,
   "freight_volatility_index": 0.42,
+  "estimated_daily_demurrage_usd": 63200,
   "updated_at": "2026-09-17 15:46:53"
 }
 ```
 
-## MCP server (AI agents)
+Interactive docs: [Swagger UI](https://aether-x-oracle-production.up.railway.app/docs) · [OpenAPI](https://aether-x-oracle-production.up.railway.app/openapi.json)
 
-The same signal is exposed over the Model Context Protocol, so agents can call
-`get_port_risk`, `get_ports_risk` and `list_supported_ports` directly.
+---
 
-| Transport | How to connect |
-|-----------|----------------|
-| Remote (Streamable HTTP) | `https://aether-x-oracle-production.up.railway.app/mcp` |
-| stdio (local) | `uvx aetherx-mcp` |
-| Smithery gateway | [`belegante/aetherx-mcp`](https://smithery.ai/servers/belegante/aetherx-mcp) |
+## Supported ports
 
-```json
-{
-  "mcpServers": {
-    "aetherx": {
-      "command": "uvx",
-      "args": ["aetherx-mcp"]
-    }
-  }
-}
-```
-
-Published as `io.github.belegante-byte/aetherx-mcp` in the
-[Official MCP Registry](https://registry.modelcontextprotocol.io).
-
-## Pricing & Free Tier
-
-Aether-X is free to evaluate. Every developer gets a **Free Tier — $0.00** for development, prototyping, CI and testing, up to the monthly request limit of the plan. **No credit card required to start.**
-
-| Plan | Price | Best for |
-|------|-------|----------|
-| **Free (Basic)** | **$0.00** | Development, prototypes, CI and evaluation — up to the plan's monthly request limit |
-| **Pay-as-you-go** | **$0.02 / query** | Production traffic beyond the free tier |
-
-Grab a key on the **Aether-X Port Congestion Oracle** listing in the [RapidAPI Hub](https://rapidapi.com/hub), then:
-
-```bash
-pip install --upgrade aetherx-oracle
-```
-
-## Supported Ports
-
-`BRSSZ` `BRRIO` `CNSHA` `CNNGB` `SGSIN` `NLRTM` `USLAX` `USNYC` `DEHAM` `MPTNG` `AEDXB` `KRPUS` `GBLGP` `ZACPT` `MXZLO`
+`BRSSZ` `BRRIO` `CNSHA` `CNNGB` `CNTAO` `SGSIN` `NLRTM` `USLAX` `USNYC` `DEHAM` `MPTNG` `AEDXB` `KRPUS` `GBLGP` `ZACPT` `MXZLO`
 
 Unknown ports fall back to a global statistical estimate (`country="Global"`).
 
-## Dataset
+---
 
-A frozen snapshot of the 15-port signal is published on Hugging Face for
-research, backtesting and dashboards (**CC BY 4.0**):
+## Pricing & free tier
 
-- https://huggingface.co/datasets/Aether-x/aetherx-port-congestion-metrics
+**Free Developer Tier — $0.00** for development, prototyping, CI and evaluation. **No credit card required.**
+
+| Plan | Price | Best for |
+|------|-------|----------|
+| Free Developer Tier | **$0.00** | Evaluation, prototypes, CI — up to the plan's monthly request limit |
+| Pay-as-you-go | **$0.02 / query** | Production traffic beyond the free tier |
+
+Grab a key on the **[RapidAPI listing](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle)**.
+
+---
+
+## Resources
+
+- [RapidAPI marketplace](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle)
+- [PyPI — aetherx-oracle (SDK)](https://pypi.org/project/aetherx-oracle/)
+- [PyPI — aetherx-mcp (MCP server)](https://pypi.org/project/aetherx-mcp/)
+- [Official MCP Registry](https://registry.modelcontextprotocol.io) — `io.github.belegante-byte/aetherx-mcp`
+- [Glama connector](https://glama.ai/mcp/connectors/io.github.belegante-byte/aetherx-mcp)
+- [Smithery gateway](https://smithery.ai/servers/belegante/aetherx-mcp)
+- [llms.txt](https://aether-x-oracle-production.up.railway.app/llms.txt)
+- [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)
 
 ## Writing
 
 - [Predicting Global Port Congestion in Real-Time with Python, DuckDB and MCP](https://dev.to/giovanni_belegante_2b04c5/predicting-global-port-congestion-in-real-time-with-python-duckdb-and-mcp-1ahm) — DEV Community
 
-## Development
+## Repository layout
+
+```
+src/            FastAPI app (REST + remote MCP), predictive engine, ingestion
+sdk_python/     aetherx-oracle Python SDK (PyPI)
+mcp_server/     aetherx-mcp MCP server for AI agents (PyPI)
+docs/           OpenAPI specs, llms.txt, Terms of Service
+tests/          pytest suite
+```
+
+## Development & deployment
 
 ```bash
-git clone <this-repo> && cd aetherx-oracle
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
-# seed the DuckDB oracle (15 global ports)
-python src/engine/init_prod_db.py
-
-# run the API
+python src/engine/init_prod_db.py   # seed the DuckDB oracle
 uvicorn src.api.main:app --reload --port 8000
-
-# tests
 python -m pytest tests/ sdk_python/tests/ -v
 ```
 
-## Deployment
+Deploys to [Railway](https://railway.com) via `railway.json`; the DuckDB oracle is seeded idempotently at boot.
 
-The API ships to [Railway](https://railway.com) via `railway.json` (Nixpacks + healthcheck on `/`). The DuckDB oracle is seeded idempotently at boot through the `Procfile` start command.
+---
 
-## Terms of Service
+## Terms & license
 
-The signals are provided **"AS IS"**, without warranty, and **do not constitute investment advice**. See [`docs/TERMS_OF_SERVICE.md`](docs/TERMS_OF_SERVICE.md) or `/terms`.
+Signals are provided **"AS IS"**, without warranty, and **do not constitute investment advice**. See [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms).
 
-## License
-
-The **Python SDK** (`sdk_python/`) is released under the **MIT** license — see [`sdk_python/LICENSE`](sdk_python/LICENSE). Install it freely and ship it in commercial products.
-
-The **API, predictive engine and ingestion pipeline** (`src/`) are **proprietary** — Machine-to-Machine Data Distribution. Hosted usage is governed by the Terms of Service.
+The **Python SDK** is **MIT** licensed. The **API, predictive engine and ingestion pipeline** are proprietary — hosted usage is governed by the Terms.

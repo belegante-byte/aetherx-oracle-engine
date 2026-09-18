@@ -24,11 +24,35 @@ def test_health_check():
     assert "https://aether-x-oracle-production.up.railway.app/mcp" in resp.text
     assert 'href="/docs"' in resp.text
     assert 'href="/llms.txt"' in resp.text
+    assert 'href="/port-congestion-api"' in resp.text
+    assert 'href="/santos-port-congestion-api"' in resp.text
+    assert 'href="/port-congestion-python"' in resp.text
+    assert 'href="/mcp-page"' in resp.text
     assert "Live Intelligence Snapshot" in resp.text
     assert "BRSSZ" in resp.text
     assert "NLRTM" in resp.text
     assert "estimated_daily_demurrage_usd" in resp.text
     assert "Raw JSON" in resp.text
+
+
+def test_content_pages_are_public_and_render():
+    for path, marker in [
+        ("/mcp-page", "Available tools"),
+        ("/port-congestion-api", "Congestion score (0.0–1.0)"),
+        ("/santos-port-congestion-api", "Latin America"),
+        ("/port-congestion-python", "pip install --upgrade aetherx-oracle"),
+    ]:
+        resp = client.get(path)
+        assert resp.status_code == 200, path
+        assert "text/html" in resp.headers["content-type"], path
+        assert marker in resp.text, path
+
+
+def test_sitemap_lists_all_content_pages():
+    resp = client.get("/sitemap.xml")
+    assert resp.status_code == 200
+    assert "application/xml" in resp.headers["content-type"]
+    assert resp.text.count("<url>") == 5
 
 
 def test_port_risk_known_port():

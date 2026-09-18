@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict
 
 from src.api.mcp_app import build_http_app
 from src.api.mcp_app import mcp as mcp_server
+from src.api import content_pages
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 
 PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aether-x-oracle-production.up.railway.app")
@@ -196,6 +197,10 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
 
   <p class="section-title" style="margin-top:2rem">Protocol &amp; Docs</p>
   <div class="links-grid">
+    <a class="link-card" href="/mcp-page">Aether-X MCP (demo page)</a>
+    <a class="link-card" href="/port-congestion-api">Port Congestion API</a>
+    <a class="link-card" href="/santos-port-congestion-api">Santos Port Congestion API</a>
+    <a class="link-card" href="/port-congestion-python">Port Congestion with Python</a>
     <a class="link-card" href="/docs">Swagger UI</a>
     <a class="link-card" href="/openapi.json">OpenAPI 3.1</a>
     <a class="link-card" href="/openapi.rapidapi.json">OpenAPI (RapidAPI)</a>
@@ -211,7 +216,7 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
   </div>
 
   <div class="footer">
-    Aether-X Port Congestion Oracle v0.2.0 &middot; MIT &middot; Free tier $0.00
+    Aether-X Port Congestion Oracle v0.2.1 &middot; MIT &middot; Free tier $0.00
     &middot; <a href="mailto:contato@aether-grid.io">contato@aether-grid.io</a>
   </div>
 </div>
@@ -419,6 +424,31 @@ def llms_txt():
     return PlainTextResponse(
         LLMS_TXT_PATH.read_text(encoding="utf-8"), media_type="text/plain"
     )
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap():
+    return PlainTextResponse(content_pages.sitemap_xml(), media_type="application/xml")
+
+
+@app.get("/mcp-page", include_in_schema=False)
+def mcp_page():
+    return HTMLResponse(content_pages.mcp_page_html())
+
+
+@app.get("/port-congestion-api", include_in_schema=False)
+def port_congestion_api_page():
+    return HTMLResponse(content_pages.port_congestion_api_page())
+
+
+@app.get("/santos-port-congestion-api", include_in_schema=False)
+def santos_port_congestion_api_page():
+    return HTMLResponse(content_pages.santos_port_congestion_api_page())
+
+
+@app.get("/port-congestion-python", include_in_schema=False)
+def port_congestion_python_page():
+    return HTMLResponse(content_pages.port_congestion_python_page())
 
 
 @app.get("/.well-known/ai-plugin.json", include_in_schema=False)
