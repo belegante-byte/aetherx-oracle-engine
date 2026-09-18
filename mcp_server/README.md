@@ -46,9 +46,10 @@ uvx aetherx-mcp
 
 | Tool | Arguments | Returns |
 |------|-----------|---------|
-| `get_port_risk` | `port_id` (UN/LOCODE) | Congestion score, ETA delay, waiting vessels, freight volatility |
+| `get_port_risk` | `port_id` (UN/LOCODE) | Congestion score, ETA delay, waiting vessels, freight volatility, daily demurrage estimate |
 | `get_ports_risk` | `port_ids` (list) | Same, for a whole portfolio, fetched in parallel |
-| `list_supported_ports` | — | The 15 pre-seeded ports (id, name, country) |
+| `get_port_trend` | `port_id` (UN/LOCODE) | 24h / 48h / 72h congestion projection + trend label (acelerando / estável / descongestionando) |
+| `list_supported_ports` | — | The 16 pre-seeded ports (id, name, country) |
 
 Every response is a typed payload:
 
@@ -61,6 +62,7 @@ Every response is a typed payload:
   "eta_delay_days": 1.6,
   "waiting_vessels": 12,
   "freight_volatility_index": 0.42,
+  "estimated_daily_demurrage_usd": 63200,
   "updated_at": "2026-09-17 15:46:53"
 }
 ```
@@ -80,6 +82,7 @@ Without `RAPIDAPI_KEY`, the server calls the public production API directly.
 - *"What's the congestion risk at Santos right now?"*
 - *"Rank these ports by congestion: BRSSZ, CNSHA, NLRTM, USLAX."*
 - *"Which of my Asian ports has the highest freight volatility index?"*
+- *"Project the congestion at Rotterdam over the next 3 days."*
 
 ## License
 

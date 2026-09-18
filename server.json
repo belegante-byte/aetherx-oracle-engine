@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.belegante-byte/aetherx-mcp",
+  "title": "Aether-X Port Congestion Oracle",
+  "description": "Predictive port congestion, ETA delay and demurrage signals for global trade and finance.",
+  "version": "0.2.1",
+  "websiteUrl": "https://aether-x-oracle-production.up.railway.app",
+  "repository": {
+    "url": "https://github.com/belegante-byte/aetherx-oracle-engine",
+    "source": "github",
+    "id": "1374946506",
+    "subfolder": "mcp_server"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "aetherx-mcp",
+      "version": "0.2.1",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://aether-x-oracle-production.up.railway.app/mcp"
+    }
+  ]
+}
