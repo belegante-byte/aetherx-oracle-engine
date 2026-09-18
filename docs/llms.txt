@@ -12,6 +12,13 @@
 - [RapidAPI marketplace](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle): metered plans (Free / Pro / Ultra / Mega)
 - [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)
 
+## Guides (human-readable)
+
+- [Port Congestion API](https://aether-x-oracle-production.up.railway.app/port-congestion-api)
+- [Santos Port Congestion API](https://aether-x-oracle-production.up.railway.app/santos-port-congestion-api)
+- [Port Congestion Monitoring with Python](https://aether-x-oracle-production.up.railway.app/port-congestion-python)
+- [Aether-X MCP server page](https://aether-x-oracle-production.up.railway.app/mcp-page)
+
 ## SDKs and integrations
 
 - [Python SDK (PyPI)](https://pypi.org/project/aetherx-oracle/): `pip install aetherx-oracle` — sync + async client
