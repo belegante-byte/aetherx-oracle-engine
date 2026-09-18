@@ -55,6 +55,7 @@ class RapidAPIGuard:
             path in {
                 "/",
                 "/health",
+                "/health/",
                 "/openapi.json",
                 "/openapi.rapidapi.json",
                 "/llms.txt",
