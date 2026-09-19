@@ -435,3 +435,27 @@ def test_record_rapidapi_call_tracks_paid_plan():
     assert s["paid_plans"] == {"PRO": 1, "ULTRA": 1}
     assert s["paid_user_count"] == 2
     assert "alice_dev" in s["paid_users"] and "bob_co" in s["paid_users"]
+
+
+def test_metrics_persistence_roundtrip(tmp_path):
+    from src.api import metrics as m
+    state_path = tmp_path / "metrics_state.json"
+    m._tools.clear(); m._ports.clear(); m._paid_plans.clear(); m._paid_users.clear()
+    m._mcp_total = 0; m._mcp_errors = 0
+    m.record_tool_call("get_port_risk", port_id="BRPNG", ok=True, latency_ms=4)
+    m.record_rapidapi_call("PRO", "test_payer")
+    # persiste
+    old_path = m._STATE_PATH
+    m._STATE_PATH = str(state_path)
+    m._persist_now()
+    # zera e recarrega
+    m._tools.clear(); m._ports.clear(); m._paid_plans.clear(); m._paid_users.clear()
+    m._mcp_total = 0; m._mcp_errors = 0
+    m._load_state()
+    m._STATE_PATH = old_path
+    s = m.metrics_snapshot()
+    assert ("get_port_risk", 1) in s["top_tools"]
+    assert ("BRPNG", 1) in s["top_ports"]
+    assert s["paid_plans"] == {"PRO": 1}
+    assert "test_payer" in s["paid_users"]
+    assert s["mcp_calls"] == 1

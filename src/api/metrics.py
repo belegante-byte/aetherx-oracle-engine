@@ -10,6 +10,7 @@ import collections
 import hashlib
 import json
 import logging
+import os
 import threading
 import time
 
@@ -53,6 +54,15 @@ _uniq = {}        # {channel: set[str]}   hash do IP do cliente
 _machines = {}    # {channel: collections.Counter[str]}  chamadas por máquina
 _paths = {}       # {path: int}
 _t0 = time.time()
+
+# ---- Persistência: contadores sobrevivem a restarts/deploys ----
+# O Railway é efêmero (sem volume), então persistimos o estado em arquivo a
+# cada ~30s e no shutdown, recarregando no boot. O dashboard local (Mac)
+# acumula histórico durável separadamente.
+_STATE_PATH = os.environ.get("AETHERX_METRICS_STATE", "data/metrics_state.json")
+_STATE_INTERVAL = int(os.environ.get("AETHERX_METRICS_PERSIST_S", "30"))
+_persist_thread = None
+_persist_stop = threading.Event()
 
 # ---- Control Tower: uso de produto (tool, porto, status, latência) ----
 _tools = {}            # {tool_name: int}
@@ -268,3 +278,90 @@ def metrics_snapshot() -> dict:
             "paid_users": sorted(_paid_users),
             "paid_user_count": len(_paid_users),
         }
+
+def _persist_now() -> None:
+    """Grava o estado dos contadores em disco para sobreviver a restarts/deploys."""
+    import os
+    try:
+        with _lock:
+            state = {
+                "counts": dict(_counts),
+                "uniq": {k: sorted(v) for k, v in _uniq.items()},
+                "machines": {k: dict(cnt) for k, cnt in _machines.items()},
+                "paths": dict(_paths),
+                "tools": dict(_tools),
+                "ports": dict(_ports),
+                "mcp_total": _mcp_total,
+                "mcp_errors": _mcp_errors,
+                "errors_total": _errors_total,
+                "paid_plans": dict(_paid_plans),
+                "paid_users": sorted(_paid_users),
+                "events": list(_recent_events),
+                "saved_at": int(time.time()),
+            }
+        os.makedirs(os.path.dirname(os.path.abspath(_STATE_PATH)), exist_ok=True)
+        with open(_STATE_PATH, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False)
+    except Exception as e:
+        logger.warning("metrics persist failed: %s", e)
+
+
+def _load_state() -> None:
+    """Recarrega o estado persistido no boot (se existir)."""
+    global _mcp_total, _mcp_errors, _errors_total
+    try:
+        import os
+        if not os.path.exists(_STATE_PATH):
+            return
+        with open(_STATE_PATH, "r", encoding="utf-8") as f:
+            state = json.load(f)
+        with _lock:
+            _counts.update(state.get("counts", {}))
+            for k, v in state.get("uniq", {}).items():
+                _uniq.setdefault(k, set()).update(v)
+            for k, v in state.get("machines", {}).items():
+                _machines.setdefault(k, collections.Counter()).update(v)
+            _paths.update(state.get("paths", {}))
+            _tools.update(state.get("tools", {}))
+            _ports.update(state.get("ports", {}))
+            _mcp_total = state.get("mcp_total", _mcp_total)
+            _mcp_errors = state.get("mcp_errors", _mcp_errors)
+            _errors_total = state.get("errors_total", _errors_total)
+            _paid_plans.update(state.get("paid_plans", {}))
+            _paid_users.update(state.get("paid_users", []))
+            events = state.get("events", [])
+            if events:
+                _recent_events.extend(events[-100:])
+        logger.info("metrics state loaded from %s", _STATE_PATH)
+    except Exception as e:
+        logger.warning("metrics state load failed: %s", e)
+
+
+def start_persistence(interval: int | None = None) -> None:
+    """Inicia o thread de persistência periódica (chamado no boot da API)."""
+    global _persist_thread
+    interval = interval or _STATE_INTERVAL
+    _load_state()
+    if _persist_thread and _persist_thread.is_alive():
+        return
+
+    def _loop():
+        while not _persist_stop.is_set():
+            _persist_stop.wait(interval)
+            if _persist_stop.is_set():
+                break
+            _persist_now()
+
+    _persist_thread = threading.Thread(target=_loop, daemon=True, name="metrics-persist")
+    _persist_thread.start()
+    logger.info("metrics persistence started (interval %ss, path %s)", interval, _STATE_PATH)
+
+
+def stop_persistence() -> None:
+    """Encerra a persistência, gravando o estado final (shutdown)."""
+    global _persist_thread
+    _persist_stop.set()
+    if _persist_thread and _persist_thread.is_alive():
+        _persist_thread.join(timeout=5)
+    _persist_now()
+    logger.info("metrics persistence stopped; final state saved")

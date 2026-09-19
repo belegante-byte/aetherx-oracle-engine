@@ -37,6 +37,88 @@ CACHE_TTL = 3  # segundos entre polls efetivos na produção
 
 _cache: dict = {"ts": 0.0, "data": None, "error": None}
 
+# Histórico durável local (sobrevive a deploys de produção): cada snapshot é
+# anexado em JSONL com timestamp. Permite ver evolução mesmo após restart do
+# serviço remoto.
+_HISTORY_PATH = Path(__file__).resolve().parent.parent / "data" / "tower_history.jsonl"
+_LOCAL_STATE_PATH = Path(__file__).resolve().parent.parent / "data" / "tower_local_state.json"
+_local_state: dict = {
+    "boot_ts": None,           # primeiro boot do dashboard local
+    "cum_requests": 0,         # acumulado de requests desde o primeiro boot local
+    "cum_mcp_calls": 0,        # acumulado de mcp_calls
+    "cum_unique": {},          # {channel: int} pico de máquinas únicas vistas
+    "cum_tools": {},           # {tool: int} acumulado
+    "cum_ports": {},           # {port: int} acumulado
+    "cum_paid_calls": 0,
+    "cum_paid_users": set(),
+    "resets": 0,               # quantas vezes a produção reiniciou (uptime caiu)
+}
+
+
+def _load_local_state():
+    global _local_state
+    try:
+        if _LOCAL_STATE_PATH.exists():
+            import json as _json
+            data = _json.loads(_LOCAL_STATE_PATH.read_text(encoding="utf-8"))
+            data["cum_paid_users"] = set(data.get("cum_paid_users", []))
+            _local_state.update(data)
+    except Exception:
+        pass
+    if _local_state.get("boot_ts") is None:
+        _local_state["boot_ts"] = int(time.time())
+
+
+def _save_local_state():
+    import json as _json
+    try:
+        out = dict(_local_state)
+        out["cum_paid_users"] = sorted(out["cum_paid_users"])
+        _LOCAL_STATE_PATH.write_text(_json.dumps(out, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _accumulate(data: dict):
+    """Acumula os contadores de produção no estado durável local."""
+    st = _local_state
+    # detecta restart da produção (uptime menor que o último visto)
+    prev = st.get("_last_uptime")
+    cur = data.get("uptime_seconds", 0)
+    if prev is not None and cur < prev:
+        st["resets"] = st.get("resets", 0) + 1
+    st["_last_uptime"] = cur
+    # pico de máquinas únicas por canal
+    for ch, n in (data.get("unique_machines") or {}).items():
+        st["cum_unique"][ch] = max(st["cum_unique"].get(ch, 0), n)
+    # acumula chamadas
+    st["cum_requests"] += data.get("requests_total", 0)
+    st["cum_mcp_calls"] += data.get("mcp_calls", 0)
+    st["cum_paid_calls"] += sum((data.get("paid_plans") or {}).values())
+    st["cum_paid_users"].update(data.get("paid_users") or [])
+    for t, c in (data.get("top_tools") or []):
+        st["cum_tools"][t] = st["cum_tools"].get(t, 0) + c
+    for p, c in (data.get("top_ports") or []):
+        st["cum_ports"][p] = st["cum_ports"].get(p, 0) + c
+
+
+def _append_history(data: dict):
+    """Anexa o snapshot ao JSONL durável local (1 linha por poll, com ts)."""
+    import json as _json
+    try:
+        line = _json.dumps({"ts": int(time.time()), "data": {
+            "requests": data.get("requests_total", 0),
+            "mcp_calls": data.get("mcp_calls", 0),
+            "mcp_errors": data.get("mcp_errors", 0),
+            "unique": data.get("unique_machines", {}),
+            "repeat": data.get("repeat_machines", {}),
+            "uptime": data.get("uptime_seconds", 0),
+        }}, ensure_ascii=False)
+        with open(_HISTORY_PATH, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception:
+        pass
+
 
 def _fmt_uptime(seconds: int) -> str:
     h, rem = divmod(int(seconds), 3600)
@@ -63,6 +145,9 @@ def fetch_metrics() -> dict:
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         _cache.update({"ts": now, "data": data, "error": None})
+        _accumulate(data)
+        _append_history(data)
+        _save_local_state()
     except Exception as e:
         _cache["error"] = f"{type(e).__name__}: {e}"
     return _cache["data"] or {}
@@ -76,6 +161,18 @@ def metrics():
     data = fetch_metrics()
     data["_tower_error"] = _cache.get("error")
     data["_tower_fetched_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    st = _local_state
+    data["_local"] = {
+        "boot_ts": st.get("boot_ts"),
+        "cum_requests": st.get("cum_requests", 0),
+        "cum_mcp_calls": st.get("cum_mcp_calls", 0),
+        "cum_unique": st.get("cum_unique", {}),
+        "cum_tools": dict(sorted(st.get("cum_tools", {}).items(), key=lambda x: -x[1])[:20]),
+        "cum_ports": dict(sorted(st.get("cum_ports", {}).items(), key=lambda x: -x[1])[:20]),
+        "cum_paid_calls": st.get("cum_paid_calls", 0),
+        "cum_paid_users": sorted(st.get("cum_paid_users", set()))[:10],
+        "resets": st.get("resets", 0),
+    }
     return data
 
 
@@ -143,7 +240,11 @@ function render(d){
     '<div class="stat">UNIQUE M2M <span class="val">'+uniq+'</span></div>'+
     '<div class="stat">REPEAT <span class="val">'+rep+'</span></div>'+
     '<div class="stat">REPEAT RATE <span class="val">'+repRate+'%</span></div>'+
-    '<div class="stat">ERROR RATE <span class="val">'+((d.error_rate||0)*100).toFixed(2)+'%</span></div>';
+    '<div class="stat">ERROR RATE <span class="val">'+((d.error_rate||0)*100).toFixed(2)+'%</span></div>'+
+    '<div class="muted" style="margin-top:.4rem">ACUMULADO (desde 1º boot local)</div>'+
+    '<div class="stat">REQUESTS <span class="val">'+((d._local&&d._local.cum_requests)||0).toLocaleString()+'</span></div>'+
+    '<div class="stat">MCP CALLS <span class="val">'+((d._local&&d._local.cum_mcp_calls)||0).toLocaleString()+'</span></div>'+
+    '<div class="stat">RESETS (deploy prod) <span class="val">'+((d._local&&d._local.resets)||0)+'</span></div>';
   document.getElementById('tools').innerHTML=(d.top_tools||[]).map(t=>'<div class="row"><span>'+esc(t[0])+'</span><span class="val">'+t[1]+'</span></div>').join('')||'<div class="muted">sem dados</div>';
   document.getElementById('ports').innerHTML=(d.top_ports||[]).map(p=>'<div class="row"><span>'+esc(p[0])+'</span><span class="val">'+p[1]+'</span></div>').join('')||'<div class="muted">sem dados</div>';
   const paidPlans=d.paid_plans||{};
@@ -184,8 +285,10 @@ def main():
     if not SECRET:
         print("⚠️  RAPIDAPI_PROXY_SECRET não encontrado em config/.env — dashboard não consegue ler produção.")
         sys.exit(1)
+    _load_local_state()
     print(f"▶  Aether-X Control Tower local em http://{args.host}:{args.port}")
     print(f"   fonte: {PROD_METRICS_URL}")
+    print(f"   histórico durável: {_HISTORY_PATH}")
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 
 

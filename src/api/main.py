@@ -402,8 +402,18 @@ async def lifespan(app: FastAPI):
                     await asyncio.sleep(intervalo)
 
         asyncio.create_task(ciclo_ingestao())
+    # Persistência dos contadores M2M: carrega estado no boot e grava no shutdown.
+    try:
+        from src.api.metrics import start_persistence, stop_persistence
+        start_persistence()
+    except Exception as e:
+        print(f"[AETHER-X METRICS] persistencia nao iniciada: {type(e).__name__}: {e}")
     async with mcp_server.session_manager.run():
         yield
+    try:
+        stop_persistence()
+    except Exception:
+        pass
 
 
 app = FastAPI(
