@@ -58,7 +58,7 @@ mcp = MCPServer(
         "it is `live:appa+santos+lachmann` (real line-ups); the rest are "
         "`static_reference_seed` reference telemetry."
     ),
-    version="0.2.1",
+    version="0.2.2",
     website_url="https://aether-x-oracle-production.up.railway.app",
 )
 

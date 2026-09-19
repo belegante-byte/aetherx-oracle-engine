@@ -44,10 +44,11 @@ def _mock_transport() -> httpx.MockTransport:
     return httpx.MockTransport(handler)
 
 
-def test_list_supported_ports_returns_sixteen() -> None:
+def test_list_supported_ports_returns_seventeen() -> None:
     ports = server.list_supported_ports()
-    assert len(ports) == 16
+    assert len(ports) == 17
     assert any(p["port_id"] == "BRSSZ" for p in ports)
+    assert any(p["port_id"] == "BRPNG" for p in ports)
     assert any(p["port_id"] == "CNTAO" for p in ports)
 
 

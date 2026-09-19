@@ -13,7 +13,7 @@ PORTS_RISK_ENDPOINT = "/v1/ports-risk"
 
 
 class PortRisk(BaseModel):
-    """Predictive congestion signal for a single port."""
+    """Congestion signal for a single port."""
 
     port_id: str = Field(..., description="UN/LOCODE do porto (ex: BRSSZ)")
     port_name: str = Field(..., description="Nome do porto")
@@ -24,6 +24,16 @@ class PortRisk(BaseModel):
     freight_volatility_index: float = Field(..., description="Índice de volatilidade de frete")
     estimated_daily_demurrage_usd: int = Field(..., description="Demurrage diária estimada (USD)")
     updated_at: str = Field(..., description="Timestamp da última atualização")
+    as_of: Optional[str] = Field(None, description="Timestamp da fonte (live refresh ou seed)")
+    data_source: Optional[str] = Field(
+        None,
+        description="Proveniência: live:appa+santos+lachmann (BR) ou static_reference_seed",
+    )
+    data_source_label: Optional[str] = Field(None, description="Descrição humana da proveniência")
+    live: Optional[Dict[str, int]] = Field(
+        None,
+        description="Detalhe da fila viva (BR): ao_largo, esperados, atracados, programados",
+    )
 
 
 class PortTrendProjection(BaseModel):
@@ -44,6 +54,8 @@ class PortTrend(BaseModel):
     congestion_score: float = Field(..., description="Score atual (0.0 a 1.0)")
     projection: Dict[str, PortTrendProjection] = Field(..., description="Projeções por horizonte")
     updated_at: str = Field(..., description="Timestamp da última atualização")
+    as_of: Optional[str] = Field(None, description="Timestamp da fonte (live refresh ou seed)")
+    data_source: Optional[str] = Field(None, description="synthetic_projection (projeção, não previsão viva)")
 
 
 class OracleClient:
