@@ -81,3 +81,34 @@ o MCP é canal de distribuição. Antes de pricing, capturar primeiro tool_call 
 - **1 par BRPNG** (2026-09-19, fila=33 ↔ ANTAQ 2026-jan). Acumulação diária via launchd 08:30.
 - ANTAQ: 37 meses × 5 portos BR.
 - Matriz de qualidade: BRPNG=VALIDATED · BRSSZ/RIO/NIT/ITG=CONDITIONAL · +14=REFERENCE.
+## Apêndice — Experimentos ativos (2026-09-19)
+
+### Experimento 1: Tool Selection Engineering → resultado positivo
+```
+ANTES   discovery → connect → tool_call = 0
+APÓS    discovery → connect → tool_call = 1   (8ca5bfea: BRPNG, BRSSZ)
+```
+Intervenção (tool descriptions orientadas a decisão + server instructions + campo `signal`)
+alterou o funil de 0 → 1 tool_call. Primeiro resultado experimental positivo.
+
+### Experimento 2: Distribution-by-Intent (ativo)
+Ontologia de intenção (congestion/queue/delay/economic/decision) aplicada em
+llms.txt, README, registry v0.4.3, MCP description, meta tags e páginas.
+Objetivo: aumentar máquinas QUALIFICADAS (com razão explícita de chamar).
+
+### Máquina observada: `8ca5bfea`
+```
+tool_call #1: congestion→BRPNG, decision→[BRSSZ,BRPNG], delay→BRSSZ
+```
+Aguardando **retorno em janela distinta ≥300s** com tool_call → `repeat_tool = 1`.
+
+### Marcos (não mexer em pricing até atingir)
+1. `TOOL CALL ≥ 1` — ✅ atingido
+2. `TOOL REPEAT ≥ 1` — próximo marco (janela ≥300s)
+3. machine → múltiplas tools
+4. machine → uso recorrente
+5. machine → paid
+
+### Regra vigente
+Sem pricing, sem paywall, sem intervenção estrutural nova. Deixar a distribuição
+por intenção produzir oportunidades e o funil medir comportamento.
