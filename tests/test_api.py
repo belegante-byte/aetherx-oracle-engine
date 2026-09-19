@@ -156,6 +156,43 @@ def test_qingdao_new_port_supported():
     assert body["estimated_daily_demurrage_usd"] == 56000
 
 
+def test_bpng_calibrated_fields_exposed_via_api():
+    """Regressão: PortRiskResponse (Pydantic) filtrava os campos calibrados.
+
+    O engine gera historical_expected_wait_h/p90/expected_demurrage/confidence,
+    mas o modelo de resposta os descartava silenciosamente. Verifica que o
+    endpoint /v1/port-risk os expõe para o porto calibrado (BRPNG).
+    """
+    resp = client.get("/v1/port-risk", params={"port_id": "BRPNG"})
+    assert resp.status_code == 200
+    body = resp.json()
+    calibrados = {
+        "historical_expected_wait_h",
+        "p90_wait_h",
+        "expected_demurrage_usd",
+        "p90_demurrage_usd",
+        "confidence",
+        "paired_windows",
+        "fonte",
+        "semantica",
+    }
+    assert calibrados <= set(body.keys())
+    if body.get("confidence") is not None:
+        assert body["confidence"] >= 0
+        assert body["expected_demurrage_usd"] > 0
+
+
+def test_bpng_live_waiting_is_real_queue():
+    """Regressão: waiting_vessels deve ser a fila real (ao_largo), não a soma
+    com esperados/programados (chegadas futuras)."""
+    resp = client.get("/v1/port-risk", params={"port_id": "BRPNG"})
+    assert resp.status_code == 200
+    body = resp.json()
+    live = body.get("live") or {}
+    if live.get("ao_largo") is not None:
+        assert body["waiting_vessels"] == live["ao_largo"]
+
+
 def test_port_trend_projection():
     resp = client.get("/v1/port-trend", params={"port_id": "brssz"})
     assert resp.status_code == 200

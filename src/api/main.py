@@ -281,6 +281,15 @@ class PortRiskResponse(BaseModel):
     live_detail: str | None = None
     live: dict | None = None
     validation: dict | None = None
+    # Estado calibrado (fila observada → experiência ANTAQ) + decisão financeira
+    historical_expected_wait_h: float | None = None
+    p90_wait_h: float | None = None
+    expected_demurrage_usd: int | None = None
+    p90_demurrage_usd: int | None = None
+    confidence: float | None = None
+    paired_windows: int | None = None
+    fonte: str | None = None
+    semantica: str | None = None
 
 
 class TrendPoint(BaseModel):
