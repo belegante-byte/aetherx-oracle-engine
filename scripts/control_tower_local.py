@@ -47,11 +47,18 @@ _local_state: dict = {
     "cum_requests": 0,         # acumulado de requests desde o primeiro boot local
     "cum_mcp_calls": 0,        # acumulado de mcp_calls
     "cum_unique": {},          # {channel: int} pico de máquinas únicas vistas
-    "cum_tools": {},           # {tool: int} acumulado
-    "cum_ports": {},           # {port: int} acumulado
+    "cum_tools": {},           # {tool: int} acumulado (deltas)
+    "cum_ports": {},           # {port: int} acumulado (deltas)
     "cum_paid_calls": 0,
     "cum_paid_users": set(),
     "resets": 0,               # quantas vezes a produção reiniciou (uptime caiu)
+    # estado de delta (não persiste): últimos valores vistos para calcular deltas
+    "_last_uptime": None,
+    "_last_requests": 0,
+    "_last_mcp_calls": 0,
+    "_last_paid_calls": 0,
+    "_last_tools": {},
+    "_last_ports": {},
 }
 
 
@@ -72,7 +79,7 @@ def _load_local_state():
 def _save_local_state():
     import json as _json
     try:
-        out = dict(_local_state)
+        out = {k: v for k, v in _local_state.items() if not k.startswith("_last")}
         out["cum_paid_users"] = sorted(out["cum_paid_users"])
         _LOCAL_STATE_PATH.write_text(_json.dumps(out, ensure_ascii=False), encoding="utf-8")
     except Exception:
@@ -80,26 +87,55 @@ def _save_local_state():
 
 
 def _accumulate(data: dict):
-    """Acumula os contadores de produção no estado durável local."""
+    """Acumula os contadores de produção no estado durável local.
+
+    Soma apenas o DELTA entre polls (não o total absoluto), senão o acumulado
+    infla a cada poll. Detecta reset da produção (contador caiu) e trata como
+    novo começo a partir do valor atual.
+    """
     st = _local_state
-    # detecta restart da produção (uptime menor que o último visto)
-    prev = st.get("_last_uptime")
-    cur = data.get("uptime_seconds", 0)
-    if prev is not None and cur < prev:
+    prev_uptime = st.get("_last_uptime")
+    cur_uptime = data.get("uptime_seconds", 0)
+    if prev_uptime is not None and cur_uptime < prev_uptime:
         st["resets"] = st.get("resets", 0) + 1
-    st["_last_uptime"] = cur
-    # pico de máquinas únicas por canal
+        # produção reiniciou: deltas passados não valem; usa valores atuais como base
+        st["_last_requests"] = 0
+        st["_last_mcp_calls"] = 0
+        st["_last_tools"] = {}
+        st["_last_ports"] = {}
+        st["_last_paid_calls"] = 0
+    st["_last_uptime"] = cur_uptime
+
+    def _delta(key, last_key, cur):
+        prev = st.get(last_key, 0)
+        st[last_key] = cur
+        if cur >= prev:
+            return cur - prev
+        return cur  # reset: novo processo começou do zero
+
+    st["cum_requests"] += _delta("req", "_last_requests", data.get("requests_total", 0))
+    st["cum_mcp_calls"] += _delta("mcp", "_last_mcp_calls", data.get("mcp_calls", 0))
+
+    cur_paid = sum((data.get("paid_plans") or {}).values())
+    st["cum_paid_calls"] += _delta("paid", "_last_paid_calls", cur_paid)
+    st["cum_paid_users"].update(data.get("paid_users") or [])
+
+    # pico de máquinas únicas por canal (não é delta, é máximo visto)
     for ch, n in (data.get("unique_machines") or {}).items():
         st["cum_unique"][ch] = max(st["cum_unique"].get(ch, 0), n)
-    # acumula chamadas
-    st["cum_requests"] += data.get("requests_total", 0)
-    st["cum_mcp_calls"] += data.get("mcp_calls", 0)
-    st["cum_paid_calls"] += sum((data.get("paid_plans") or {}).values())
-    st["cum_paid_users"].update(data.get("paid_users") or [])
+
+    # deltas por tool/porto (top_tools/top_ports são totais do processo atual)
+    last_tools = st.get("_last_tools", {})
+    st["_last_tools"] = dict(data.get("top_tools") or [])
     for t, c in (data.get("top_tools") or []):
-        st["cum_tools"][t] = st["cum_tools"].get(t, 0) + c
+        prev = last_tools.get(t, 0)
+        st["cum_tools"][t] = st["cum_tools"].get(t, 0) + (c - prev if c >= prev else c)
+
+    last_ports = st.get("_last_ports", {})
+    st["_last_ports"] = dict(data.get("top_ports") or [])
     for p, c in (data.get("top_ports") or []):
-        st["cum_ports"][p] = st["cum_ports"].get(p, 0) + c
+        prev = last_ports.get(p, 0)
+        st["cum_ports"][p] = st["cum_ports"].get(p, 0) + (c - prev if c >= prev else c)
 
 
 def _append_history(data: dict):
