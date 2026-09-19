@@ -4,5 +4,6 @@ __pycache__/
 data/raw/*
 data/processed/*
 !data/processed/.gitkeep
+data/antaq_cache/
 .env
 .DS_Store

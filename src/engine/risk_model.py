@@ -68,6 +68,57 @@ def invalidate_cache():
     calculate_port_trend.cache_clear()
 
 
+def load_antaq_validation(port_id: str, years_back: int = 12) -> dict | None:
+    """Recupera a validação ANTAQ (ground-truth tardio) de um porto BR.
+
+    Retorna a agregação anual/mensal mais recente registrada pelo Espelho
+    Estatístico da ANTAQ (atracação real, espera, estadia) — usada para
+    comparar o sinal do oráculo com o registrado pela autoridade portuária.
+    None quando a tabela ainda não existe (ex.: antes do primeiro run de
+    `scripts/validate_antaq.py`) ou o porto não tem cobertura ANTAQ.
+    """
+    try:
+        conn = _get_conn()
+        tables = [r[0] for r in conn.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_name='antaq_validation'"
+        ).fetchall()]
+        if not tables:
+            return None
+        row = conn.execute(
+            """
+            SELECT ano, mes, n_atracacoes, n_com_imo,
+                   espera_atracacao_h_avg, espera_atracacao_h_med,
+                   espera_atracacao_h_p90, atracado_h_avg, estadia_h_avg,
+                   MAX(CAST(gerado_em AS VARCHAR))
+            FROM antaq_validation
+            WHERE port_id = ?
+            GROUP BY ano, mes, n_atracacoes, n_com_imo,
+                     espera_atracacao_h_avg, espera_atracacao_h_med,
+                     espera_atracacao_h_p90, atracado_h_avg, estadia_h_avg
+            ORDER BY ano DESC, mes DESC
+            LIMIT 1
+            """,
+            [port_id],
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "source": "antaq_estatistico_aquaviario",
+            "ano": row[0],
+            "mes": row[1],
+            "n_atracacoes": int(row[2]),
+            "n_com_imo": int(row[3]),
+            "espera_atracacao_h_avg": round(float(row[4]), 1) if row[4] is not None else None,
+            "espera_atracacao_h_med": round(float(row[5]), 1) if row[5] is not None else None,
+            "espera_atracacao_h_p90": round(float(row[6]), 1) if row[6] is not None else None,
+            "atracado_h_avg": round(float(row[7]), 1) if row[7] is not None else None,
+            "estadia_h_avg": round(float(row[8]), 1) if row[8] is not None else None,
+            "validado_em": row[9],
+        }
+    except Exception:
+        return None
+
+
 @functools.lru_cache(maxsize=1024)
 def calculate_port_risk(port_id: str) -> dict:
     """
@@ -149,6 +200,7 @@ def calculate_port_risk(port_id: str) -> dict:
         "data_source": data_source,
         "data_source_label": data_source_label,
         "live_detail": live_detail,
+        "validation": load_antaq_validation(port_id),
         **extra,
     }
 

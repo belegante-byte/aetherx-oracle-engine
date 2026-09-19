@@ -280,6 +280,7 @@ class PortRiskResponse(BaseModel):
     data_source_label: str
     live_detail: str | None = None
     live: dict | None = None
+    validation: dict | None = None
 
 
 class TrendPoint(BaseModel):

@@ -26,6 +26,7 @@
 - O que mudou: **todo** payload agora declara `data_source`, `as_of` e `data_source_label`.
 - **BRSSZ/BRPNG passam a ter `data_source=live:appa+santos+lachmann`** (line-ups reais de APPA, painel da CODESP/Porto de Santos e cronograma Lachmann), com detalhe em `live` (`ao_largo`/`esperados`/`atracados`/`programados`).
 - **BRRIO/BRNIT/BRITG têm `data_source=live:portosrio_silog`** — pré-pauta SILOG PortosRio (Rio, Niterói, Itaguaí) com IMO real.
+- **Validação ANTAQ (ground-truth tardio)**: `scripts/validate_antaq.py` baixa o espelho do Estatístico Aquaviário (2010–2026, 1.3M atracações, com IMO e tempos reais via HuggingFace — oficial `estatistica.antaq.gov.br` está atrás de Cloudflare), agrega por porto/mês em `antaq_validation` e expõe no payload (`validation`). Correlação inicial sinal↔real: BRPNG score 0.95 ↔ espera média 140h; BRSSZ 0.33 ↔ 51h. Roda manualmente/cron (não é parte do startCommand); cache 90d em `data/antaq_cache/`.
 - Ainda **não existem chaves comerciais** (AIS/MarineTraffic/VesselFinder/Datalastic) no ambiente — só fontes abertas.
 - ANTAQ: `dadosabertos` segue com DNS fora; painel gov.br é Qlik/PowerBI sem CSV estático; dataset "Situação dos Portos em Tempo Real" (dados.gov.br) é app self-report de criticidade, sem line-up com IMO — não serve como fonte viva, mas é candidato a camada de validação/ground-truth.
 
