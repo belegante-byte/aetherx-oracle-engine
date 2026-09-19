@@ -152,3 +152,28 @@ threshold de 300s.
 - Primeiro consumo: demonstrado historicamente ✓
 - Consumo recorrente: ainda não demonstrado
 - Pagamento: ainda não demonstrado
+
+## Correção de dados: SILOG conta navios fundeados como fila real (2026-09-19)
+
+**Problema identificado:** só BRPNG tinha fila observável (dados reais fluindo).
+Investigação revelou bug no parser SILOG: navios com "Fundeio" no contexto
+(de/para) eram classificados como atracado/programado porque MUDANÇA/SAÍDA/
+ENTRADA vinham antes no dict e o `break` impedia checar FUNDEADO.
+
+**Correção:** estado físico tem prioridade sobre tipo de operação — contexto
+com FUNDE/AGUARDANDO = ao_largo (fila real).
+
+**Resultado (produção):**
+| Port | Antes | Depois |
+|---|---|---|
+| BRPNG | VALIDATED (0.504) | VALIDATED (0.504) |
+| BRRIO | CONDITIONAL (0.833 heur.) | VALIDATED (0.644 calibrado, 30 navios, espera 25.9h) |
+| BRITG | CONDITIONAL (0.775) | VALIDATED (0.378, 6 navios, espera 86.1h) |
+| BRNIT | CONDITIONAL (0.95) | VALIDATED (0.4, 2 navios, espera 11h) |
+| BRSSZ | CONDITIONAL | CONDITIONAL (APS não expõe fila ao largo publicamente) |
+
+Pares de calibração: 1 → **4** (BRPNG, BRRIO, BRITG, BRNIT).
+
+**Limitação honesta:** BRSSZ (Santos) permanece CONDITIONAL porque a fonte
+pública da APS não expõe a fila ao largo — apenas atracados/programados/
+esperados. Candidato natural a AIS futuro.
