@@ -71,7 +71,7 @@ class RapidAPIGuard:
             or path.startswith("/port-congestion-")
             or path.startswith(("/docs", "/redoc", "/mcp", "/public/"))
             or path == "/.well-known/ai-plugin.json"
-            or bool(_re.fullmatch(r"/google[0-9a-f]{20,}\.html", path))
+            or bool(_re.fullmatch(r"/google[0-9a-f]{10,}\.html", path))
             or path == "/BingSiteAuth.xml"
         )
 
@@ -732,7 +732,7 @@ def verification_file(filename: str):
     Registrada antes do mount do MCP para não ser capturada por ele.
     """
     import re as _re
-    if not (_re.fullmatch(r"(google[0-9a-f]{20,}\.html)|(BingSiteAuth\.xml)", filename)):
+    if not (_re.fullmatch(r"(google[0-9a-f]{10,}\.html)|(BingSiteAuth\.xml)", filename)):
         raise HTTPException(status_code=404, detail="Not found")
     path = Path(__file__).resolve().parent.parent.parent / "data" / "verification" / filename
     if not path.exists():
