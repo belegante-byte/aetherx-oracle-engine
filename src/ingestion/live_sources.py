@@ -366,11 +366,18 @@ def fetch_silog_pre_pauta(dominio: int, timeout: int = 30) -> list:
             if match:
                 imo = match.group(1)
             tipo = cells[3].upper() if len(cells) > 3 else "AGENDAMENTO"
+            # Estado FÍSICO tem prioridade sobre tipo de operação: um navio
+            # envolvendo "Fundeio" (ao largo) está NA FILA, mesmo que o tipo seja
+            # MUDANÇA/SAÍDA/ENTRADA. Fundeado = aguardando berço (ao_largo real).
             status = "programado"
-            for chave, valor in _SILOG_STATUS_MAP.items():
-                if chave in tipo or chave in " ".join(cells[:6]).upper():
-                    status = valor
-                    break
+            contexto = " ".join(cells[:6]).upper()
+            if "FUNDE" in contexto or "AGUARDANDO" in contexto or "FUNDEIO" in contexto:
+                status = "ao_largo"
+            else:
+                for chave, valor in _SILOG_STATUS_MAP.items():
+                    if chave in tipo or chave in contexto:
+                        status = valor
+                        break
             data_raw = cells[0] if cells else ""
             eta = None
             m_data = re.search(r"(\d{2}/\d{2}/\d{4})", data_raw)

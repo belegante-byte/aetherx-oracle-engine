@@ -133,3 +133,21 @@ def test_resumo_por_porto_agrupa():
     assert res["BRPNG"]["status_ESPERADO"] == 2
     assert res["BRPNG"]["src_lachmann"] == 1
     assert res["BRSSZ"]["status_EM_OPERACAO"] == 1
+
+def test_silog_fundeio_conta_como_ao_largo():
+    """Regressão: navio com 'Fundeio' no contexto (de/para) é fila real (ao_largo),
+    mesmo que o tipo de operação seja MUDANÇA/SAÍDA/ENTRADA."""
+    import ssl, urllib.request
+    from src.ingestion.live_sources import fetch_silog_pre_pauta, SILOG_URL, HEADERS, SSL_CTX
+    from collections import Counter
+    linhas = fetch_silog_pre_pauta(1)  # BRRIO
+    assert linhas, "esperava linhas SILOG para BRRIO"
+    status = Counter(l["status"] for l in linhas)
+    # com a correção, deve haver ao_largo (navios fundeados) — se a fonte tiver fundeados
+    # A validação real: pelo menos um navio 'Fundeio' vira ao_largo
+    fundeados = [l for l in linhas if "FUNDE" in (l["raw"].get("de","") + l["raw"].get("para","")).upper()]
+    if fundeados:
+        assert all(l["status"] == "ao_largo" for l in fundeados), "Fundeio deveria ser ao_largo"
+    # se a fonte tem fundeados hoje, ao_largo > 0
+    if any("FUNDE" in (l["raw"].get("de","") + l["raw"].get("para","")).upper() for l in linhas):
+        assert status.get("ao_largo", 0) > 0
