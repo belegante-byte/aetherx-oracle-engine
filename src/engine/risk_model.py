@@ -68,6 +68,21 @@ def invalidate_cache():
     calculate_port_trend.cache_clear()
 
 
+def _mes_ord_expr() -> str:
+    """Expressão DuckDB que converte mês abreviado ('jan'..'dez') em número 1..12.
+
+    Necessária porque a coluna `mes` da ANTAQ é VARCHAR textual; ORDER BY nela é
+    léxico ('out' > 'set'), o que corromperia a escolha da janela vigente.
+    """
+    return """
+    CASE mes
+      WHEN 'jan' THEN 1 WHEN 'fev' THEN 2 WHEN 'mar' THEN 3 WHEN 'abr' THEN 4
+      WHEN 'mai' THEN 5 WHEN 'jun' THEN 6 WHEN 'jul' THEN 7 WHEN 'ago' THEN 8
+      WHEN 'set' THEN 9 WHEN 'out' THEN 10 WHEN 'nov' THEN 11 WHEN 'dez' THEN 12
+    END
+    """
+
+
 def load_antaq_validation(port_id: str, years_back: int = 12) -> dict | None:
     """Recupera a validação ANTAQ (ground-truth tardio) de um porto BR.
 
@@ -95,9 +110,10 @@ def load_antaq_validation(port_id: str, years_back: int = 12) -> dict | None:
             GROUP BY ano, mes, n_atracacoes, n_com_imo,
                      espera_atracacao_h_avg, espera_atracacao_h_med,
                      espera_atracacao_h_p90, atracado_h_avg, estadia_h_avg
-            ORDER BY ano DESC, mes DESC
+            ORDER BY ano DESC, %s DESC
             LIMIT 1
-            """,
+            """
+            % _mes_ord_expr(),
             [port_id],
         ).fetchone()
         if row is None:
@@ -186,7 +202,7 @@ def calculate_port_risk(port_id: str) -> dict:
         except Exception:
             extra = {}
 
-    return {
+    result = {
         "port_id": row[0],
         "port_name": row[1],
         "country": row[2],
@@ -203,6 +219,41 @@ def calculate_port_risk(port_id: str) -> dict:
         "validation": load_antaq_validation(port_id),
         **extra,
     }
+
+    # Fila real = AO_LARGO quando o detalhe vivo existe (não a soma com
+    # esperados/programados, que são chegadas futuras). Se o port_metrics ainda
+    # guarda um valor viciado de ingestão antiga, sobrepõe pelo dado vivo real.
+    live_extra = extra.get("live")
+    if live_extra and live_extra.get("ao_largo") is not None:
+        result["waiting_vessels"] = live_extra["ao_largo"]
+
+    # Estado calibrado (fila observada → experiência ANTAQ) tem precedência sobre
+    # o heurístico quando existe sinal validado para o porto. Usa a conexão da
+    # API (read-only) — nenhuma segunda conexão no mesmo arquivo DuckDB.
+    try:
+        from src.engine.calibration import calibrate as _calibrate_state
+        cal = _calibrate_state(port_id, conn=conn)
+        if cal and cal.get("congestion_score") is not None:
+            result["congestion_score"] = cal["congestion_score"]
+            result["historical_expected_wait_h"] = cal["historical_expected_wait_h"]
+            result["p90_wait_h"] = cal["p90_wait_h"]
+            result["eta_delay_days"] = cal["eta_delay_days"]
+            result["confidence"] = cal["confidence"]
+            result["paired_windows"] = cal["paired_windows"]
+            result["fonte"] = cal["fonte"]
+            result["semantica"] = cal["semantica"]
+            # Decisão financeira ancorada nas horas reais de espera (ANTAQ),
+            # não no score abstrato: US$/dia × duração esperada e pior-caso.
+            result["expected_demurrage_usd"] = round(
+                cal["historical_expected_wait_h"] / 24 * DEMURRAGE_BASE_USD_PER_DAY
+            )
+            result["p90_demurrage_usd"] = round(
+                cal["p90_wait_h"] / 24 * DEMURRAGE_BASE_USD_PER_DAY
+            )
+    except Exception:
+        pass
+
+    return result
 
 
 def _project_score(current: float, target: float, hours: float) -> float:

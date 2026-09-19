@@ -76,7 +76,7 @@ def test_snapshot_register_calibration_pair(tmp_path, monkeypatch):
     ).fetchall()
     assert len(pairs) == 1
     assert pairs[0][0] == "BRPNG"
-    assert pairs[0][1] == 2  # AO_LARGO + ESPERADO
+    assert pairs[0][1] == 1  # fila real = AO_LARGO (ESPERADO é futura, não soma)
     assert pairs[0][2] == 1
     assert pairs[0][3] == 1
     assert pairs[0][4] == 1

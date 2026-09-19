@@ -33,6 +33,21 @@ def db_path() -> str:
     return os.getenv("DATABASE_PATH", "data/oracle.duckdb")
 
 
+def _mes_ord_expr() -> str:
+    """Expressão DuckDB que converte mês abreviado ('jan'..'dez') em número 1..12.
+
+    Necessária porque a coluna `mes` da ANTAQ é VARCHAR textual; ORDER BY nela é
+    léxico ('set' > 'out'), o que corromperia a escolha da janela vigente.
+    """
+    return """
+    CASE mes
+      WHEN 'jan' THEN 1 WHEN 'fev' THEN 2 WHEN 'mar' THEN 3 WHEN 'abr' THEN 4
+      WHEN 'mai' THEN 5 WHEN 'jun' THEN 6 WHEN 'jul' THEN 7 WHEN 'ago' THEN 8
+      WHEN 'set' THEN 9 WHEN 'out' THEN 10 WHEN 'nov' THEN 11 WHEN 'dez' THEN 12
+    END
+    """
+
+
 def ensure_calibration_table(conn) -> None:
     conn.execute("""
         CREATE TABLE IF NOT EXISTS calibration_pairs (
@@ -72,9 +87,10 @@ def register_pair(
                espera_atracacao_h_p90, CAST(ano AS VARCHAR) || '-' || mes
         FROM antaq_validation
         WHERE port_id = ?
-        ORDER BY ano DESC, mes DESC
+        ORDER BY ano DESC, %s DESC, n_atracacoes DESC
         LIMIT 1
-        """,
+        """
+        % _mes_ord_expr(),
         [port_id],
     ).fetchone()
     if row is None:
@@ -129,9 +145,10 @@ def confidence(conn, port_id: str) -> dict:
     ).fetchone()[0]
     recente = conn.execute(
         """
-        SELECT CASE WHEN MAX(CAST(ano AS VARCHAR)||'-'||mes) >= '2025-01' THEN 1 ELSE 0 END
+        SELECT CASE WHEN MAX(ano * 100 + (%s)) >= 202501 THEN 1 ELSE 0 END
         FROM antaq_validation WHERE port_id=?
-        """,
+        """
+        % _mes_ord_expr(),
         [port_id],
     ).fetchone()[0]
     # v1: base fixa da distribuição histórica + bônus por pares emparelhados.
@@ -140,15 +157,20 @@ def confidence(conn, port_id: str) -> dict:
     return {"confidence": round(min(0.95, base + bonus), 2), "paired_windows": n, "recent_antaq": recente}
 
 
-def calibrate(port_id: str) -> dict | None:
+def calibrate(port_id: str, conn=None) -> dict | None:
     """Projeta o PORT STATE calibrado para um porto, ou None sem dados.
 
     v1 (Fase 2, âncora BRPNG): usa a distribuição ANTAQ como experiência
     histórica e associa o regime de fila observado à mediana da espera real.
     Não faz ajuste por regressão enquanto houver <3 pares emparelhados
     (evita overfit com um único ponto).
+
+    Aceita uma conexão injetada (ex.: read-only da API) para não abrir uma
+    segunda conexão no mesmo arquivo DuckDB; senão abre a própria conexão.
     """
-    conn = duckdb.connect(db_path(), read_only=False)
+    own = conn is None
+    if own:
+        conn = duckdb.connect(db_path(), read_only=False)
     try:
         dist = antaq_distribution(conn, port_id)
         if dist is None:
@@ -216,7 +238,8 @@ def calibrate(port_id: str) -> dict | None:
             "semantica": "espera historica ANTAQ + fila observada",
         }
     finally:
-        conn.close()
+        if own:
+            conn.close()
 
 
 if __name__ == "__main__":

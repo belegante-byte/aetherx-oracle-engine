@@ -142,7 +142,7 @@ def register_calibration(conn, print_fn=print) -> None:
         r = raw.execute(
             """
             SELECT
-              SUM(CASE WHEN status IN ('AO_LARGO','ESPERADO') THEN 1 ELSE 0 END),
+              SUM(CASE WHEN status='AO_LARGO' THEN 1 ELSE 0 END),
               SUM(CASE WHEN status='AO_LARGO' THEN 1 ELSE 0 END),
               SUM(CASE WHEN status='ESPERADO' THEN 1 ELSE 0 END),
               SUM(CASE WHEN status='ATRACADO' THEN 1 ELSE 0 END)
@@ -151,6 +151,8 @@ def register_calibration(conn, print_fn=print) -> None:
         ).fetchone()
     finally:
         raw.close()
+    # Fila REAL de hoje = ao_largo (esperados são programação futura, não fila
+    # presente; ficam apenas como metadado diagnóstico no par).
     if not r or not r[0]:
         return
 

@@ -88,11 +88,12 @@ def test_score_from_status_deriva_fila_real():
         "src_appa": 100,
     }
     met = _score_from_status("BRPNG", resumo, {"appa": {"ok": True}})
-    assert met["waiting_vessels"] == 80
+    # Fila REAL = AO_LARGO (esperados = chegadas futuras, não soma)
+    assert met["waiting_vessels"] == 20
     assert met["ao_largo"] == 20
     assert met["atracados"] == 20
     assert met["congestion_score"] > 0.05
-    assert met["eta_delay_days"] >= 2.4
+    assert met["eta_delay_days"] == 2.0  # fila real 20 -> 1.2 + 20*0.04
 
 
 def test_score_from_status_sem_fila():

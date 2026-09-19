@@ -82,20 +82,24 @@ def gravar_raw(linhas: list) -> int:
 
 
 def _score_from_status(pid: str, resumo: dict, fonte: dict) -> dict:
-    """Deriva congestion_score, waiting_vessels e eta_delay_days do line-up vivo."""
+    """Deriva congestion_score, waiting_vessels e eta_delay_days do line-up vivo.
+
+    Fila REAL = AO_LARGO (navios aguardando agora). Esperados/programados são
+    chegadas futuras (ETAs) e NÃO contam como espera presente: ficam expostos
+    como campos separados para o consumidor julgar a carga futura.
+    """
     status_keys = {k: v for k, v in resumo.items() if k.startswith("status_")}
     atracados = status_keys.get("status_ATRACADO", 0) + status_keys.get("status_EM_OPERACAO", 0)
     ao_largo = status_keys.get("status_AO_LARGO", 0)
     esperados = status_keys.get("status_ESPERADO", 0)
     programados = status_keys.get("status_PROGRAMADO", 0)
 
-    waiting = ao_largo + esperados
-    total_fora = waiting + programados
+    waiting = ao_largo
     berçado = max(atracados, 1)
 
-    # Pressão: navios fora do berço vs. atracados. Quanto mais fila, maior.
-    # Clamp entre [0.05, 0.97] para evitar extremos sintéticos.
-    razao = total_fora / berçado
+    # Pressão: navios esperando de fato vs. atracados. Quanto maior, mais fila.
+    # Clamp em [0.05, 0.97] para evitar extremos sintéticos.
+    razao = waiting / berçado
     score = 0.25 + 0.35 * min(razao, 2.0)
     score = max(0.05, min(0.97, score))
 

@@ -1,8 +1,8 @@
 """Registra/consome pares de calibração observação→experiência (Fase 2 PVA).
 
-BRPNG é o calibration anchor: única fonte BR que expõe fila real (ao_largo +
-esperados). Cada execução anexa o par (fila observada hoje ↔ janela ANTAQ
-vigente) em `calibration_pairs` e imprime o PORT STATE calibrado.
+BRPNG é o calibration anchor: única fonte BR que expõe fila real. Cada execução
+anexa o par (fila REAL observada hoje = AO_LARGO ↔ janela ANTAQ vigente) em
+`calibration_pairs` e imprime o PORT STATE calibrado.
 
 Uso:
     python scripts/calibrate_brpng.py            # registra par e mostra estado
@@ -31,7 +31,11 @@ from src.engine.calibration import (  # noqa: E402
 
 
 def fila_observada_bpng(inject_conn=None) -> dict | None:
-    """Lê a fila real mais recente de BRPNG a partir do raw_port_lineup."""
+    """Lê a fila real mais recente de BRPNG a partir do raw_port_lineup.
+
+    Fila real = AO_LARGO (a esperar de fato). ESPERADO é programação futura e
+    fica apenas como metadado diagnóstico, não soma na fila do dia.
+    """
     try:
         conn = inject_conn or duckdb.connect(
             os.getenv("RAW_DATABASE_PATH", "data/processed/aether_oracle.duckdb"),
@@ -40,7 +44,7 @@ def fila_observada_bpng(inject_conn=None) -> dict | None:
         row = conn.execute(
             """
             SELECT
-              SUM(CASE WHEN status IN ('AO_LARGO','ESPERADO') THEN 1 ELSE 0 END) AS waiting,
+              SUM(CASE WHEN status='AO_LARGO' THEN 1 ELSE 0 END) AS waiting,
               SUM(CASE WHEN status='AO_LARGO' THEN 1 ELSE 0 END) AS ao_largo,
               SUM(CASE WHEN status='ESPERADO' THEN 1 ELSE 0 END) AS esperados,
               SUM(CASE WHEN status='ATRACADO' THEN 1 ELSE 0 END) AS atracados
