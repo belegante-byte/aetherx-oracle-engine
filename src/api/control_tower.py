@@ -75,6 +75,20 @@ def control_tower_html(snapshot: dict) -> str:
         for p, c in ports
     ) or '<div class="row"><span>sem dados</span></div>'
 
+    paid_plans = m.get("paid_plans", {}) or {}
+    paid_count = m.get("paid_user_count", 0)
+    paid_users = m.get("paid_users", []) or []
+    paid_html = "".join(
+        f'<div class="row"><span>{plan}</span><span class="val">{c}</span></div>'
+        for plan, c in sorted(paid_plans.items())
+    ) or '<div class="row muted"><span>nenhuma chamada paga ainda</span></div>'
+    paid_users_html = "".join(
+        f'<div class="row muted"><span>{u}</span></div>'
+        for u in paid_users[:10]
+    ) or ""
+    if paid_users_html:
+        paid_html += '<div class="muted" style="margin-top:.4rem">usuários pagos:</div>' + paid_users_html
+
     quality_html = ""
     for pid, (live, grade, ok) in sorted(PORT_QUALITY.items()):
         status = live if ok else "DEGRADED"
@@ -168,6 +182,12 @@ h1{{font-size:1.4rem;letter-spacing:2px;color:#58a6ff;margin-bottom:1.5rem}}
   <div class="card">
     <h2>TOP PORTS</h2>
     {ports_html}
+  </div>
+  <div class="card">
+    <h2>MONETIZATION</h2>
+    <div class="row"><span>PAID CALLS</span><span class="val">{sum(paid_plans.values())}</span></div>
+    <div class="row"><span>PAID USERS</span><span class="val">{paid_count}</span></div>
+    {paid_html}
   </div>
   <div class="card">
     <h2>DISCOVERY</h2>

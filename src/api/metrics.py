@@ -64,6 +64,35 @@ _errors_total = 0      # erros HTTP (5xx) observados
 
 _EVENT_KINDS = ("mcp_call", "tool_call", "new_machine", "repeat_machine", "port_query", "error")
 
+# ---- Monetização: assinantes pagos vistos via gateway RapidAPI ----
+_paid_plans = {}      # {plan_name: int}  chamadas por tier pago (PRO/ULTRA/MEGA/CUSTOM)
+_paid_users = set()   # set[str]          X-RapidAPI-User distintos em plano pago
+
+PAID_PLANS = ("PRO", "ULTRA", "MEGA", "CUSTOM")
+
+
+def record_rapidapi_call(plan: str | None, user: str | None) -> None:
+    """Registra uma chamada que veio pelo gateway RapidAPI (REST).
+
+    Detecção de monetização: quando X-RapidAPI-Subscription é um plano pago,
+    registra o tier e o usuário. Requisições BASIC (grátis) ou diretas (sem
+    headers) não contam como pagas.
+    """
+    if not plan:
+        return
+    plan = plan.upper()
+    if plan not in PAID_PLANS:
+        return
+    with _lock:
+        _paid_plans[plan] = _paid_plans.get(plan, 0) + 1
+        if user:
+            _paid_users.add(user)
+        _recent_events.appendleft({
+            "ts": int(time.time()),
+            "kind": "paid_call",
+            "detail": f"{plan} · {user or '?'}",
+        })
+
 
 def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, latency_ms: int | None = None) -> None:
     """Registra uma invocação de tool MCP (ou de produto) para a Control Tower."""
@@ -173,6 +202,11 @@ def record_http(scope, status_holder: dict | None = None) -> None:
     }
     ua = headers.get("user-agent", "")
     channel = _classify(path, ua)
+    if channel == "rest":
+        record_rapidapi_call(
+            headers.get("x-rapidapi-subscription"),
+            headers.get("x-rapidapi-user"),
+        )
     if not channel:
         return
     key = _bucket(_client_ip(headers, scope))
@@ -229,4 +263,8 @@ def metrics_snapshot() -> dict:
             "top_tools": sorted(_tools.items(), key=lambda x: -x[1])[:20],
             "top_ports": sorted(_ports.items(), key=lambda x: -x[1])[:20],
             "recent_events": list(_recent_events)[:50],
+            # Monetização
+            "paid_plans": dict(_paid_plans),
+            "paid_users": sorted(_paid_users),
+            "paid_user_count": len(_paid_users),
         }

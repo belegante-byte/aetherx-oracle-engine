@@ -420,3 +420,18 @@ def test_record_tool_call_tracks_error():
     s = metrics_snapshot()
     assert s["mcp_errors"] == before_errors + 1
     assert s["top_tools"][0][0] == "get_port_trend"
+
+
+def test_record_rapidapi_call_tracks_paid_plan():
+    from src.api.metrics import record_rapidapi_call, metrics_snapshot, _paid_plans, _paid_users, _lock
+    with _lock:
+        _paid_plans.clear()
+        _paid_users.clear()
+    record_rapidapi_call("PRO", "alice_dev")
+    record_rapidapi_call("ULTRA", "bob_co")
+    record_rapidapi_call("BASIC", "free_user")
+    record_rapidapi_call(None, None)
+    s = metrics_snapshot()
+    assert s["paid_plans"] == {"PRO": 1, "ULTRA": 1}
+    assert s["paid_user_count"] == 2
+    assert "alice_dev" in s["paid_users"] and "bob_co" in s["paid_users"]
