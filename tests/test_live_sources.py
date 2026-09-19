@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
@@ -13,7 +14,10 @@ from src.ingestion.live_sources import (
     fetch_santos_atracacoes,
     fetch_lachmann_schedule,
     fetch_silog_pre_pauta,
+    fetch_shipinfo_congestion,
     resumo_por_porto,
+    _is_current_santos_painel_row,
+    _parse_santos_painel_dt,
 )
 from scripts.run_ingestion_live import _score_from_status
 
@@ -151,3 +155,53 @@ def test_silog_fundeio_conta_como_ao_largo():
     # se a fonte tem fundeados hoje, ao_largo > 0
     if any("FUNDE" in (l["raw"].get("de","") + l["raw"].get("para","")).upper() for l in linhas):
         assert status.get("ao_largo", 0) > 0
+
+
+def test_santos_painel_current_row_filter():
+    now = datetime(2026, 9, 19, 18, 30)
+    current = {
+        "Navio": "GREEN OSAKA",
+        "Status": "OPERANDO",
+        "Atracação": now.strftime("%d/%m/%y %H:%M:%S"),
+        "Estimativa Fim Oper.": (now + timedelta(hours=4)).strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    old = {
+        "Navio": "PACIFIC AZUR",
+        "Status": "AG DESATRACACAO",
+        "Atracação": "01/01/25 12:55:00",
+        "Estimativa Fim Oper.": "2025-01-02 11:12:00",
+    }
+    completed = {
+        "Navio": "OLD VESSEL",
+        "Status": "DESATRACACAO",
+        "Atracação": now.strftime("%d/%m/%y %H:%M:%S"),
+        "Estimativa Fim Oper.": (now + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    stale = {
+        "Navio": "STALE VESSEL",
+        "Status": "OPERANDO",
+        "Atracação": (now - timedelta(days=2)).strftime("%d/%m/%y %H:%M:%S"),
+        "Estimativa Fim Oper.": (now - timedelta(hours=30)).strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    assert _is_current_santos_painel_row(current, now) is True
+    assert _is_current_santos_painel_row(old, now) is False
+    assert _is_current_santos_painel_row(completed, now) is False
+    assert _is_current_santos_painel_row(stale, now) is False
+
+
+def test_santos_painel_date_parser_handles_mixed_formats():
+    assert _parse_santos_painel_dt("01/01/25 12:55:00") == datetime(2025, 1, 1, 12, 55)
+    assert _parse_santos_painel_dt("2025-01-02 11:12:00") == datetime(2025, 1, 2, 11, 12)
+    assert _parse_santos_painel_dt("") is None
+    assert _parse_santos_painel_dt(None) is None
+
+
+def test_shipinfo_collector_disabled_by_default(monkeypatch):
+    import src.ingestion.live_sources as ls
+
+    def fail_get(*args, **kwargs):
+        raise AssertionError("shipinfo não deve chamar rede quando desabilitado")
+
+    monkeypatch.setattr(ls, "_shipinfo_get", fail_get)
+    monkeypatch.setattr(ls, "SHIPINFO_ENABLED", False)
+    assert fetch_shipinfo_congestion() == []

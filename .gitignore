@@ -6,5 +6,9 @@ data/processed/*
 !data/processed/.gitkeep
 data/antaq_cache/
 .env
-.DS_Storedata/acumula_diario.log
 .DS_Store
+data/acumula_diario.log
+data/metrics_state.json
+data/tower_history.jsonl
+data/tower_local_state.json
+data/gp5_docs/connectors/

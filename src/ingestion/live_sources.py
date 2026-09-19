@@ -11,10 +11,13 @@ requer chave de API.
 """
 
 import io
+import json
+import os
 import re
 import ssl
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
@@ -55,6 +58,7 @@ SOURCE_LABELS = {
     "santos": "Porto de Santos",
     "santos_painel": "Painel de operações de Santos",
     "portosrio_silog": "SILOG PortosRio (Rio de Janeiro, Niterói, Itaguaí)",
+    "shipinfo_ais": "ShipInfo AIS (anchorage-derived queue)",
 }
 
 
@@ -280,10 +284,79 @@ def fetch_santos_atracacoes(timeout: int = 30) -> list:
     return linhas
 
 
+SANTOS_PAINEL_LOOKBACK_DAYS = int(os.getenv("SANTOS_PAINEL_LOOKBACK_DAYS", "7"))
+SANTOS_PAINEL_STALE_END_HOURS = int(os.getenv("SANTOS_PAINEL_STALE_END_HOURS", "24"))
+SANTOS_PAINEL_COMPLETED_STATUSES = {
+    "DESATRACACAO",
+    "DESATRACAÇÃO",
+    "DESATRACADO",
+    "FINALIZADO",
+    "ENCERRADO",
+    "SAIDA",
+    "SAÍDA",
+}
+SANTOS_PAINEL_ACTIVE_KEYWORDS = (
+    "OPERANDO",
+    "BOMBEANDO",
+    "AGUARDANDO",
+    "AGUARD",
+    "AG ",
+    "AG/",
+    "PREPARACAO",
+    "PREPARAÇÃO",
+    "PREP ",
+    "PREP/",
+    "CONEXAO",
+    "CONEXÃO",
+    "DESCONEXAO",
+    "DESCONEXÃO",
+    "NAO REQUISITOU",
+    "NÃO REQUISITOU",
+    "NAO REQ",
+    "NÃO REQ",
+)
+
+
+def _parse_santos_painel_dt(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    value = value.strip()
+    for fmt in ("%d/%m/%y %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%d/%m/%y %H:%M"):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _is_current_santos_painel_row(reg: dict, now: Optional[datetime] = None) -> bool:
+    now = now or datetime.now()
+    status = (reg.get("Status") or "").strip().upper()
+    if not status or status in SANTOS_PAINEL_COMPLETED_STATUSES:
+        return False
+    if not any(k in status for k in SANTOS_PAINEL_ACTIVE_KEYWORDS):
+        return False
+
+    atracacao = _parse_santos_painel_dt(reg.get("Atracação"))
+    if not atracacao:
+        return False
+    if atracacao > now + timedelta(days=1):
+        return False
+    if atracacao < now - timedelta(days=SANTOS_PAINEL_LOOKBACK_DAYS):
+        return False
+
+    fim = _parse_santos_painel_dt(reg.get("Estimativa Fim Oper."))
+    if fim and fim < now - timedelta(hours=SANTOS_PAINEL_STALE_END_HOURS):
+        return False
+    return True
+
+
 def fetch_santos_painel(timeout: int = 30) -> list:
     html = _fetch(SANTOS_PAINEL_URL, timeout=timeout)
     soup = BeautifulSoup(html, "html.parser")
+    now = datetime.now()
     linhas = []
+    vistos = set()
     for table in soup.select("table"):
         rows = table.select("tr")
         if not rows:
@@ -297,7 +370,19 @@ def fetch_santos_painel(timeout: int = 30) -> list:
             if len(valores) < len(colunas):
                 continue
             reg = dict(zip(colunas, valores))
+            if not _is_current_santos_painel_row(reg, now):
+                continue
             vessel = (reg.get("Navio") or "DESCONHECIDO").upper()
+            atracacao = _parse_santos_painel_dt(reg.get("Atracação"))
+            chave = (
+                vessel,
+                (reg.get("Local") or "").upper(),
+                (reg.get("Viagem") or "").upper(),
+                atracacao.strftime("%Y-%m-%d") if atracacao else "",
+            )
+            if chave in vistos:
+                continue
+            vistos.add(chave)
             linhas.append({
                 "port_id": "BRSSZ",
                 "source": "santos_painel",
@@ -414,6 +499,9 @@ def fetch_portosrio_silog(timeout: int = 30) -> list:
 
 SHIPINFO_BASE = "https://shipinfo.net/topos/api/v1"
 SHIPINFO_AGENT = "aetherx-oracle"
+SHIPINFO_ENABLED = os.getenv("SHIPINFO_ENABLED", "").strip().lower() in {"1", "true", "yes"}
+SHIPINFO_MAX_PORTS_PER_RUN = int(os.getenv("SHIPINFO_MAX_PORTS_PER_RUN", "4"))
+SHIPINFO_PORT_MAP_PATH = Path(__file__).resolve().parents[2] / "data" / "shipinfo_port_map.json"
 
 # Porto -> nome de busca no shipinfo (ports/search). Mapeia os 14 globais.
 SHIPINFO_PORTS = {
@@ -437,6 +525,17 @@ _shipinfo_cache: dict = {}   # {port_id: {ts, data}}  cache por poll (rate limit
 _shipinfo_port_id: dict = {}  # {aetherx_port: shipinfo_port_id}
 
 
+def _load_shipinfo_port_map() -> dict:
+    try:
+        raw = json.loads(SHIPINFO_PORT_MAP_PATH.read_text(encoding="utf-8"))
+        return {str(k): int(v) for k, v in raw.items() if str(k) in SHIPINFO_PORTS}
+    except Exception:
+        return {}
+
+
+_shipinfo_port_id.update(_load_shipinfo_port_map())
+
+
 def _shipinfo_get(path: str, params: str = "") -> dict:
     """GET na API shipinfo com o agente registrado (rate limit consciente)."""
     import urllib.parse
@@ -446,17 +545,22 @@ def _shipinfo_get(path: str, params: str = "") -> dict:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def _shipinfo_resolve_port(port_id: str) -> int | None:
-    """Resolve o shipinfo port_id para um porto do GRID (com cache)."""
+def _shipinfo_resolve_port(port_id: str, allow_search: bool = False) -> int | None:
+    """Resolve o shipinfo port_id para um porto do GRID.
+
+    Por padrão usa apenas o mapa cacheado. A busca remota é opcional porque o
+    tier anônimo tem limite diário baixo e não deve ser consumido em produção
+    sem key/registro.
+    """
     if port_id in _shipinfo_port_id:
         return _shipinfo_port_id[port_id]
     name = SHIPINFO_PORTS.get(port_id)
-    if not name:
+    if not name or not allow_search:
         return None
     try:
+        import urllib.parse
         d = _shipinfo_get("/ports/search", f"name={urllib.parse.quote(name)}")
         rows = (d.get("data") or {}).get("rows", [])
-        # prefere o porto com mesmo país/nome exato
         for r in rows:
             if r.get("name", "").lower() == name.lower():
                 _shipinfo_port_id[port_id] = r["port_id"]
@@ -469,14 +573,30 @@ def _shipinfo_resolve_port(port_id: str) -> int | None:
     return None
 
 
+def _shipinfo_batch() -> list:
+    known = sorted(_shipinfo_port_id)
+    if not known:
+        return []
+    max_ports = max(1, SHIPINFO_MAX_PORTS_PER_RUN)
+    if max_ports >= len(known):
+        return known
+    start = (datetime.utcnow().toordinal() * max_ports) % len(known)
+    return [known[(start + i) % len(known)] for i in range(max_ports)]
+
+
 def fetch_shipinfo_congestion(timeout: int = 30) -> list:
     """Busca anchored_count (fila ao largo) dos portos globais via ShipInfo AIS.
 
     Deriva waiting_vessels de `anchored_count` (navios ancorados) — fila real
-    reconstruída de AIS, com `fonte="ais_derivado"`. Sem registro/estação física.
+    reconstruída de AIS, com `fonte="ais_derivado"`. O coletor fica desabilitado
+    por padrão porque o tier anônimo é insuficiente para produção; habilite com
+    `SHIPINFO_ENABLED=1` apenas quando houver key/registro ou orçamento de rate
+    limit controlado.
     """
+    if not SHIPINFO_ENABLED:
+        return []
     linhas = []
-    for port_id in SHIPINFO_PORTS:
+    for port_id in _shipinfo_batch():
         pid = _shipinfo_resolve_port(port_id)
         if not pid:
             continue
@@ -485,7 +605,6 @@ def fetch_shipinfo_congestion(timeout: int = 30) -> list:
             rows = (d.get("data") or {}).get("rows", [])
             if not rows:
                 continue
-            # última amostra = estado atual (fila ao largo)
             last = rows[-1]
             anchored = int(last.get("anchored_count", 0) or 0)
             for _ in range(anchored):
