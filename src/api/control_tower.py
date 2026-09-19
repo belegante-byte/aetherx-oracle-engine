@@ -184,6 +184,30 @@ def control_tower_html(snapshot: dict) -> str:
         for k in ("congestion", "queue", "delay", "economic", "decision")
     )
 
+    # ---- Decomposição M2M ACTIVITY ----
+    # Abre "N unique / N repeat" em: quantos são transporte (voltar ao servidor)
+    # vs produto (voltar para executar tool), e quantos são novos.
+    all_machine_ids = set()
+    for ch, ids in (m.get("unique_machines") or {}).items():
+        pass
+    # total de máquinas M2M únicas (MCP + discovery + rest), excluindo bots
+    m2m_channels = {"mcp", "discovery", "rest"}
+    m2m_unique = sum((m.get("unique_machines") or {}).get(c, 0) for c in m2m_channels)
+    m2m_repeat = sum((m.get("repeat_machines") or {}).get(c, 0) for c in m2m_channels)
+    transport_repeat = funnel.get("repeat_transport", 0)
+    tool_repeat = funnel.get("repeat_tool", 0)
+    tool_calls = funnel.get("tool_call", 0)
+    first_time = m2m_unique - m2m_repeat if m2m_unique >= m2m_repeat else m2m_unique
+
+    activity_html = (
+        f'<div class="row"><span>M2M UNIQUE</span><span class="val">{m2m_unique}</span></div>'
+        f'<div class="row"><span>REPEATED (qualquer)</span><span class="val">{m2m_repeat}</span></div>'
+        f'<div class="row"><span>├ TRANSPORT REPEAT</span><span class="val">{transport_repeat}</span></div>'
+        f'<div class="row"><span>├ TOOL REPEAT</span><span class="val">{tool_repeat}</span></div>'
+        f'<div class="row"><span>FIRST-TIME</span><span class="val">{first_time}</span></div>'
+        f'<div class="row"><span>TOOL CALLS (janela)</span><span class="val">{tool_calls}</span></div>'
+    )
+
     return f"""<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -223,6 +247,10 @@ h1{{font-size:1.4rem;letter-spacing:2px;color:#58a6ff;margin-bottom:1.5rem}}
     <div class="stat">REPEAT <span class="val">{repeat}</span></div>
     <div class="stat">REPEAT RATE <span class="val">{rep_rate:.1f}%</span></div>
     <div class="stat">ERROR RATE <span class="val">{err_rate:.2f}%</span></div>
+  </div>
+  <div class="card">
+    <h2>M2M ACTIVITY (aberto)</h2>
+    {activity_html}
   </div>
   <div class="card">
     <h2>TOP TOOLS</h2>

@@ -251,6 +251,7 @@ h1{font-size:1.3rem;letter-spacing:2px;color:#58a6ff;margin-bottom:.4rem}
 <div class="sub">tela local · polling produção a cada ~3s · <span id="clock"></span></div>
 <div class="grid">
   <div class="card"><h2>SYSTEM</h2><div id="system">…</div></div>
+  <div class="card"><h2>M2M ACTIVITY (aberto)</h2><div id="m2m-activity">…</div></div>
   <div class="card"><h2>TOP TOOLS</h2><div id="tools">…</div></div>
   <div class="card"><h2>CONSUMERS (tools)</h2><div id="consumers">…</div></div>
   <div class="card"><h2>TOP PORTS</h2><div id="ports">…</div></div>
@@ -296,6 +297,18 @@ function render(d){
   const f=d.funnel||{};
   const fLabel={discovery:'DISCOVERY',mcp_connect:'MCP CONNECT',tool_call:'TOOL CALL',repeat_transport:'TRANSPORT REPEAT',repeat_tool:'TOOL REPEAT',paid:'PAID'};
   const row=(n,v)=>'<div class="row"><span>'+n+'</span><span class="val">'+v+'</span></div>';
+  // M2M ACTIVITY: abre unique/repeat em transporte vs produto
+  const m2mChannels=['mcp','discovery','rest'];
+  const m2mUnique=m2mChannels.reduce((a,c)=>a+((d.unique_machines||{})[c]||0),0);
+  const m2mRepeat=m2mChannels.reduce((a,c)=>a+((d.repeat_machines||{})[c]||0),0);
+  const firstTime=Math.max(0,m2mUnique-m2mRepeat);
+  document.getElementById('m2m-activity').innerHTML=
+    row('M2M UNIQUE',m2mUnique)+
+    row('REPEATED (qualquer)',m2mRepeat)+
+    row('├ TRANSPORT REPEAT',f.repeat_transport||0)+
+    row('├ TOOL REPEAT',f.repeat_tool||0)+
+    row('FIRST-TIME',firstTime)+
+    row('TOOL CALLS (janela)',f.tool_call||0);
   document.getElementById('funnel-infra').innerHTML=
     ['discovery','mcp_connect','repeat_transport'].map(s=>row(fLabel[s],f[s]||0)).join('');
   document.getElementById('funnel-prod').innerHTML=
