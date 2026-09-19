@@ -1,6 +1,7 @@
 # Relatório de Estado — Aether-X Port Congestion Oracle
 
 > Gerado em 2026-09-18. Objetivo: contextualizar assistentes/parceiros sobre o estado atual e apoiar a estratégia de distribuição/adesão.
+> **Atualização 2026-09-19**: domínio de marca no ar (`aetherx.aether-grid.io`), Google Search Console verificado, sitemap enviado, registry republicado v0.4.2 apontando para o novo domínio.
 
 ## 1. Contexto e objetivo
 Produto: **Aether-X Port Congestion Oracle** — API preditiva de congestão portuária, atraso de ETA e estimativa de demurrage diária, para trade global, supply chain e finanças quantitativas. Já está **publicado, monetizado e registrado** nos principais canais. A prioridade número 1 agora é **ADESÃO/DISTRIBUIÇÃO (gerar usuários e consumo real)**.
@@ -9,7 +10,7 @@ Produto: **Aether-X Port Congestion Oracle** — API preditiva de congestão por
 - O produto está no ar mas é novo: indexação de buscadores/marketplaces leva dias/semanas.
 
 ## 2. Produto e API
-- **Base URL**: `https://aetherx.aether-grid.io`
+- **Base URL**: `https://aetherx.aether-grid.io` (custom domain de marca; CNAME `aetherx` → `gsxtyhih.up.railway.app` + TXT `_railway-verify.aetherx`, TLS Let's Encrypt automático, HTTP 200). O URL Railway antigo (`aether-x-oracle-production.up.railway.app`) continua funcionando em paralelo como infra.
 - **Docs interativos**: `.../docs` (Swagger UI) · **OpenAPI**: `.../openapi.json`
 - Endpoints REST (via gateway RapidAPI):
   - `GET /v1/port-risk?port_id=BRSSZ` — risco por porto
@@ -43,10 +44,12 @@ Produto: **Aether-X Port Congestion Oracle** — API preditiva de congestão por
 - **Qualidade**: testes 100% verdes — API 15/15, SDK 13/13, engine 29/29.
 
 ## 5. O que ainda NÃO foi feito / riscos de descoberta
-- Nenhum B2B/parceiro contatado; sem listagem em marketplaces agregadores terceiros (PulseMCP, Smithery, ToolFinder, mcp.so etc.) — agregam do MCP Registry, mas levam tempo/agendamento.
-- SEO orgânico ainda não ranqueou (indexação em progresso).
+- **RapidAPI**: o backend do listing ainda aponta para o domínio Railway antigo — atualizar no dashboard do RapidAPI para `https://aetherx.aether-grid.io` (ação manual, conta RapidAPI). O listing continua funcionando (o Railway URL responde), mas por consistência de marca deve apontar para o custom domain.
+- Nenhum B2B/parceiro contatado; sem listagem em marketplaces agregadores terceiros (PulseMCP, ToolFinder etc.) — agregam do MCP Registry, mas levam tempo/agendamento.
+- SEO orgânico: **Google Search Console verificado (2026-09-19)**, sitemap enviado — indexação em progresso (24 URLs). Dar tempo para o Google rastrear.
+- mcp.so: submissão via issue `chatmcp/mcpso#4236` aberta (0 comentários) — aguardando processamento humano; issue atualizada com repo público + registry v0.4.2.
+- PulseMCP: bloqueado por Cloudflare 403 (submissões pausadas).
 - Sem conteúdo/artigos/LinkedIn/GitHub stars; sem casos de uso documentados por público-alvo.
 - Sem blog/tutorial/notebook demonstrando valor.
-- Marca "Aether-X" própria/domínio próprio inexistente (subdomínio Railway/RapidAPI).
 - Só 1 linguagem de SDK (Python).
 - Plano gratuito existe, mas não está destacado como porta de entrada.
