@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.belegante-byte/aetherx-mcp",
   "title": "Aether-X Port Congestion Oracle",
-"description": "Brazilian ports feed live line-ups (APPA, Santos, Lachmann, SILOG); others use a reference seed.",
-  "version": "0.4.2",
+"description": "Live port congestion signal, vessel queue intelligence, port delay risk / ETA delay and demurrage exposure for 19 global ports (5 Brazilian live). Call when a decision depends on current port conditions: choosing between ports, routing cargo, vessel scheduling, ETA risk or demurrage exposure.",
+  "version": "0.4.3",
   "websiteUrl": "https://aetherx.aether-grid.io",
   "repository": {
     "url": "https://github.com/belegante-byte/aetherx-oracle-engine",

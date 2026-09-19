@@ -549,3 +549,26 @@ def test_mcp_tool_descriptions_are_decision_oriented():
     assert "Use this tool when a decision depends" in by_name.get("get_port_risk", "")
     assert "Compare CURRENT congestion" in by_name.get("get_ports_risk", "")
     assert "SYNTHETIC projection" in by_name.get("get_port_trend", "")
+
+
+def test_intent_ontology_classifies_queries():
+    from src.api.intent import intent_for_query, INTENT_FAMILIES, ALL_INTENT_TERMS
+    assert intent_for_query("port congestion risk at Santos") == "congestion"
+    assert intent_for_query("vessel queue at Paranagua") == "queue"
+    assert intent_for_query("demurrage exposure BRPNG") == "economic"
+    assert intent_for_query("ETA delay at Shanghai") == "delay"
+    assert intent_for_query("compare Santos and Paranagua") == "decision"
+    assert intent_for_query("choose between BRSSZ and BRPNG") == "decision"
+    assert len(ALL_INTENT_TERMS) >= 20
+
+
+def test_tool_call_records_intent_per_machine():
+    from src.api import metrics as m
+    from src.api.metrics import _MACHINE_INTENT, _MACHINE_STAGES, _lock
+    with _lock:
+        _MACHINE_INTENT.clear(); _MACHINE_STAGES.clear()
+    m.set_current_machine("intx1111")
+    m.record_tool_call("get_port_risk", port_id="BRPNG", ok=True, intent="congestion")
+    s = m.metrics_snapshot()
+    assert s["intent_by_family"]["congestion"] == 1
+    assert any("congestion" in (x.get("intent") or {}) for x in s["machines"] if x["id"] == "intx1111")

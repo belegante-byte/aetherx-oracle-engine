@@ -168,9 +168,21 @@ def control_tower_html(snapshot: dict) -> str:
         f'<div class="event"><span class="ts">{_fmt_ts(mach.get("first", 0))}</span>'
         f'<span class="kind">{mach.get("id")}…</span>'
         f'<span class="det">{", ".join(mach.get("stages", [])) or "—"} · {mach.get("calls", 0)}c'
-        f'{" · " + ",".join(mach.get("ports", {}).keys()) if mach.get("ports") else ""}</span></div>'
+        f'{" · " + ",".join(mach.get("ports", {}).keys()) if mach.get("ports") else ""}'
+        f'{" · intent:" + ",".join(mach.get("intent", {}).keys()) if mach.get("intent") else ""}</span></div>'
         for mach in machines[:10]
     ) or '<div class="row muted"><span>sem máquinas ainda</span></div>'
+
+    intent_by_family = m.get("intent_by_family", {}) or {}
+    _intent_label = {
+        "congestion": "CONGESTION", "queue": "QUEUE", "delay": "DELAY",
+        "economic": "ECONOMIC", "decision": "DECISION",
+    }
+    intent_html = "".join(
+        f'<div class="row"><span>{_intent_label.get(k, k)}</span>'
+        f'<span class="val">{intent_by_family.get(k, 0)}</span></div>'
+        for k in ("congestion", "queue", "delay", "economic", "decision")
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8">
@@ -232,6 +244,10 @@ h1{{font-size:1.4rem;letter-spacing:2px;color:#58a6ff;margin-bottom:1.5rem}}
   <div class="card">
     <h2>MACHINES (anônimas)</h2>
     {machines_html}
+  </div>
+  <div class="card">
+    <h2>INTENT (por tool_call)</h2>
+    {intent_html}
   </div>
   <div class="card">
     <h2>TOP PORTS</h2>

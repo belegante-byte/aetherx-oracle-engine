@@ -96,6 +96,7 @@ _MACHINE_LAST = {}      # {ip_hash: int}  ts do último contato
 _MACHINE_CALLS = {}     # {ip_hash: int}  total de chamadas (qualquer canal)
 _MACHINE_TOOL_TS = {}   # {ip_hash: list[int]}  timestamps de tools executadas
 _MACHINE_TOOL_PORTS = {}  # {ip_hash: Counter[port]}  portos consultados via tool
+_MACHINE_INTENT = {}    # {ip_hash: Counter[intent]}  famílias de intenção por tool_call
 
 # Estágios do funil. Ordem: infraestrutura (descoberta/transporte) depois produto.
 FUNNEL_STAGES = (
@@ -190,13 +191,15 @@ def record_rapidapi_call(plan: str | None, user: str | None) -> None:
         _mark_stage(mid, "paid")
 
 
-def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, latency_ms: int | None = None) -> None:
+def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, latency_ms: int | None = None, intent: str | None = None) -> None:
     """Registra uma invocação de tool MCP (ou de produto) para a Control Tower."""
     global _mcp_total, _mcp_errors
     mid = get_current_machine()
     if mid:
         _mark_stage(mid, "tool_call")
         _record_tool_ts(mid, port_id)
+        if intent:
+            _MACHINE_INTENT.setdefault(mid, collections.Counter())[intent] += 1
     with _lock:
         _mcp_total += 1
         _tools[tool] = _tools.get(tool, 0) + 1
@@ -218,6 +221,7 @@ def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, lat
             "detail": tool,
             "ok": ok,
             "latency_ms": latency_ms,
+            "intent": intent,
         })
 
 
@@ -413,10 +417,15 @@ def metrics_snapshot() -> dict:
                     "stages": sorted(_MACHINE_STAGES.get(mid, set())),
                     "tools": _MACHINE_TOOL_TS.get(mid, []),
                     "ports": dict(_MACHINE_TOOL_PORTS.get(mid, {})),
+                    "intent": dict(_MACHINE_INTENT.get(mid, {})),
                 }
                 for mid in sorted(_MACHINE_STAGES.keys(),
                                  key=lambda m: -_MACHINE_CALLS.get(m, 0))[:12]
             ],
+            "intent_by_family": {
+                family: sum(1 for c in _MACHINE_INTENT.values() if c.get(family))
+                for family in ("congestion", "queue", "delay", "economic", "decision")
+            },
         }
 
 def _persist_now() -> None:
@@ -445,6 +454,7 @@ def _persist_now() -> None:
                 "machine_calls": dict(_MACHINE_CALLS),
                 "machine_tool_ts": {k: list(v) for k, v in _MACHINE_TOOL_TS.items()},
                 "machine_tool_ports": {k: dict(v) for k, v in _MACHINE_TOOL_PORTS.items()},
+                "machine_intent": {k: dict(v) for k, v in _MACHINE_INTENT.items()},
                 "saved_at": int(time.time()),
             }
         os.makedirs(os.path.dirname(os.path.abspath(_STATE_PATH)), exist_ok=True)
@@ -487,6 +497,8 @@ def _load_state() -> None:
             _MACHINE_TOOL_TS.update(state.get("machine_tool_ts", {}))
             for k, v in state.get("machine_tool_ports", {}).items():
                 _MACHINE_TOOL_PORTS.setdefault(k, collections.Counter()).update(v)
+            for k, v in state.get("machine_intent", {}).items():
+                _MACHINE_INTENT.setdefault(k, collections.Counter()).update(v)
             events = state.get("events", [])
             if events:
                 _recent_events.extend(events[-100:])

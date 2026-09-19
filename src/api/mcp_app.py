@@ -13,6 +13,14 @@ from mcp.server.transport_security import TransportSecuritySettings
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 from src.api.metrics import record_tool_call
 
+# Tool -> família de intenção (para a Control Tower atribuir o motivo do call).
+TOOL_INTENT = {
+    "get_port_risk": "congestion",
+    "get_ports_risk": "decision",
+    "get_port_trend": "delay",
+    "list_supported_ports": "discovery",
+}
+
 
 def _extract_port_id(args: dict) -> str | None:
     """Extrai port_id (ou ids) dos argumentos da tool para a Control Tower."""
@@ -46,7 +54,8 @@ def _run_tool(fn, tool_name: str, **kwargs):
     finally:
         latency_ms = int((time.monotonic() - t0) * 1000)
         port_id = _extract_port_id(kwargs)
-        record_tool_call(tool_name, port_id=port_id, ok=ok, latency_ms=latency_ms)
+        intent = TOOL_INTENT.get(tool_name)
+        record_tool_call(tool_name, port_id=port_id, ok=ok, latency_ms=latency_ms, intent=intent)
 
 SUPPORTED_PORTS: list[dict[str, str]] = [
     {"port_id": "AEDXB", "port_name": "Dubai / Jebel Ali", "country": "EAU"},
@@ -74,11 +83,10 @@ mcp = MCPServer(
     "aetherx-oracle",
     title="Aether-X Port Congestion Oracle",
     description=(
-        "Live physical-world port congestion intelligence for supply chain, "
-        "shipping, logistics and quantitative finance. Brazilian ports (BRSSZ, BRPNG, "
-        "BRRIO, BRNIT, BRITG) feed real operational line-ups; others use a reference seed. "
-        "Call when a decision depends on CURRENT port congestion, vessel queue, "
-        "delay risk or demurrage exposure."
+        "Live port congestion signal, vessel queue intelligence, port delay "
+        "risk / ETA delay and demurrage exposure for 19 global ports (5 Brazilian live). "
+        "Call when a decision depends on current port conditions: choosing between ports, "
+        "routing cargo, vessel scheduling, ETA risk, demurrage exposure or supply-chain disruption."
     ),
     instructions=(
         "You are the Aether-X Port Congestion Oracle. This server answers a "
