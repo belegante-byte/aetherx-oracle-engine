@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.belegante-byte/aetherx-mcp",
   "title": "Aether-X Port Congestion Oracle",
-"description": "Live port congestion signal, vessel queue intelligence, port delay risk / ETA delay and demurrage exposure for 19 global ports (5 Brazilian live). Call when a decision depends on current port conditions: choosing between ports, routing cargo, vessel scheduling, ETA risk or demurrage exposure.",
+"description": "Live port congestion signal, vessel queue, ETA delay and demurrage exposure for 19 ports.",
   "version": "0.4.3",
   "websiteUrl": "https://aetherx.aether-grid.io",
   "repository": {

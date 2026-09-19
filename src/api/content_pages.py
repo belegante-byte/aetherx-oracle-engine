@@ -207,9 +207,9 @@ def port_congestion_api_page() -> str:
 """
     return _page(
         "Port Congestion API — Port Risk, ETA Delay & Demurrage",
-        "A port congestion API returning live congestion data for Brazilian ports and reference scores for the rest of the 17-port coverage.",
+        "Port congestion API, vessel queue intelligence, port delay risk / ETA delay and demurrage exposure for 19 global ports (5 Brazilian live). Choose between ports, route cargo and assess demurrage risk.",
         "Port Congestion API",
-        "Port congestion, ETA delay and demurrage signals — live line-ups for Brazilian ports, reference seed elsewhere.",
+        "Port congestion signal, vessel queue, ETA delay and demurrage exposure — live line-ups for Brazilian ports, reference seed elsewhere.",
         body,
         "/port-congestion-api",
     )
