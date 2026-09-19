@@ -112,9 +112,9 @@ LANDING_HTML = """<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aether-X Port Congestion Oracle</title>
-<meta name="description" content="Live port congestion signal, vessel queue intelligence, port delay risk / ETA delay and demurrage exposure for 19 global ports (5 Brazilian ports live). Port congestion API, vessel queue API, port delay risk API and demurrage exposure signal. REST API, Python SDK and MCP server.">
+<meta name="description" content="Live port congestion signal for 19 ports: 5 Brazilian ports LIVE (4 validated against ANTAQ), 14 global ports as static reference seed. Port congestion API, vessel queue API, port delay risk API. REST API, Python SDK and MCP server.">
 <meta property="og:title" content="Aether-X Port Congestion Oracle">
-<meta property="og:description" content="Live port congestion signal, vessel queue intelligence, port delay risk and demurrage exposure for 19 global ports. Port congestion API / vessel queue API / demurrage risk signal. REST API, Python SDK and MCP server.">
+<meta property="og:description" content="Live port congestion for 5 Brazilian ports (4 validated), 14 global ports as reference seed. Port congestion API / vessel queue API / demurrage risk signal.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://aetherx.aether-grid.io/">
 <meta name="twitter:card" content="summary">
@@ -294,6 +294,7 @@ class PortRiskResponse(BaseModel):
     fonte: str | None = None
     semantica: str | None = None
     signal: dict | None = None
+    decision_grade: str | None = None
 
 
 class TrendPoint(BaseModel):
@@ -351,7 +352,7 @@ real-time field data.
 - Python SDK: `pip install aetherx-oracle`
 - MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) — tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`
 
-**Coverage** — 19 ports: BRSSZ, BRPNG, BRRIO, BRNIT, BRITG, CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country="Global"`).
+**Coverage** — 19 ports. **5 LIVE (BR):** BRSSZ (conditional), BRPNG, BRRIO, BRNIT, BRITG (validated). **14 reference seed:** CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country="Global"`).
 
 Signals are provided "AS IS" and do not constitute investment advice.
 """

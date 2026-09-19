@@ -625,3 +625,12 @@ def test_data_quality_is_derived_not_mocked():
     # Seed (não BR) é REFERENCE
     ref = [q for q in matrix if not q["live"]]
     assert ref and all(q["grade"] == "REFERENCE" for q in ref)
+
+
+def test_decision_grade_honest_per_port():
+    data = calculate_port_risk("BRPNG")
+    assert data["decision_grade"] == "decision"
+    assert data["data_source"].startswith("live:")
+    ref = calculate_port_risk("CNSHA")
+    assert ref["decision_grade"] == "reference"
+    assert ref["data_source"] == "static_reference_seed"

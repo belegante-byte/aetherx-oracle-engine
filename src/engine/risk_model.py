@@ -264,6 +264,19 @@ def calculate_port_risk(port_id: str) -> dict:
     else:
         _level = "MODERATE / LOW PRESSURE"
     _live = bool((result.get("live") or {}).get("ao_largo") is not None)
+    # Grau de decisão do porto (honesto): o consumidor precisa saber se este
+    # sinal é observação viva, condicional ou apenas referência estática.
+    _ds = result.get("data_source", "")
+    _live_src = _ds.startswith("live:")
+    _queue_obs = (result.get("live") or {}).get("ao_largo") is not None and result.get("waiting_vessels", 0) > 0
+    _paired = (result.get("paired_windows") or 0) > 0
+    if _live_src and _queue_obs and _paired:
+        _grade = "decision"
+    elif _live_src:
+        _grade = "conditional"
+    else:
+        _grade = "reference"
+    result["decision_grade"] = _grade
     result["signal"] = {
         "level": _level,
         "live_observation": _live,
