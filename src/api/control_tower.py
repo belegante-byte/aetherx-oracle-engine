@@ -90,14 +90,20 @@ def control_tower_html(snapshot: dict) -> str:
         '<span class="val">REFERENCE (seed estático)</span></div>'
     )
 
-    disc_html = "".join(
-        f'<div class="row"><span>{name}</span>'
-        f'<span class="val"><span class="dot" style="color:{ {
-            "live": "limegreen", "indexing": "#58a6ff", "pending": "orange",
-            "blocked": "#f85149",
-        }.get(status, "gray") }">{_status_dot(status != "blocked")}</span> {status}</span></div>'
-        for name, status in DISCOVERY_SURFACES
-    )
+    disc_html = ""
+    _status_colors = {
+        "live": "limegreen",
+        "indexing": "#58a6ff",
+        "pending": "orange",
+        "blocked": "#f85149",
+    }
+    for name, status in DISCOVERY_SURFACES:
+        color = _status_colors.get(status, "gray")
+        dot = _status_dot(status != "blocked")
+        disc_html += (
+            f'<div class="row"><span>{name}</span>'
+            f'<span class="val"><span class="dot" style="color:{color}">{dot}</span> {status}</span></div>'
+        )
 
     events_html = ""
     for ev in events:
