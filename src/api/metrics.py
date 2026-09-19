@@ -48,7 +48,7 @@ _MACHINE_TOKENS = (
 # Token do próprio projeto: ignora chamadas de nossos próprios health-check.
 _SELF_TOKENS = ("belegante-aetherx",)
 
-_lock = threading.Lock()
+_lock = threading.RLock()
 _counts = {}      # {channel: int}
 _uniq = {}        # {channel: set[str]}   hash do IP do cliente
 _machines = {}    # {channel: collections.Counter[str]}  chamadas por máquina
@@ -86,6 +86,40 @@ PAID_PLANS = ("PRO", "ULTRA", "MEGA", "CUSTOM")
 _mcp_consumers = {}    # {ip_hash: int}  tools executadas por máquina
 _mcp_consumer_ips = set()  # set[str]
 
+# ---- Funil M2M por máquina anônima ----
+# Cada máquina (ip_hash) tem os estágios do funil comportamental que atingiu:
+#   discovery -> mcp_connect -> tool_call -> repeat -> paid
+# Agregado no snapshot como funnel; a Control Tower mostra máquinas individuais.
+_MACHINE_STAGES = {}    # {ip_hash: set[str]}  estágios atingidos
+_MACHINE_FIRST = {}     # {ip_hash: int}  ts do primeiro contato
+_MACHINE_LAST = {}      # {ip_hash: int}  ts do último contato
+_MACHINE_CALLS = {}     # {ip_hash: int}  total de chamadas (qualquer canal)
+
+FUNNEL_STAGES = ("discovery", "mcp_connect", "tool_call", "repeat", "paid")
+
+
+def _mark_stage(ip_hash: str | None, stage: str) -> None:
+    if not ip_hash or stage not in FUNNEL_STAGES:
+        return
+    now = int(time.time())
+    with _lock:
+        st = _MACHINE_STAGES.setdefault(ip_hash, set())
+        st.add(stage)
+        _MACHINE_FIRST.setdefault(ip_hash, now)
+        _MACHINE_LAST[ip_hash] = now
+        _MACHINE_CALLS[ip_hash] = _MACHINE_CALLS.get(ip_hash, 0) + 1
+
+
+def _classify_stage(path: str, channel: str) -> str | None:
+    """Mapeia uma requisição para o estágio do funil que ela representa."""
+    if path in _DISCOVERY_PATHS or path.startswith("/port-congestion-") or path == "/":
+        return "discovery"
+    if channel == "mcp":
+        return "mcp_connect"
+    if channel == "rest":
+        return None  # REST usa o estágio 'paid' via subscription; consumo via tool
+    return None
+
 # Contextvar: identidade da máquina na requisição HTTP atual, lida pelo
 # _run_tool para correlacionar tool -> máquina.
 from contextvars import ContextVar
@@ -122,12 +156,17 @@ def record_rapidapi_call(plan: str | None, user: str | None) -> None:
             "kind": "paid_call",
             "detail": f"{plan} · {user or '?'}",
         })
+    mid = get_current_machine()
+    if mid:
+        _mark_stage(mid, "paid")
 
 
 def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, latency_ms: int | None = None) -> None:
     """Registra uma invocação de tool MCP (ou de produto) para a Control Tower."""
     global _mcp_total, _mcp_errors
     mid = get_current_machine()
+    if mid:
+        _mark_stage(mid, "tool_call")
     with _lock:
         _mcp_total += 1
         _tools[tool] = _tools.get(tool, 0) + 1
@@ -263,6 +302,9 @@ def record_http(scope, status_holder: dict | None = None) -> None:
     if not channel:
         return
     key = _bucket(_client_ip(headers, scope))
+    stage = _classify_stage(path, channel)
+    if stage:
+        _mark_stage(key, stage)
     with _lock:
         _counts[channel] = _counts.get(channel, 0) + 1
         _uniq.setdefault(channel, set()).add(key)
@@ -274,6 +316,7 @@ def record_http(scope, status_holder: dict | None = None) -> None:
             _recent_events.appendleft({"ts": int(time.time()), "kind": "new_machine", "detail": channel})
         elif c[key] >= 2:
             _recent_events.appendleft({"ts": int(time.time()), "kind": "repeat_machine", "detail": channel})
+            _mark_stage(key, "repeat")
     logger.info(
         "AETHERX_METRIC %s",
         json.dumps(
@@ -326,6 +369,22 @@ def metrics_snapshot() -> dict:
                 "unique": len(_mcp_consumer_ips),
                 "calls_by_machine": dict(sorted(_mcp_consumers.items(), key=lambda x: -x[1])[:10]),
             },
+            # Funil M2M por máquina anônima
+            "funnel": {
+                stage: sum(1 for st in _MACHINE_STAGES.values() if stage in st)
+                for stage in FUNNEL_STAGES
+            },
+            "machines": [
+                {
+                    "id": mid[:8],
+                    "first": _MACHINE_FIRST.get(mid),
+                    "last": _MACHINE_LAST.get(mid),
+                    "calls": _MACHINE_CALLS.get(mid, 0),
+                    "stages": sorted(_MACHINE_STAGES.get(mid, set())),
+                }
+                for mid in sorted(_MACHINE_STAGES.keys(),
+                                 key=lambda m: -_MACHINE_CALLS.get(m, 0))[:12]
+            ],
         }
 
 def _persist_now() -> None:
@@ -348,6 +407,10 @@ def _persist_now() -> None:
                 "events": list(_recent_events),
                 "mcp_consumers": dict(_mcp_consumers),
                 "mcp_consumer_ips": sorted(_mcp_consumer_ips),
+                "machine_stages": {k: sorted(v) for k, v in _MACHINE_STAGES.items()},
+                "machine_first": dict(_MACHINE_FIRST),
+                "machine_last": dict(_MACHINE_LAST),
+                "machine_calls": dict(_MACHINE_CALLS),
                 "saved_at": int(time.time()),
             }
         os.makedirs(os.path.dirname(os.path.abspath(_STATE_PATH)), exist_ok=True)
@@ -382,6 +445,11 @@ def _load_state() -> None:
             _paid_users.update(state.get("paid_users", []))
             _mcp_consumers.update(state.get("mcp_consumers", {}))
             _mcp_consumer_ips.update(state.get("mcp_consumer_ips", []))
+            for k, v in state.get("machine_stages", {}).items():
+                _MACHINE_STAGES.setdefault(k, set()).update(v)
+            _MACHINE_FIRST.update(state.get("machine_first", {}))
+            _MACHINE_LAST.update(state.get("machine_last", {}))
+            _MACHINE_CALLS.update(state.get("machine_calls", {}))
             events = state.get("events", [])
             if events:
                 _recent_events.extend(events[-100:])

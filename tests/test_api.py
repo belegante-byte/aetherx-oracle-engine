@@ -478,3 +478,27 @@ def test_tool_call_tracks_consumer():
     assert calls["abcd1234"] == 2
     assert calls["efgh5678"] == 1
     assert s["mcp_calls"] >= 3
+
+
+def test_funnel_tracks_machine_stages():
+    from src.api import metrics as m
+    from src.api.metrics import _MACHINE_STAGES, _MACHINE_CALLS, _MACHINE_FIRST, _MACHINE_LAST, _lock
+    with _lock:
+        _MACHINE_STAGES.clear(); _MACHINE_CALLS.clear(); _MACHINE_FIRST.clear(); _MACHINE_LAST.clear()
+    m._mark_stage("faaa11", "discovery")
+    m._mark_stage("faaa11", "mcp_connect")
+    m.set_current_machine("faaa11")
+    m.record_tool_call("get_port_risk", port_id="BRPNG", ok=True)
+    m._mark_stage("faaa11", "repeat")
+    m._mark_stage("fbbb22", "discovery")
+    s = m.metrics_snapshot()
+    f = s["funnel"]
+    assert f["discovery"] == 2
+    assert f["mcp_connect"] == 1
+    assert f["tool_call"] == 1
+    assert f["repeat"] == 1
+    assert f["paid"] == 0
+    ids = {x["id"] for x in s["machines"]}
+    assert "faaa11" in ids
+    stages = {x["id"]: x["stages"] for x in s["machines"]}
+    assert "tool_call" in stages["faaa11"]

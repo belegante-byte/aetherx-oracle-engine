@@ -143,6 +143,26 @@ def control_tower_html(snapshot: dict) -> str:
         for mid, c in list(consumers_detail.items())[:6]
     ) or '<div class="row muted"><span>nenhuma tool executada</span></div>'
 
+    funnel = m.get("funnel", {}) or {}
+    _funnel_order = ("discovery", "mcp_connect", "tool_call", "repeat", "paid")
+    _funnel_label = {
+        "discovery": "DISCOVERY", "mcp_connect": "MCP CONNECT",
+        "tool_call": "TOOL CALL", "repeat": "REPEAT", "paid": "PAID",
+    }
+    funnel_html = "".join(
+        f'<div class="row"><span>{_funnel_label.get(s, s)}</span>'
+        f'<span class="val">{funnel.get(s, 0)}</span></div>'
+        for s in _funnel_order
+    )
+
+    machines = m.get("machines", []) or []
+    machines_html = "".join(
+        f'<div class="event"><span class="ts">{_fmt_ts(mach.get("first", 0))}</span>'
+        f'<span class="kind">{mach.get("id")}…</span>'
+        f'<span class="det">{", ".join(mach.get("stages", [])) or "—"} · {mach.get("calls", 0)}c</span></div>'
+        for mach in machines[:10]
+    ) or '<div class="row muted"><span>sem máquinas ainda</span></div>'
+
     return f"""<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -191,6 +211,14 @@ h1{{font-size:1.4rem;letter-spacing:2px;color:#58a6ff;margin-bottom:1.5rem}}
     <h2>CONSUMERS (tools executadas)</h2>
     <div class="row"><span>MÁQUINAS QUE EXECUTARAM TOOL</span><span class="val">{mcp_consumers}</span></div>
     {consumers_html}
+  </div>
+  <div class="card">
+    <h2>FUNNEL M2M</h2>
+    {funnel_html}
+  </div>
+  <div class="card">
+    <h2>MACHINES (anônimas)</h2>
+    {machines_html}
   </div>
   <div class="card">
     <h2>TOP PORTS</h2>
