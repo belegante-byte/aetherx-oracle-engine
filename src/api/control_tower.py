@@ -127,6 +127,7 @@ def control_tower_html(snapshot: dict) -> str:
         icon = {
             "tool_call": "🔧", "port_query": "⚓", "new_machine": "🆕",
             "repeat_machine": "🔁", "mcp_call": "🤖", "error": "⚠️",
+            "paid_call": "💰",
         }.get(kind, "•")
         events_html += (
             f'<div class="event"><span class="ts">{ts}</span>'
@@ -134,6 +135,13 @@ def control_tower_html(snapshot: dict) -> str:
         )
     if not events_html:
         events_html = '<div class="row muted">sem eventos ainda nesta janela</div>'
+
+    mcp_consumers = m.get("mcp_consumer_count", 0)
+    consumers_detail = m.get("mcp_consumers", {}).get("calls_by_machine", {})
+    consumers_html = "".join(
+        f'<div class="row"><span>{mid[:8]}…</span><span class="val">{c} calls</span></div>'
+        for mid, c in list(consumers_detail.items())[:6]
+    ) or '<div class="row muted"><span>nenhuma tool executada</span></div>'
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8">
@@ -178,6 +186,11 @@ h1{{font-size:1.4rem;letter-spacing:2px;color:#58a6ff;margin-bottom:1.5rem}}
   <div class="card">
     <h2>TOP TOOLS</h2>
     {tools_html}
+  </div>
+  <div class="card">
+    <h2>CONSUMERS (tools executadas)</h2>
+    <div class="row"><span>MÁQUINAS QUE EXECUTARAM TOOL</span><span class="val">{mcp_consumers}</span></div>
+    {consumers_html}
   </div>
   <div class="card">
     <h2>TOP PORTS</h2>

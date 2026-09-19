@@ -30,12 +30,12 @@ _DISCOVERY_PATHS = (
 )
 
 # Bot/crawler/liveness: NÃO contam como usuário máquina externo para o funil
-# M2M (ex.: SentinelOracle, mcpbeat, Googlebot). São medidos à parte em "bot".
+# M2M (ex.: SentinelOracle, mcpbeat, rokmcp, Googlebot). São medidos à parte em "bot".
 _BOT_TOKENS = (
-    "sentineloracle", "mcpbeat", "googlebot", "bingbot", "slurp",
+    "sentineloracle", "mcpbeat", "rokmcp", "googlebot", "bingbot", "slurp",
     "duckduckbot", "baiduspider", "yandex", "lighthouse", "gtmetrix",
     "uptimerobot", "pingdom", "statuscake", "monitoring", "pingbot",
-    "facebookexternalhit", "twitterbot", "linkedinbot",
+    "facebookexternalhit", "twitterbot", "linkedinbot", "glimind",
 )
 
 # Firma de user-agent indica máquina (bot/agente/cliente HTTP), não humano.
@@ -80,6 +80,26 @@ _paid_users = set()   # set[str]          X-RapidAPI-User distintos em plano pag
 
 PAID_PLANS = ("PRO", "ULTRA", "MEGA", "CUSTOM")
 
+# ---- Consumidores reais: máquinas que EXECUTARAM pelo menos uma tool ----
+# Distingue "consumo real do Oracle" de "handshake/liveness de crawlers".
+# `_mcp_consumers` registra ip_hash de máquinas que invocaram tools/call.
+_mcp_consumers = {}    # {ip_hash: int}  tools executadas por máquina
+_mcp_consumer_ips = set()  # set[str]
+
+# Contextvar: identidade da máquina na requisição HTTP atual, lida pelo
+# _run_tool para correlacionar tool -> máquina.
+from contextvars import ContextVar
+current_machine_id: ContextVar[str | None] = ContextVar("current_machine_id", default=None)
+
+
+def set_current_machine(ip_hash: str | None) -> None:
+    if ip_hash:
+        current_machine_id.set(ip_hash)
+
+
+def get_current_machine() -> str | None:
+    return current_machine_id.get()
+
 
 def record_rapidapi_call(plan: str | None, user: str | None) -> None:
     """Registra uma chamada que veio pelo gateway RapidAPI (REST).
@@ -107,9 +127,13 @@ def record_rapidapi_call(plan: str | None, user: str | None) -> None:
 def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, latency_ms: int | None = None) -> None:
     """Registra uma invocação de tool MCP (ou de produto) para a Control Tower."""
     global _mcp_total, _mcp_errors
+    mid = get_current_machine()
     with _lock:
         _mcp_total += 1
         _tools[tool] = _tools.get(tool, 0) + 1
+        if mid:
+            _mcp_consumers[mid] = _mcp_consumers.get(mid, 0) + 1
+            _mcp_consumer_ips.add(mid)
         if port_id:
             _ports[port_id] = _ports.get(port_id, 0) + 1
             _recent_events.appendleft({
@@ -189,6 +213,18 @@ class MetricsMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
             status_holder = {}
+            token = None
+            # Identifica a máquina desta requisição para correlacionar tools
+            # executadas com o consumidor real (MCP consumers).
+            try:
+                headers = {
+                    k.decode("latin-1").lower(): v.decode("latin-1")
+                    for k, v in scope.get("headers", [])
+                }
+                mid = _bucket(_client_ip(headers, scope))
+                token = current_machine_id.set(mid)
+            except Exception:
+                pass
 
             async def send_wrapper(message):
                 if message.get("type") == "http.response.start":
@@ -196,7 +232,14 @@ class MetricsMiddleware:
                 await send(message)
 
             record_http(scope, status_holder=status_holder)
-            await self.app(scope, receive, send_wrapper)
+            try:
+                await self.app(scope, receive, send_wrapper)
+            finally:
+                if token is not None:
+                    try:
+                        current_machine_id.reset(token)
+                    except Exception:
+                        pass
             status = status_holder.get("status")
             if status and status >= 500:
                 record_error()
@@ -277,6 +320,12 @@ def metrics_snapshot() -> dict:
             "paid_plans": dict(_paid_plans),
             "paid_users": sorted(_paid_users),
             "paid_user_count": len(_paid_users),
+            # Consumo real: máquinas que executaram tools (não liveness)
+            "mcp_consumer_count": len(_mcp_consumer_ips),
+            "mcp_consumers": {
+                "unique": len(_mcp_consumer_ips),
+                "calls_by_machine": dict(sorted(_mcp_consumers.items(), key=lambda x: -x[1])[:10]),
+            },
         }
 
 def _persist_now() -> None:
@@ -297,6 +346,8 @@ def _persist_now() -> None:
                 "paid_plans": dict(_paid_plans),
                 "paid_users": sorted(_paid_users),
                 "events": list(_recent_events),
+                "mcp_consumers": dict(_mcp_consumers),
+                "mcp_consumer_ips": sorted(_mcp_consumer_ips),
                 "saved_at": int(time.time()),
             }
         os.makedirs(os.path.dirname(os.path.abspath(_STATE_PATH)), exist_ok=True)
@@ -329,6 +380,8 @@ def _load_state() -> None:
             _errors_total = state.get("errors_total", _errors_total)
             _paid_plans.update(state.get("paid_plans", {}))
             _paid_users.update(state.get("paid_users", []))
+            _mcp_consumers.update(state.get("mcp_consumers", {}))
+            _mcp_consumer_ips.update(state.get("mcp_consumer_ips", []))
             events = state.get("events", [])
             if events:
                 _recent_events.extend(events[-100:])

@@ -252,6 +252,7 @@ h1{font-size:1.3rem;letter-spacing:2px;color:#58a6ff;margin-bottom:.4rem}
 <div class="grid">
   <div class="card"><h2>SYSTEM</h2><div id="system">…</div></div>
   <div class="card"><h2>TOP TOOLS</h2><div id="tools">…</div></div>
+  <div class="card"><h2>CONSUMERS (tools)</h2><div id="consumers">…</div></div>
   <div class="card"><h2>TOP PORTS</h2><div id="ports">…</div></div>
   <div class="card"><h2>MONETIZATION</h2><div id="money">…</div></div>
   <div class="card"><h2>DISCOVERY</h2><div id="discovery">…</div></div>
@@ -284,6 +285,10 @@ function render(d){
     '<div class="stat">MCP CALLS <span class="val">'+((d._local&&d._local.cum_mcp_calls)||0).toLocaleString()+'</span></div>'+
     '<div class="stat">RESETS (deploy prod) <span class="val">'+((d._local&&d._local.resets)||0)+'</span></div>';
   document.getElementById('tools').innerHTML=(d.top_tools||[]).map(t=>'<div class="row"><span>'+esc(t[0])+'</span><span class="val">'+t[1]+'</span></div>').join('')||'<div class="muted">sem dados</div>';
+  document.getElementById('consumers').innerHTML=
+    '<div class="row"><span>MÁQUINAS QUE EXECUTARAM TOOL</span><span class="val big">'+(d.mcp_consumer_count||0)+'</span></div>'+
+    Object.entries((d.mcp_consumers&&d.mcp_consumers.calls_by_machine)||{}).slice(0,6).map(([m,c])=>'<div class="row"><span>'+esc(m.slice(0,8))+'…</span><span class="val">'+c+' calls</span></div>').join('')+
+    ((d.mcp_consumers&&d.mcp_consumers.unique)?'':'<div class="muted">nenhuma tool executada</div>');
   document.getElementById('ports').innerHTML=(d.top_ports||[]).map(p=>'<div class="row"><span>'+esc(p[0])+'</span><span class="val">'+p[1]+'</span></div>').join('')||'<div class="muted">sem dados</div>';
   const paidPlans=d.paid_plans||{};
   const paidTotal=Object.values(paidPlans).reduce((a,b)=>a+b,0);

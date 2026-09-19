@@ -459,3 +459,22 @@ def test_metrics_persistence_roundtrip(tmp_path):
     assert s["paid_plans"] == {"PRO": 1}
     assert "test_payer" in s["paid_users"]
     assert s["mcp_calls"] == 1
+
+
+def test_tool_call_tracks_consumer():
+    from src.api.metrics import (record_tool_call, metrics_snapshot, set_current_machine,
+                                 _tools, _ports, _mcp_consumers, _mcp_consumer_ips, _lock)
+    with _lock:
+        _tools.clear(); _ports.clear(); _mcp_consumers.clear(); _mcp_consumer_ips.clear()
+    set_current_machine("abcd1234")
+    record_tool_call("get_port_risk", port_id="BRPNG", ok=True, latency_ms=3)
+    set_current_machine("abcd1234")
+    record_tool_call("get_port_risk", port_id="BRSSZ", ok=True, latency_ms=2)
+    set_current_machine("efgh5678")
+    record_tool_call("get_port_trend", port_id="CNSHA", ok=True, latency_ms=4)
+    s = metrics_snapshot()
+    assert s["mcp_consumer_count"] == 2  # duas máquinas distintas executaram tool
+    calls = s["mcp_consumers"]["calls_by_machine"]
+    assert calls["abcd1234"] == 2
+    assert calls["efgh5678"] == 1
+    assert s["mcp_calls"] >= 3
