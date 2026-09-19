@@ -369,6 +369,15 @@ async def lifespan(app: FastAPI):
                         aplicar_no_oracle(por_porto, resumos)
                         invalidate_cache()
                         print(f"[AETHER-X INGESTION] ciclo ok: {len(res.get('linhas', []))} linhas")
+                    try:
+                        # Snapshot diário do oráculo (moat temporal). Fecha a conexão
+                        # read-only da API antes de abrir gravação no mesmo arquivo.
+                        from scripts.snapshot_history import snapshot
+                        from src.engine.risk_model import close_conn
+                        close_conn()
+                        snapshot(print_fn=lambda msg: print(f"[AETHER-X INGESTION] {msg}"))
+                    except Exception as e:
+                        print(f"[AETHER-X INGESTION] snapshot ignorado: {type(e).__name__}: {e}")
                 except Exception as e:
                     print(f"[AETHER-X INGESTION] erro no ciclo: {type(e).__name__}: {e}")
                 finally:

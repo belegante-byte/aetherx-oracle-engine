@@ -54,19 +54,58 @@ def build_rows(conn) -> list:
     rows = conn.execute("""
         SELECT port_id, port_name, country, congestion_score,
                eta_delay_days, waiting_vessels, freight_volatility_index,
-               CAST(updated_at AS VARCHAR) AS as_of
+               CAST(updated_at AS VARCHAR) AS as_of,
+               COALESCE(data_source, 'static_reference_seed') AS data_source
         FROM port_metrics
     """).fetchall()
 
     captured = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     out = []
-    for port_id, name, country, score, eta, waiting, vol, as_of in rows:
+    for port_id, name, country, score, eta, waiting, vol, as_of, ds in rows:
         demurrage = estimate_demurrage(score)
         out.append(
             (captured, port_id, name, country, score, eta, waiting, vol, demurrage,
-             "static_reference_seed", as_of)
+             ds, as_of)
         )
     return out
+
+
+def snapshot(print_fn=print, per_port_latest_day: bool = True) -> int:
+    """Anexa um snapshot de agora ao histórico e retorna o total de linhas.
+
+    Se per_port_latest_day=True (padrão), mantém apenas a última captura por
+    porto/dia, evitando poluir o histórico quando rodado várias vezes no dia.
+    """
+    import duckdb
+
+    path = db_path()
+    conn = duckdb.connect(path)
+    try:
+        ensure_history_table(conn)
+        rows = build_rows(conn)
+        if per_port_latest_day:
+            # Uma linha por porto/dia: remove as capturas do dia corrente antes
+            # de inserir as novas (evita duplicatas quando roda várias vezes).
+            conn.execute("""
+                DELETE FROM port_metrics_history
+                WHERE CAST(captured_at AS DATE) = (SELECT MAX(CAST(captured_at AS DATE)) FROM port_metrics_history)
+            """)
+        conn.executemany(
+            """
+            INSERT INTO port_metrics_history (
+                captured_at, port_id, port_name, country, congestion_score,
+                eta_delay_days, waiting_vessels, freight_volatility_index,
+                estimated_daily_demurrage_usd, data_source, as_of
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            rows,
+        )
+        n = conn.execute("SELECT COUNT(*) FROM port_metrics_history").fetchone()[0]
+    finally:
+        conn.close()
+    if print_fn:
+        print_fn(f"[SNAPSHOT] Histórico anexado: {len(rows)} portos. Total: {n}")
+    return n
 
 
 def main() -> int:
@@ -75,12 +114,13 @@ def main() -> int:
     args = parser.parse_args()
 
     load_env()
-    import duckdb
 
     path = db_path()
     print(f"[SNAPSHOT] DATABASE_PATH={path}")
 
     if args.test:
+        import duckdb
+
         conn = duckdb.connect(path, read_only=True)
         rows = build_rows(conn)
         conn.close()
@@ -89,22 +129,7 @@ def main() -> int:
         print(f"[SNAPSHOT] --test: {len(rows)} portos (nada gravado)")
         return 0
 
-    conn = duckdb.connect(path)
-    ensure_history_table(conn)
-    rows = build_rows(conn)
-    conn.executemany(
-        """
-        INSERT INTO port_metrics_history (
-            captured_at, port_id, port_name, country, congestion_score,
-            eta_delay_days, waiting_vessels, freight_volatility_index,
-            estimated_daily_demurrage_usd, data_source, as_of
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        rows,
-    )
-    n = conn.execute("SELECT COUNT(*) FROM port_metrics_history").fetchone()[0]
-    conn.close()
-    print(f"[SNAPSHOT] Histórico anexado: {len(rows)} portos. Total no histórico: {n}")
+    snapshot()
     return 0
 
 
