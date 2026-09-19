@@ -352,7 +352,7 @@ real-time field data.
 - Python SDK: `pip install aetherx-oracle`
 - MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) — tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`
 
-**Coverage** — 20 ports. **5 LIVE (BR):** BRSSZ (conditional), BRPNG, BRRIO, BRNIT, BRITG (validated). **15 reference seed:** CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO, MYPKG. Unknown ports return a global statistical estimate (`country="Global"`).
+**Coverage** — 19 ports. **5 LIVE (BR):** BRSSZ (conditional), BRPNG, BRRIO, BRNIT, BRITG (validated). **14 reference seed:** CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country="Global"`).
 
 Signals are provided "AS IS" and do not constitute investment advice.
 """
@@ -575,7 +575,7 @@ def port_congestion_detail(slug: str):
 
 @app.get("/public/ports", include_in_schema=False)
 def public_ports_all():
-    """Feed público read-only: sinal dos 20 portos (BR vivos + seed de referência) para widget/embed, sem key."""
+    """Feed público read-only: sinal dos 19 portos (BR vivos + seed de referência) para widget/embed, sem key."""
     rows = [calculate_port_risk(m["port_id"]) for m in PORT_METAS]
     return {
         "as_of": rows[0]["as_of"],
@@ -611,7 +611,7 @@ def ai_plugin_manifest():
         "Returns the current congestion signal for a port: "
         "`congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, "
         "`freight_volatility_index`, demurrage exposure and `decision_grade`. "
-        "Every response includes `data_source` and `as_of`. Coverage: 20 ports — "
+        "Every response includes `data_source` and `as_of`. Coverage: 19 ports — "
         "**5 Brazilian LIVE** (BRSSZ conditional; BRPNG, BRRIO, BRNIT, BRITG validated "
         "against ANTAQ), **14 reference seed** (`static_reference_seed`, not live). "
         "Unknown ports fall back "

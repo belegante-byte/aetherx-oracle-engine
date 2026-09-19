@@ -72,7 +72,6 @@ SUPPORTED_PORTS: list[dict[str, str]] = [
     {"port_id": "KRPUS", "port_name": "Busan", "country": "Coreia do Sul"},
     {"port_id": "MPTNG", "port_name": "Tanger Med", "country": "Marrocos"},
     {"port_id": "MXZLO", "port_name": "Manzanillo", "country": "México"},
-    {"port_id": "MYPKG", "port_name": "Port Klang", "country": "Malásia"},
     {"port_id": "NLRTM", "port_name": "Rotterdam", "country": "Holanda"},
     {"port_id": "SGSIN", "port_name": "Singapore", "country": "Cingapura"},
     {"port_id": "USLAX", "port_name": "Los Angeles", "country": "EUA"},
@@ -103,7 +102,7 @@ mcp = MCPServer(
         "- get_port_risk: ONE port — current signal (score, queue, delay, demurrage, confidence, provenance).\n"
         "- get_ports_risk: COMPARE several ports in one call (portfolio scan).\n"
         "- get_port_trend: short-horizon 24/48/72h projection (synthetic).\n"
-        "- list_supported_ports: 20 ports with UN/LOCODE ids.\n\n"
+        "- list_supported_ports: 19 ports with UN/LOCODE ids.\n\n"
         "This is a LIVE OPERATIONAL signal (not a static port-info lookup). For "
         "Brazilian ports BRSSZ/BRPNG/BRRIO/BRNIT/BRITG the queue is observed in "
         "real time (`live:appa+santos+lachmann`, `live:portosrio_silog`); the rest "
@@ -172,7 +171,7 @@ def get_port_trend(port_id: str) -> dict[str, Any]:
 
 @mcp.tool()
 def list_supported_ports() -> list[dict[str, str]]:
-    """List the 20 ports covered by the oracle (UN/LOCODE id, name, country).
+    """List the 19 ports covered by the oracle (UN/LOCODE id, name, country).
 
     Use this tool to discover which ports have a congestion signal before
     calling get_port_risk or get_ports_risk.

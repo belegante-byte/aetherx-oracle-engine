@@ -20,7 +20,7 @@ PYPI_MCP = "https://pypi.org/project/aetherx-mcp/"
 REMOTE_CFG = '{"mcpServers": {"aetherx-oracle": {"type": "url", "url": "%s/mcp"}}}' % PRODUCTION_URL
 STDIO_CFG = '{"mcpServers": {"aetherx-oracle": {"command": "uvx", "args": ["aetherx-mcp"]}}}'
 
-# 20 portos monitorados, espelhando src/engine/init_prod_db.py. O slug alimenta
+# 19 portos monitorados, espelhando src/engine/init_prod_db.py. O slug alimenta
 # o SEO programático (/port-congestion-<slug>) e o sitemap.
 PORT_METAS = [
     {"port_id": "BRSSZ", "slug": "santos", "port_name": "Santos", "country": "Brasil"},

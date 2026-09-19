@@ -28,7 +28,7 @@ Every response includes a `signal` block with `level`, `live_observation`, `queu
 - [Example call](https://aetherx.aether-grid.io/v1/port-risk?port_id=BRSSZ): GET /v1/port-risk?port_id=BRSSZ
 - [Trend example](https://aetherx.aether-grid.io/v1/port-trend?port_id=BRSSZ): GET /v1/port-trend?port_id=BRSSZ
 - [Batch example](https://aetherx.aether-grid.io/v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM): GET /v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM
-- [Public feed (no key)](https://aetherx.aether-grid.io/public/ports): GET /public/ports — all 20 ports (BR live, others reference seed), read-only, for widgets/embeds
+- [Public feed (no key)](https://aetherx.aether-grid.io/public/ports): GET /public/ports — all 19 ports (BR live, others reference seed), read-only, for widgets/embeds
 - [Interactive docs](https://aether-x-oracle-production.up.railway.app/docs): Swagger UI
 - [RapidAPI marketplace](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle): metered plans (Free / Pro / Ultra / Mega)
 - [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)

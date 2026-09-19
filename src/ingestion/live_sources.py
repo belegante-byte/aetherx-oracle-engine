@@ -431,7 +431,6 @@ SHIPINFO_PORTS = {
     "MPTNG": "Tanger",
     "ZACPT": "Cape Town",
     "MXZLO": "Manzanillo",
-    "MYPKG": "Port Klang",
 }
 
 _shipinfo_cache: dict = {}   # {port_id: {ts, data}}  cache por poll (rate limit)
