@@ -410,6 +410,104 @@ def fetch_portosrio_silog(timeout: int = 30) -> list:
     return [r for _, rows in linhas for r in rows]
 
 
+# ---------------------------------------------------------------- ShipInfo (AIS global)
+
+SHIPINFO_BASE = "https://shipinfo.net/topos/api/v1"
+SHIPINFO_AGENT = "aetherx-oracle"
+
+# Porto -> nome de busca no shipinfo (ports/search). Mapeia os 14 globais.
+SHIPINFO_PORTS = {
+    "NLRTM": "Rotterdam",
+    "DEHAM": "Hamburg",
+    "SGSIN": "Singapore",
+    "KRPUS": "Busan",
+    "CNSHA": "Shanghai",
+    "CNNGB": "Ningbo",
+    "CNTAO": "Qingdao",
+    "USLAX": "Los Angeles",
+    "USNYC": "New York",
+    "AEDXB": "Dubai",
+    "GBLGP": "London Gateway",
+    "MPTNG": "Tanger",
+    "ZACPT": "Cape Town",
+    "MXZLO": "Manzanillo",
+}
+
+_shipinfo_cache: dict = {}   # {port_id: {ts, data}}  cache por poll (rate limit)
+_shipinfo_port_id: dict = {}  # {aetherx_port: shipinfo_port_id}
+
+
+def _shipinfo_get(path: str, params: str = "") -> dict:
+    """GET na API shipinfo com o agente registrado (rate limit consciente)."""
+    import urllib.parse
+    url = f"{SHIPINFO_BASE}{path}?{params}" if params else f"{SHIPINFO_BASE}{path}"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "x-agent-name": SHIPINFO_AGENT})
+    with urllib.request.urlopen(req, timeout=25) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _shipinfo_resolve_port(port_id: str) -> int | None:
+    """Resolve o shipinfo port_id para um porto do GRID (com cache)."""
+    if port_id in _shipinfo_port_id:
+        return _shipinfo_port_id[port_id]
+    name = SHIPINFO_PORTS.get(port_id)
+    if not name:
+        return None
+    try:
+        d = _shipinfo_get("/ports/search", f"name={urllib.parse.quote(name)}")
+        rows = (d.get("data") or {}).get("rows", [])
+        # prefere o porto com mesmo país/nome exato
+        for r in rows:
+            if r.get("name", "").lower() == name.lower():
+                _shipinfo_port_id[port_id] = r["port_id"]
+                return r["port_id"]
+        if rows:
+            _shipinfo_port_id[port_id] = rows[0]["port_id"]
+            return rows[0]["port_id"]
+    except Exception:
+        return None
+    return None
+
+
+def fetch_shipinfo_congestion(timeout: int = 30) -> list:
+    """Busca anchored_count (fila ao largo) dos portos globais via ShipInfo AIS.
+
+    Deriva waiting_vessels de `anchored_count` (navios ancorados) — fila real
+    reconstruída de AIS, com `fonte="ais_derivado"`. Sem registro/estação física.
+    """
+    linhas = []
+    for port_id in SHIPINFO_PORTS:
+        pid = _shipinfo_resolve_port(port_id)
+        if not pid:
+            continue
+        try:
+            d = _shipinfo_get("/ports/{0}/congestion".format(pid), "range=7D")
+            rows = (d.get("data") or {}).get("rows", [])
+            if not rows:
+                continue
+            # última amostra = estado atual (fila ao largo)
+            last = rows[-1]
+            anchored = int(last.get("anchored_count", 0) or 0)
+            for _ in range(anchored):
+                linhas.append({
+                    "port_id": port_id,
+                    "source": "shipinfo_ais",
+                    "vessel_name": "ANCHORED",
+                    "imo": None,
+                    "status": "ao_largo",
+                    "cargo": "N/D",
+                    "agency": "SHIPINFO",
+                    "dwt": 0.0,
+                    "eta": last.get("snapshot_ts"),
+                    "raw": {"anchored_count": anchored, "snapshot_ts": last.get("snapshot_ts"),
+                            "congestion_score": last.get("congestion_score"),
+                            "inflow_count": last.get("inflow_count"), "outflow_count": last.get("outflow_count")},
+                })
+        except Exception:
+            continue
+    return linhas
+
+
 # ---------------------------------------------------------------- orchestrator
 
 def coletar_tudo(timeout: int = 30) -> dict:
@@ -426,6 +524,7 @@ def coletar_tudo(timeout: int = 30) -> dict:
         "santos": fetch_santos_atracacoes,
         "santos_painel": fetch_santos_painel,
         "portosrio_silog": fetch_portosrio_silog,
+        "shipinfo_ais": fetch_shipinfo_congestion,
     }
     for nome, fn in fontes.items():
         try:
