@@ -28,7 +28,8 @@ def test_health_check():
     assert 'href="/santos-port-congestion-api"' in resp.text
     assert 'href="/port-congestion-python"' in resp.text
     assert 'href="/mcp-page"' in resp.text
-    assert "Live Intelligence Snapshot" in resp.text
+    assert "Live Snapshot" in resp.text
+    assert "data_source" in resp.text
     assert "BRSSZ" in resp.text
     assert "NLRTM" in resp.text
     assert "estimated_daily_demurrage_usd" in resp.text
@@ -52,7 +53,7 @@ def test_sitemap_lists_all_content_pages():
     resp = client.get("/sitemap.xml")
     assert resp.status_code == 200
     assert "application/xml" in resp.headers["content-type"]
-    assert resp.text.count("<url>") == 21
+    assert resp.text.count("<url>") == 22
 
 
 def test_robots_txt():
@@ -88,12 +89,23 @@ def test_port_risk_known_port():
     assert body["port_id"] == "BRSSZ"
     assert body["port_name"] == "Santos"
     assert body["country"] == "Brasil"
-    assert body["congestion_score"] == 0.78
-    assert body["eta_delay_days"] == 1.6
-    assert body["waiting_vessels"] == 12
-    assert body["freight_volatility_index"] == 0.42
-    assert body["estimated_daily_demurrage_usd"] == 63200
+    assert body["estimated_daily_demurrage_usd"] > 0
     assert body["updated_at"]
+    assert body["as_of"] == body["updated_at"]
+    # Santos agora é alimentado por fonte viva (painel de operações da CODESP).
+    assert body["data_source"].startswith("live:")
+    assert body["data_source_label"]
+    assert "live" in body and body["live"]["atracados"] > 0
+
+
+def test_port_risk_static_seed_for_unlived_port():
+    resp = client.get("/v1/port-risk", params={"port_id": "brrio"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["port_id"] == "BRRIO"
+    assert body["data_source"] == "static_reference_seed"
+    assert body["data_source_label"]
+    assert body["congestion_score"] == 0.45
 
 
 def test_port_risk_fallback_unknown_port():
@@ -107,6 +119,8 @@ def test_port_risk_fallback_unknown_port():
     assert body["waiting_vessels"] == 6
     assert body["freight_volatility_index"] == 0.35
     assert body["estimated_daily_demurrage_usd"] == 50000
+    assert body["as_of"]
+    assert body["data_source"] == "static_reference_seed"
 
 
 def test_port_risk_missing_param():
@@ -119,7 +133,8 @@ def test_engine_returns_all_required_fields():
     expected_fields = {
         "port_id", "port_name", "country", "congestion_score",
         "eta_delay_days", "waiting_vessels", "freight_volatility_index",
-        "estimated_daily_demurrage_usd", "updated_at"
+        "estimated_daily_demurrage_usd", "updated_at", "as_of",
+        "data_source", "data_source_label",
     }
     assert expected_fields <= set(data.keys())
 
@@ -128,6 +143,8 @@ def test_openapi_contains_response_schema():
     schema = app.openapi()
     assert "PortRiskResponse" in schema["components"]["schemas"]
     assert "/v1/port-risk" in schema["paths"]
+    example = schema["paths"]["/v1/port-risk"]["get"]["responses"]["200"]["content"]["application/json"]["example"]
+    assert example["data_source"].startswith("live:") or example["data_source"] == "static_reference_seed"
 
 
 def test_qingdao_new_port_supported():
@@ -145,6 +162,8 @@ def test_port_trend_projection():
     body = resp.json()
     assert body["port_id"] == "BRSSZ"
     assert body["trend"] in {"acelerando", "estável", "descongestionando"}
+    assert body["data_source"] == "synthetic_projection"
+    assert body["as_of"]
     assert set(body["projection"].keys()) == {"h24", "h48", "h72"}
     point = body["projection"]["h24"]
     assert set(point.keys()) == {
@@ -209,7 +228,11 @@ def test_ports_risk_batch():
     assert resp.status_code == 200
     body = resp.json()
     assert [r["port_id"] for r in body["results"]] == ["BRSSZ", "CNSHA", "NLRTM"]
-    assert body["results"][0]["estimated_daily_demurrage_usd"] == 63200
+    assert body["results"][0]["estimated_daily_demurrage_usd"] > 0
+    # BRSSZ vivo; demais seguem o seed de referência.
+    assert body["results"][0]["data_source"].startswith("live:")
+    assert body["results"][1]["data_source"] == "static_reference_seed"
+    assert body["results"][2]["data_source"] == "static_reference_seed"
 
 
 def test_ports_risk_batch_limit():
@@ -281,12 +304,17 @@ def test_public_ports_feed():
     resp = pub.get("/public/ports")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["count"] == 16
-    assert len(body["results"]) == 16
+    assert body["count"] == 17
+    assert len(body["results"]) == 17
     first = body["results"][0]
     for key in (
         "port_id", "port_name", "country", "congestion_score",
         "eta_delay_days", "waiting_vessels", "freight_volatility_index",
-        "estimated_daily_demurrage_usd", "updated_at",
+        "estimated_daily_demurrage_usd", "updated_at", "as_of",
+        "data_source", "data_source_label",
     ):
         assert key in first
+    # Feed é misto: portos BR vivos + seed de referência para os demais.
+    data_sources = {r["data_source"] for r in body["results"]}
+    assert "static_reference_seed" in data_sources
+    assert any(ds.startswith("live:") for ds in data_sources)

@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Aether-X Port Congestion Oracle",
-    "description": "Predictive port congestion signals for global trade, supply chain and quantitative finance.\n\nAether-X turns public port telemetry into machine-readable congestion scores, ETA delay estimates and freight volatility indices for the world's largest ports \u2014 so trading desks, logistics teams and autonomous agents can react before the market prices the delay in.\n\n**The signal** \u2014 `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0\u20131.0 risk of operational congestion |\n| `eta_delay_days` | Expected delay applied to incoming vessels |\n| `waiting_vessels` | Ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n| `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |\n\n**Trend (24h/48h/72h)** \u2014 `GET /v1/port-trend?port_id=BRSSZ` returns the congestion projection with a `trend` label: `acelerando`, `est\u00e1vel` or `descongestionando`.\n\n**Free tier** \u2014 $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) \u2014 tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`\n\n**Coverage** \u2014 16 ports: BRSSZ, BRRIO, CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
+    "description": "Port congestion reference signals for global trade, supply chain and quantitative finance.\n\n**IMPORTANT \u00b7 Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.\nBrazilian ports (BRSSZ, BRPNG) serve live line-ups: `data_source=\"live:appa+santos+lachmann\"`. The remaining ports\nserve a **static reference seed**: `data_source=\"static_reference_seed\"` means the value is a seeded baseline, not a\nlive measurement. The 24/48/72h trend is a `synthetic_projection`, not a live forecast. Do not treat seed numbers as\nreal-time field data.\n\n**The signal** \u2014 `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0\u20131.0 reference congestion level (seeded) |\n| `eta_delay_days` | Reference delay applied to incoming vessels |\n| `waiting_vessels` | Reference ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n| `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |\n| `data_source` | Always `static_reference_seed` until live telemetry is connected |\n| `as_of` | Timestamp of the seed (not a live refresh) |\n\n**Trend (24h/48h/72h)** \u2014 `GET /v1/port-trend?port_id=BRSSZ` returns a **synthetic** projection with a `trend` label: `acelerando`, `est\u00e1vel` or `descongestionando`.\n\n**Free tier** \u2014 $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) \u2014 tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`\n\n**Coverage** \u2014 16 ports: BRSSZ, BRRIO, CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
     "termsOfService": "https://aether-x-oracle-production.up.railway.app/terms",
     "contact": {
       "name": "Aether-X",
@@ -13,7 +13,7 @@
       "name": "Machine-to-Machine Data Distribution (see /terms)",
       "url": "https://aether-x-oracle-production.up.railway.app/terms"
     },
-    "version": "0.2.0",
+    "version": "0.2.1",
     "x-logo": {
       "url": "https://raw.githubusercontent.com/belegante-byte/aetherx-mcp/main/assets/logo.png",
       "altText": "Aether-X Port Congestion Oracle"
@@ -32,7 +32,7 @@
           "Port Risk"
         ],
         "summary": "Get port congestion risk for a single port",
-        "description": "Returns the predictive congestion signal for a single global port: `congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, `freight_volatility_index` and the estimated `estimated_daily_demurrage_usd`. Coverage: 16 ports (BRSSZ, CNSHA, CNTAO, NLRTM, ...). Unknown ports fall back to a global statistical estimate with `country=\"Global\"`. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
+        "description": "Returns the reference congestion signal for a single global port: `congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, `freight_volatility_index` and the estimated `estimated_daily_demurrage_usd`. Every response includes `data_source` (`static_reference_seed` until live telemetry is connected) and `as_of` (seed timestamp, not a live refresh). Coverage: 16 ports (BRSSZ, CNSHA, CNTAO, NLRTM, ...). Unknown ports fall back to a global statistical estimate with `country=\"Global\"`. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
         "operationId": "get_port_risk_v1_port_risk_get",
         "parameters": [
           {
@@ -52,7 +52,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The current congestion signal for the requested port.",
+            "description": "The current reference signal for the requested port.",
             "content": {
               "application/json": {
                 "schema": {
@@ -62,12 +62,22 @@
                   "port_id": "BRSSZ",
                   "port_name": "Santos",
                   "country": "Brasil",
-                  "congestion_score": 0.78,
-                  "eta_delay_days": 1.6,
-                  "waiting_vessels": 12,
-                  "freight_volatility_index": 0.42,
-                  "estimated_daily_demurrage_usd": 63200,
-                  "updated_at": "2026-09-18 12:27:54"
+                  "congestion_score": 0.329,
+                  "eta_delay_days": 0.2,
+                  "waiting_vessels": 0,
+                  "freight_volatility_index": 0.4,
+                  "estimated_daily_demurrage_usd": 45160,
+                  "updated_at": "2026-09-19 00:54:12",
+                  "as_of": "2026-09-19 00:54:12",
+                  "data_source": "live:appa+santos+lachmann",
+                  "data_source_label": "Live line-ups from APPA Paranagu\u00e1, Porto de Santos and Lachmann schedules.",
+                  "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 595, \"programados\": 135}",
+                  "live": {
+                    "ao_largo": 0,
+                    "esperados": 0,
+                    "atracados": 595,
+                    "programados": 135
+                  }
                 }
               }
             }
@@ -91,7 +101,7 @@
           "Port Risk"
         ],
         "summary": "Get port risk trend",
-        "description": "Returns the 24h, 48h and 72h congestion projections for a single global port, with a `trend` label (`acelerando`, `est\u00e1vel` or `descongestionando`). Each projection point includes `congestion_score`, `eta_delay_days` and the estimated `estimated_daily_demurrage_usd`. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
+        "description": "Returns the 24h, 48h and 72h congestion projections for a single global port, with a `trend` label (`acelerando`, `est\u00e1vel` or `descongestionando`). Each projection point includes `congestion_score`, `eta_delay_days` and the estimated `estimated_daily_demurrage_usd`. NOTE: the projection is `synthetic_projection` (derived from the static reference seed), not a live forecast. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
         "operationId": "get_port_trend_v1_port_trend_get",
         "parameters": [
           {
@@ -121,26 +131,29 @@
                   "port_id": "BRSSZ",
                   "port_name": "Santos",
                   "country": "Brasil",
-                  "trend": "est\u00e1vel",
-                  "congestion_score": 0.78,
+                  "trend": "acelerando",
+                  "congestion_score": 0.329,
                   "projection": {
                     "h24": {
-                      "congestion_score": 0.78,
-                      "eta_delay_days": 1.6,
-                      "estimated_daily_demurrage_usd": 63200
+                      "congestion_score": 0.34,
+                      "eta_delay_days": 0.21,
+                      "estimated_daily_demurrage_usd": 45600
                     },
                     "h48": {
-                      "congestion_score": 0.79,
-                      "eta_delay_days": 1.62,
-                      "estimated_daily_demurrage_usd": 63600
+                      "congestion_score": 0.35,
+                      "eta_delay_days": 0.21,
+                      "estimated_daily_demurrage_usd": 46000
                     },
                     "h72": {
-                      "congestion_score": 0.79,
-                      "eta_delay_days": 1.62,
-                      "estimated_daily_demurrage_usd": 63600
+                      "congestion_score": 0.36,
+                      "eta_delay_days": 0.22,
+                      "estimated_daily_demurrage_usd": 46400
                     }
                   },
-                  "updated_at": "2026-09-18 12:27:54"
+                  "updated_at": "2026-09-19 00:54:12",
+                  "as_of": "2026-09-19 00:54:12",
+                  "data_source": "synthetic_projection",
+                  "data_source_label": "Synthetic projection from static reference seed (not a live forecast)."
                 }
               }
             }
@@ -196,12 +209,22 @@
                       "port_id": "BRSSZ",
                       "port_name": "Santos",
                       "country": "Brasil",
-                      "congestion_score": 0.78,
-                      "eta_delay_days": 1.6,
-                      "waiting_vessels": 12,
-                      "freight_volatility_index": 0.42,
-                      "estimated_daily_demurrage_usd": 63200,
-                      "updated_at": "2026-09-18 12:27:54"
+                      "congestion_score": 0.329,
+                      "eta_delay_days": 0.2,
+                      "waiting_vessels": 0,
+                      "freight_volatility_index": 0.4,
+                      "estimated_daily_demurrage_usd": 45160,
+                      "updated_at": "2026-09-19 00:54:12",
+                      "as_of": "2026-09-19 00:54:12",
+                      "data_source": "live:appa+santos+lachmann",
+                      "data_source_label": "Live line-ups from APPA Paranagu\u00e1, Porto de Santos and Lachmann schedules.",
+                      "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 595, \"programados\": 135}",
+                      "live": {
+                        "ao_largo": 0,
+                        "esperados": 0,
+                        "atracados": 595,
+                        "programados": 135
+                      }
                     },
                     {
                       "port_id": "CNSHA",
@@ -212,7 +235,11 @@
                       "waiting_vessels": 18,
                       "freight_volatility_index": 0.38,
                       "estimated_daily_demurrage_usd": 60800,
-                      "updated_at": "2026-09-18 12:27:54"
+                      "updated_at": "2026-09-19 00:44:19",
+                      "as_of": "2026-09-19 00:44:19",
+                      "data_source": "static_reference_seed",
+                      "data_source_label": "Static reference data (no live telemetry connected).",
+                      "live_detail": null
                     }
                   ]
                 }
@@ -282,6 +309,41 @@
           "updated_at": {
             "type": "string",
             "title": "Updated At"
+          },
+          "as_of": {
+            "type": "string",
+            "title": "As Of"
+          },
+          "data_source": {
+            "type": "string",
+            "title": "Data Source"
+          },
+          "data_source_label": {
+            "type": "string",
+            "title": "Data Source Label"
+          },
+          "live_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Detail"
+          },
+          "live": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live"
           }
         },
         "type": "object",
@@ -294,20 +356,33 @@
           "waiting_vessels",
           "freight_volatility_index",
           "estimated_daily_demurrage_usd",
-          "updated_at"
+          "updated_at",
+          "as_of",
+          "data_source",
+          "data_source_label"
         ],
         "title": "PortRiskResponse",
         "examples": [
           {
-            "congestion_score": 0.78,
+            "as_of": "2026-09-19 00:54:12",
+            "congestion_score": 0.329,
             "country": "Brasil",
-            "estimated_daily_demurrage_usd": 63200,
-            "eta_delay_days": 1.6,
-            "freight_volatility_index": 0.42,
+            "data_source": "live:appa+santos+lachmann",
+            "data_source_label": "Live line-ups from APPA Paranagu\u00e1, Porto de Santos and Lachmann schedules.",
+            "estimated_daily_demurrage_usd": 45160,
+            "eta_delay_days": 0.2,
+            "freight_volatility_index": 0.4,
+            "live": {
+              "ao_largo": 0,
+              "atracados": 595,
+              "esperados": 0,
+              "programados": 135
+            },
+            "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 595, \"programados\": 135}",
             "port_id": "BRSSZ",
             "port_name": "Santos",
-            "updated_at": "2026-09-18 12:27:54",
-            "waiting_vessels": 12
+            "updated_at": "2026-09-19 00:54:12",
+            "waiting_vessels": 0
           }
         ]
       },
@@ -343,6 +418,18 @@
           "updated_at": {
             "type": "string",
             "title": "Updated At"
+          },
+          "as_of": {
+            "type": "string",
+            "title": "As Of"
+          },
+          "data_source": {
+            "type": "string",
+            "title": "Data Source"
+          },
+          "data_source_label": {
+            "type": "string",
+            "title": "Data Source Label"
           }
         },
         "type": "object",
@@ -353,34 +440,40 @@
           "trend",
           "congestion_score",
           "projection",
-          "updated_at"
+          "updated_at",
+          "as_of",
+          "data_source",
+          "data_source_label"
         ],
         "title": "PortTrendResponse",
         "examples": [
           {
-            "congestion_score": 0.78,
+            "as_of": "2026-09-19 00:54:12",
+            "congestion_score": 0.329,
             "country": "Brasil",
+            "data_source": "synthetic_projection",
+            "data_source_label": "Synthetic projection from static reference seed (not a live forecast).",
             "port_id": "BRSSZ",
             "port_name": "Santos",
             "projection": {
               "h24": {
-                "congestion_score": 0.78,
-                "estimated_daily_demurrage_usd": 63200,
-                "eta_delay_days": 1.6
+                "congestion_score": 0.34,
+                "estimated_daily_demurrage_usd": 45600,
+                "eta_delay_days": 0.21
               },
               "h48": {
-                "congestion_score": 0.79,
-                "estimated_daily_demurrage_usd": 63600,
-                "eta_delay_days": 1.62
+                "congestion_score": 0.35,
+                "estimated_daily_demurrage_usd": 46000,
+                "eta_delay_days": 0.21
               },
               "h72": {
-                "congestion_score": 0.79,
-                "estimated_daily_demurrage_usd": 63600,
-                "eta_delay_days": 1.62
+                "congestion_score": 0.36,
+                "estimated_daily_demurrage_usd": 46400,
+                "eta_delay_days": 0.22
               }
             },
-            "trend": "est\u00e1vel",
-            "updated_at": "2026-09-18 12:27:54"
+            "trend": "acelerando",
+            "updated_at": "2026-09-19 00:54:12"
           }
         ]
       },
@@ -403,25 +496,38 @@
           {
             "results": [
               {
-                "congestion_score": 0.78,
+                "as_of": "2026-09-19 00:54:12",
+                "congestion_score": 0.329,
                 "country": "Brasil",
-                "estimated_daily_demurrage_usd": 63200,
-                "eta_delay_days": 1.6,
-                "freight_volatility_index": 0.42,
+                "data_source": "live:appa+santos+lachmann",
+                "data_source_label": "Live line-ups from APPA Paranagu\u00e1, Porto de Santos and Lachmann schedules.",
+                "estimated_daily_demurrage_usd": 45160,
+                "eta_delay_days": 0.2,
+                "freight_volatility_index": 0.4,
+                "live": {
+                  "ao_largo": 0,
+                  "atracados": 595,
+                  "esperados": 0,
+                  "programados": 135
+                },
+                "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 595, \"programados\": 135}",
                 "port_id": "BRSSZ",
                 "port_name": "Santos",
-                "updated_at": "2026-09-18 12:27:54",
-                "waiting_vessels": 12
+                "updated_at": "2026-09-19 00:54:12",
+                "waiting_vessels": 0
               },
               {
+                "as_of": "2026-09-19 00:44:19",
                 "congestion_score": 0.72,
                 "country": "China",
+                "data_source": "static_reference_seed",
+                "data_source_label": "Static reference data (no live telemetry connected).",
                 "estimated_daily_demurrage_usd": 60800,
                 "eta_delay_days": 1.5,
                 "freight_volatility_index": 0.38,
                 "port_id": "CNSHA",
                 "port_name": "Shanghai",
-                "updated_at": "2026-09-18 12:27:54",
+                "updated_at": "2026-09-19 00:44:19",
                 "waiting_vessels": 18
               }
             ]

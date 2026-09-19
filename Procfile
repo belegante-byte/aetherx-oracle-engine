@@ -1,1 +1,1 @@
-web: python -m src.engine.init_prod_db && uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
+web: python -m src.engine.init_prod_db && ENABLE_LIVE_INGESTION=1 uvicorn src.api.main:app --host 0.0.0.0 --port $PORT

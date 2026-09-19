@@ -1,8 +1,9 @@
 """Landing content pages: Aether-X MCP demo page, SEO intent pages and sitemap.
 
-All pages reuse the same dark theme as the landing page and render live
-in-process data (calculate_port_risk / calculate_port_trend) so every request
-shows current numbers.
+All pages reuse the same dark theme as the landing page and render the
+oracle signals (calculate_port_risk / calculate_port_trend). Every page
+states the data provenance explicitly: Brazilian ports (BRPNG/BRSSZ) are fed
+by live line-ups; the rest serve a static reference seed.
 """
 
 import html
@@ -19,10 +20,11 @@ PYPI_MCP = "https://pypi.org/project/aetherx-mcp/"
 REMOTE_CFG = '{"mcpServers": {"aetherx-oracle": {"type": "url", "url": "%s/mcp"}}}' % PRODUCTION_URL
 STDIO_CFG = '{"mcpServers": {"aetherx-oracle": {"command": "uvx", "args": ["aetherx-mcp"]}}}'
 
-# 16 portos monitorados, espelhando src/engine/init_prod_db.py. O slug alimenta
+# 17 portos monitorados, espelhando src/engine/init_prod_db.py. O slug alimenta
 # o SEO programático (/port-congestion-<slug>) e o sitemap.
 PORT_METAS = [
     {"port_id": "BRSSZ", "slug": "santos", "port_name": "Santos", "country": "Brasil"},
+    {"port_id": "BRPNG", "slug": "paranagua", "port_name": "Paranaguá", "country": "Brasil"},
     {"port_id": "BRRIO", "slug": "rio-de-janeiro", "port_name": "Rio de Janeiro", "country": "Brasil"},
     {"port_id": "CNSHA", "slug": "shanghai", "port_name": "Shanghai", "country": "China"},
     {"port_id": "CNNGB", "slug": "ningbo-zhoushan", "port_name": "Ningbo-Zhoushan", "country": "China"},
@@ -133,8 +135,12 @@ print(risk.estimated_daily_demurrage_usd)</code></pre></div>
 
 
 def mcp_page_html() -> str:
-    body = f"""<p class="lede">Query real-time port congestion, ETA delays, vessel queues and modeled demurrage exposure through an <strong>MCP-compatible AI agent</strong>.</p>
-<span class="pill pill-green">Remote MCP Live</span>
+    body = f"""<div class="snippet-card"><div class="card-header"><span>Data integrity</span></div><pre><code>Brazilian ports (BRPNG/BRSSZ) serve LIVE line-ups from
+APPA Paranaguá, Porto de Santos and Lachmann schedules.
+Other ports serve data_source="static_reference_seed".
+Every response includes data_source and as_of.</code></pre></div>
+<p class="lede">Query port congestion signals, ETA delays, vessel queues and modeled demurrage exposure through an <strong>MCP-compatible AI agent</strong>.</p>
+<span class="pill pill-blue">Remote MCP Online</span>
 <span class="pill pill-blue">Official MCP Registry</span>
 <span class="pill pill-blue">PyPI: aetherx-mcp</span>
 
@@ -169,21 +175,21 @@ def mcp_page_html() -> str:
 <li><a href="{PRODUCTION_URL}/docs">Swagger UI</a> · <a href="{PRODUCTION_URL}" class="__rEST__">REST API</a></li>
 </ul>
 
-<h2>Real-time signal (Santos)</h2>{live_card("BRSSZ")}
+<h2>Reference signal (Santos)</h2>{live_card("BRSSZ")}
 <a class="cta" href="{RAPIDAPI_URL}">Get a free API key</a>
 """
     return _page(
         "Aether-X MCP — Port Congestion Server for AI Agents",
-        "MCP server for port congestion, ETA delay and demurrage intelligence. Tools: get_port_risk, get_ports_risk, get_port_trend. Remote endpoint and PyPI install.",
+        "MCP server for live Brazilian port line-ups and reference global port congestion signals. Tools: get_port_risk, get_ports_risk, get_port_trend. Remote endpoint and PyPI install.",
         "Aether-X MCP: Port Congestion for AI Agents",
-        "Connect any MCP-compatible agent to real-time global port congestion intelligence.",
+        "Connect any MCP-compatible agent to congestion signals for Brazilian ports (live line-ups) and reference signals for global ports.",
         body,
         "/mcp-page",
     )
 
 
 def port_congestion_api_page() -> str:
-    body = f"""<p>Shipping congestion is a fast-moving signal. When ports back up, freight rates, delivery SLAs and commodity spreads move within hours. A port congestion API converts that operational noise into a single <strong>machine-readable score</strong> you can act on.</p>
+    body = f"""<p>Congestion is a fast-moving signal, and Brazilian ports now feed real operational data. <strong>Santos (BRSSZ)</strong> and <strong>Paranaguá (BRPNG)</strong> pull live line-ups from APPA Paranaguá, the Porto de Santos operations panel and Lachmann schedules; the remaining ports serve a <strong>reference seed</strong>. Every response carries <code>data_source</code> (<code>live:appa+santos+lachmann</code> or <code>static_reference_seed</code>) and <code>as_of</code> so you know exactly what you are looking at.</p>
 <h2>What a port congestion score tells you</h2>
 <ul>
 <li><strong>Congestion score (0.0–1.0)</strong> — normalized risk of operational congestion at the port.</li>
@@ -199,9 +205,9 @@ def port_congestion_api_page() -> str:
 """
     return _page(
         "Port Congestion API — Port Risk, ETA Delay & Demurrage",
-        "A port congestion API returning congestion score, ETA delay, waiting vessels, freight volatility and daily demurrage for 16 global ports.",
+        "A port congestion API returning live congestion data for Brazilian ports and reference scores for the rest of the 17-port coverage.",
         "Port Congestion API",
-        "Turn real-time port telemetry into structured congestion, ETA delay and demurrage intelligence.",
+        "Port congestion, ETA delay and demurrage signals — live line-ups for Brazilian ports, reference seed elsewhere.",
         body,
         "/port-congestion-api",
     )
@@ -211,13 +217,14 @@ def santos_port_congestion_api_page() -> str:
     live = calculate_port_risk("BRSSZ")
     risk = {k: live[k] for k in ("congestion_score", "eta_delay_days", "waiting_vessels", "freight_volatility_index", "estimated_daily_demurrage_usd")}
     body = f"""<p>Santos (BRSSZ) is Latin America's busiest container port and a critical chokepoint for Brazilian agri-mineral exports and imports. Monitoring its congestion is essential for importers, exporters, freight forwarders and commodity desks.</p>
-<h2>Santos congestion right now</h2>
+<h2>Santos live signal</h2>
 <div class="metrics">
 <div class="metric"><span>Congestion score</span><b>{risk['congestion_score']:.2f}</b></div>
 <div class="metric"><span>ETA delay</span><b>{risk['eta_delay_days']:.1f} days</b></div>
 <div class="metric"><span>Waiting vessels</span><b>{risk['waiting_vessels']}</b></div>
 <div class="metric"><span>Demurrage/day</span><b>${risk['estimated_daily_demurrage_usd']:,}</b></div>
 </div>
+<p class="muted">Live values from the Porto de Santos operations panel, data_source {live.get('data_source')} (as_of {live.get('as_of', live.get('updated_at', 'n/a'))}).</p>
 {_json_pre({"port_id": "BRSSZ", "port_name": "Santos", "country": "Brasil", **risk})}
 <h2>Track Santos programmatically</h2>
 <div class="snippet-card"><div class="card-header"><span>Python SDK</span></div><pre><code>pip install --upgrade aetherx-oracle
@@ -231,10 +238,10 @@ print(risk.congestion_score, risk.eta_delay_days)</code></pre></div>
 <a class="cta" href="{RAPIDAPI_URL}">Get a free API key for Santos data</a>
 """
     return _page(
-        "Santos Port Congestion API — Live Risk & ETA Tracker",
-        "Santos (BRSSZ) port congestion API: live congestion score, ETA delay, waiting vessels and daily demurrage exposure via REST, Python SDK or MCP.",
+        "Santos Port Congestion API — Reference Risk & ETA",
+        "Santos (BRSSZ) port congestion reference data: congestion score, ETA delay, waiting vessels and daily demurrage via REST, Python SDK or MCP (static seed, not live).",
         "Santos Port Congestion API",
-        "Live congestion risk, ETA delay and demurrage for Santos (BRSSZ), the busiest container port in Latin America.",
+        "Reference congestion risk, ETA delay and demurrage for Santos (BRSSZ), the busiest container port in Latin America.",
         body,
         "/santos-port-congestion-api",
     )
@@ -297,13 +304,14 @@ def live_card(port_id: str) -> str:
 
 
 def port_detail_page(port_id: str, slug: str) -> str:
-    """Página SEO única por porto, com sinal vivo in-process (risco + tendência)."""
+    """Página SEO única por porto, com dados de referência do seed (risco + tendência)."""
     risk = calculate_port_risk(port_id)
     trend = calculate_port_trend(port_id)
     port_name = risk["port_name"]
     country = risk["country"]
     proj = trend["projection"]
-    body = f"""<p>Live congestion signal for <strong>{html.escape(port_name)} ({port_id}), {html.escape(country)}</strong> — recomputed in-process at every request.</p>
+    ds_label = risk.get("data_source_label") or ("live line-ups" if risk.get("data_source", "").startswith("live:") else "static reference seed")
+    body = f"""<p>Congestion signal for <strong>{html.escape(port_name)} ({port_id}), {html.escape(country)}</strong> — {ds_label}, data_source={risk.get('data_source')} updated at {risk.get('as_of', risk.get('updated_at', 'n/a'))}.</p>
 {live_card(port_id)}
 <h2>What this data means</h2>
 <ul>
@@ -333,10 +341,10 @@ print(risk.congestion_score, risk.eta_delay_days)</code></pre></div>
 <a class="cta" href="{RAPIDAPI_URL}">Get a free API key</a>
 """
     return _page(
-        f"{port_name} Port Congestion — Live Risk, ETA Delay & Demurrage",
-        f"{port_name} ({port_id}) port congestion API: live congestion score {risk['congestion_score']:.2f}, ETA delay {risk['eta_delay_days']:.1f} days, {risk['waiting_vessels']} waiting vessels and daily demurrage ${risk['estimated_daily_demurrage_usd']:,} via REST, Python SDK or MCP.",
+        f"{port_name} Port Congestion — Reference Risk, ETA & Demurrage",
+        f"{port_name} ({port_id}) port congestion reference data: congestion score {risk['congestion_score']:.2f}, ETA delay {risk['eta_delay_days']:.1f} days, {risk['waiting_vessels']} waiting vessels and daily demurrage ${risk['estimated_daily_demurrage_usd']:,} via REST, Python SDK or MCP (static seed).",
         f"{port_name} Port Congestion",
-        f"Live congestion, ETA delay, waiting vessels and demurrage for {port_name} ({port_id}), {country}.",
+        f"Reference congestion, ETA delay, waiting vessels and demurrage for {port_name} ({port_id}), {country}.",
         body,
         f"/port-congestion-{slug}",
     )
@@ -353,7 +361,7 @@ def robots_txt_content() -> str:
 PAGES = [
     ("/mcp-page", mcp_page_html, "Aether-X MCP — Port Congestion Server for AI Agents"),
     ("/port-congestion-api", port_congestion_api_page, "Port Congestion API — Port Risk, ETA Delay & Demurrage"),
-    ("/santos-port-congestion-api", santos_port_congestion_api_page, "Santos Port Congestion API — Live Risk & ETA Tracker"),
+    ("/santos-port-congestion-api", santos_port_congestion_api_page, "Santos Port Congestion API — Reference Risk & ETA"),
     ("/port-congestion-python", port_congestion_python_page, "Port Congestion API with Python — Quick Start SDK"),
 ]
 

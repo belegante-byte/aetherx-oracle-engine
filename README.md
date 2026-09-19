@@ -4,11 +4,13 @@
 [![PyPI downloads](https://img.shields.io/pypi/dm/aetherx-oracle)](https://pypi.org/project/aetherx-oracle/)
 [![Python versions](https://img.shields.io/pypi/pyversions/aetherx-oracle)](https://pypi.org/project/aetherx-oracle/)
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-active-brightgreen)](https://registry.modelcontextprotocol.io)
-[![Status](https://img.shields.io/badge/status-live-brightgreen)](https://aether-x-oracle-production.up.railway.app/)
+[![Status](https://img.shields.io/badge/status-online-blue)](https://aether-x-oracle-production.up.railway.app/)
 
-**Predictive port congestion intelligence for developers, AI agents, logistics systems and quantitative workflows.**
+**Port congestion signals for developers, AI agents, logistics systems and quantitative workflows.**
 
-Aether-X turns public port telemetry into machine-readable congestion scores, ETA delay estimates, freight volatility indices and modeled daily demurrage exposure for 16 global ports — delivered through a **REST API**, a **typed Python SDK** and a **remote MCP server** for AI agents.
+> **DATA INTEGRITY NOTICE**: **Brazilian ports feed LIVE operational line-ups.** Santos (BRSSZ) and Paranaguá (BRPNG) are refreshed from APPA Paranaguá, the Porto de Santos operations panel and Lachmann schedules (`data_source="live:appa+santos+lachmann"`, refreshed periodically in production). The remaining 15 ports serve a **reference seed** (`data_source="static_reference_seed"`). Every API/MCP response includes `data_source` and `as_of`. The 24/48/72h trend is a synthetic projection (`data_source="synthetic_projection"`), not a live forecast. Numbers from the seed are reference baselines, NOT real-time field data.
+
+Aether-X exposes congestion scores, ETA delay estimates, freight volatility indices and modeled daily demurrage exposure for 17 global ports — delivered through a **REST API**, a **typed Python SDK** and a **remote MCP server** for AI agents.
 
 Free tier available. No credit card required.
 
@@ -189,7 +191,7 @@ Grab a key on the **[RapidAPI listing](https://rapidapi.com/belegante/api/aether
 ## Repository layout
 
 ```
-src/            FastAPI app (REST + remote MCP), predictive engine, ingestion
+src/            FastAPI app (REST + remote MCP), reference engine, data
 sdk_python/     aetherx-oracle Python SDK (PyPI)
 mcp_server/     aetherx-mcp MCP server for AI agents (PyPI)
 docs/           OpenAPI specs, llms.txt, Terms of Service
@@ -214,4 +216,4 @@ Deploys to [Railway](https://railway.com) via `railway.json`; the DuckDB oracle 
 
 Signals are provided **"AS IS"**, without warranty, and **do not constitute investment advice**. See [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms).
 
-The **Python SDK** is **MIT** licensed. The **API, predictive engine and ingestion pipeline** are proprietary — hosted usage is governed by the Terms.
+The **Python SDK** is **MIT** licensed. The **API, reference engine and data pipeline** are proprietary — hosted usage is governed by the Terms.

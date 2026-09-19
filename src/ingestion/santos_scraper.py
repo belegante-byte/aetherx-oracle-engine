@@ -7,6 +7,13 @@ import duckdb
 from dotenv import load_dotenv
 
 
+# INTEGRIDADE DE DADOS — AVISO:
+# Este módulo NÃO coleciona dados reais. A função fetch_santos_lineup grava uma
+# line-up de 3 navios MOCKADA (hardcoded) em raw_port_lineup. Nenhuma resposta
+# da API/MCP lê essa tabela hoje. Este arquivo é retido apenas como esqueleto de
+# ingestão e está BLOQUEADO: só executa com ALLOW_MOCK_INGESTION=1 no ambiente.
+# Implementar uma ingestão real exige uma fonte autorizada (AIS/port authority).
+
 # Ajuste de path para importações relativas
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 

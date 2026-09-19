@@ -53,10 +53,46 @@ PAID
 (fonte: `/internal/metrics`, com proxy secret, ou logs `AETHERX_METRIC` channel≠bot).
 
 | Valor | Leitura |
-|---|---|
+|---|---|---|
 | first→second alta (≥40%) | sinal de utilidade real |
 | first→second baixa | um utilitário de teste, não de valor |
 | repeat→paid | sinal econômico (cenário D) |
+
+**Pergunta do ritual (desde D2):**
+> "O comportamento observado no D2 persiste depois do pico inicial de descoberta?"
+
+Persistência observada por vários dias = **uso M2M recorrente** (mais valioso que first call única).
+
+**Definições (precisão metodológica):**
+- `new = unique_machines − repeat_machines` **NÃO** significa "máquinas descobertas hoje". Significa
+  "máquinas que, **nesta janela de boot**, estão classificadas como unique e ainda não como repeat".
+  No D7, preservar essa distinção — contadores em memória impedem função temporal (não virar falsa série).
+- `returning = repeat_machines` (máquinas com ≥2 chamadas no boot).
+- Mapeamento canônico de canais: **RapidAPI → `rest`** (paths `/v1/`) · PyPI/GitHub install/clone
+  **não** geram chamada de servidor (repo/webhook = 0 por padrão).
+- **21 máquinas MCP ≠ 21 clientes.** São identidades observadas pela instrumentação. A cadeia de adoção:
+  `descoberta → 1ª chamada → 2ª chamada → repetição → consumo pago`.
+
+**Regimes possíveis nas próximas leituras (classificar antes de concluir):**
+1. Novas máquinas **continuam** + retornos **continuam** → distribuição + retenção inicial.
+2. Novas **param**, retornos **continuam** → pico de descoberta acabou, mas existe persistência (**o sinal mais interessante**).
+3. Novas **continuam**, retornos **param** → distribuição existe, retenção não demonstrada.
+4. Ambos **congelam** → distinguir "experimento sem tráfego" de "pico de sincronização terminado" (só com gap de horas/dias).
+
+**Sobre uso dos números (doutrina — experimento não valida produto):**
+O M2M responde "existe interesse espontâneo no ecossistema?", **não** "o produto é irresistível?".
+Não usar "21 MCP" para concluir que o produto já é forte: 21 ≠ 21 clientes. Máquina que
+`descobre → chama → nunca mais volta` pode indicar: (1) sinal não é necessário; (2) resultado
+não é útil; (3) cobertura insuficiente; (4) agente só explorando; (5) máquina de diretório/bot.
+**Observabilidade** (série B, logs `AETHERX_METRIC`): (4) ≈ máquinas com só 1 chamada; (5) ≈ assinatura
+de UA + burst único; (1)/(2) não observável por calls — exige Product Value Audit; (3) parcial
+(padrão de repetição inter-portos). `descobre → volta amanhã → volta de novo` = evidência de
+**utilidade recorrente**.
+
+**Barra de produto pós-D7 (não tocar antes):** "Se eu remover o Aether-X, uma máquina perde uma
+informação que **altera uma decisão**." O problema atual não é a API — é **densidade de valor** e
+**cobertura de decisão** (16 portos ≠ dependência em supply chain), além de origem do sinal
+(moeda: dado → normalização → histórico → detecção de regime → sinal proprietário → validação → Oracle).
 
 ## Dias 1–7 — só distribuição
 
@@ -78,6 +114,8 @@ awesome-remote-mcp-servers (PR #403) · RapidAPI · PyPI SDK/MCP · GitHub · Hu
 |---|---|---|---|---|---|---|
 | D0 | — | — | 1 | 0 | 0 | **Marco D0**: 1ª external machine call (channel `mcp`, path `/mcp`, `ua=Python/3.11 aiohttp/3.14.3`, `ip_hash=a66721dc1c181b2e`, ts ≈ 1789751525, slot Brasil). Evento preservado; sem identificação, sem conclusão. |
 | D1 | — | 0 | 1 | 1 | 1 | A máquina do D0 **voltou** — 2ª chamada `/mcp` (mesma UA, mesmo `ip_hash`, ts +569s). Funil MCP: first=1, second=1, External Second Call Rate=1.0 (**observação única, sem conclusão**). Bots exc luídos (mcpbeat, SentinelOracle — liveness). `seo`=2 é ruído próprio (nossos curls de verificação). RapidAPI/PyPI/GitHub/SEO externo = 0. |
+| D2 | Cursor published; PRs #14670/#403 corrigidos p/ repo público; L1 fechado | 1 | 24 | 13 | 13 | **External Second Call Rate = 0.54** (n=24). MCP first=21, second=12 (0.57); seo first=2, second=1; discovery first=1. Janela de leitura = **~2h de uptime** (redeploy reseta contadores) — não é 24h. Bots excluídos: 80 calls/6 máquinas (liveness). Top path `/mcp` (182). Paid=0. **Sem alteração de produto** (regra D1–D7 respeitada). |
+| D3 | — (mesmo boot do D2; uptime +143s (~2,4 min)) | 0 | 0 | 0 | 0 | **LEITURA SEM DELTA** — estatisticamente ainda dentro da mesma janela de observação do D2 (contadores e uptime idênticos fora do relógio). **Sem intervenção.** `new`/`returning`/intervalo first→second: **n.d./gap conhecido** — timestamp por máquina não é exposto; só nos logs `AETHERX_METRIC` do Railway (série B no D7). |
 
 (fazer nova linha por dia; fechar tabela no D7)
 
@@ -136,3 +174,16 @@ awesome-remote-mcp-servers (PR #403) · RapidAPI · PyPI SDK/MCP · GitHub · Hu
 Relatório D7 (`docs/m2m/relatorio-d7.md`): first/second/repeat por canal + atualizar
 `surfaces.csv` (status/`first_calls`/`repeat_calls`) + fechar os 4 valores econômicos pendentes
 (Railway, comissão RapidAPI, outros custos, valor-hora) + baseline econômica v2 combinada com comportamento real.
+Duas séries no relatório — **A**: observação do boot · **B**: eventos persistidos (logs duram);
+**não misturar**, e **não corrigir** contadores em memória durante o experimento.
+
+**Entregáveis pós-D7 (após a decisão de dobra):**
+1. **Product Value Audit** — por campo (`congestion_score`, `eta_delay_days`, `waiting_vessels`,
+   `freight_volatility`, `demurrage exposure`, `updated_at`): *"muda alguma decisão?"*; por endpoint:
+   *"por que uma máquina deveria chamar isto amanhã de novo?"*. Se não há resposta forte → problema.
+2. **Red Team do Produto** — assumir agente externo hostil recém-descoberto e responder sem gentileza:
+   *"por que eu usaria isto em vez de qualquer outra fonte?"*. Se fraca, **não maquiar** — identificar
+   qual camada precisa ficar mais forte: sinal, cobertura, temporalidade, confiança, explicabilidade ou ação.
+
+Objetivo referência: não "um MCP que máquinas conseguem encontrar", e sim **"um sinal que máquinas
+têm motivo para continuar consultando"**.

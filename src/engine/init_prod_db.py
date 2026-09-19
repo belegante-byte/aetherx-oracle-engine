@@ -17,6 +17,7 @@ DB_PATH = os.getenv("DATABASE_PATH", "data/oracle.duckdb")
 
 PORTS = [
     {"port_id": "BRSSZ", "port_name": "Santos", "country": "Brasil", "congestion_score": 0.78, "eta_delay_days": 1.6, "waiting_vessels": 12, "freight_volatility_index": 0.42},
+    {"port_id": "BRPNG", "port_name": "Paranaguá", "country": "Brasil", "congestion_score": 0.60, "eta_delay_days": 1.1, "waiting_vessels": 8, "freight_volatility_index": 0.36},
     {"port_id": "BRRIO", "port_name": "Rio de Janeiro", "country": "Brasil", "congestion_score": 0.45, "eta_delay_days": 0.9, "waiting_vessels": 5, "freight_volatility_index": 0.31},
     {"port_id": "CNSHA", "port_name": "Shanghai", "country": "China", "congestion_score": 0.72, "eta_delay_days": 1.5, "waiting_vessels": 18, "freight_volatility_index": 0.38},
     {"port_id": "CNNGB", "port_name": "Ningbo-Zhoushan", "country": "China", "congestion_score": 0.55, "eta_delay_days": 1.1, "waiting_vessels": 9, "freight_volatility_index": 0.35},
@@ -49,7 +50,10 @@ def seed_port_metrics():
             eta_delay_days DOUBLE,
             waiting_vessels INTEGER,
             freight_volatility_index DOUBLE,
-            updated_at TIMESTAMP
+            updated_at TIMESTAMP,
+            data_source VARCHAR,
+            data_source_label VARCHAR,
+            live_detail VARCHAR
         )
     """)
 
@@ -58,14 +62,18 @@ def seed_port_metrics():
         """
         INSERT INTO port_metrics (
             port_id, port_name, country, congestion_score,
-            eta_delay_days, waiting_vessels, freight_volatility_index, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            eta_delay_days, waiting_vessels, freight_volatility_index, updated_at,
+            data_source, data_source_label, live_detail
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             (
                 p["port_id"], p["port_name"], p["country"], p["congestion_score"],
                 p["eta_delay_days"], p["waiting_vessels"], p["freight_volatility_index"],
-                updated_at
+                updated_at,
+                "static_reference_seed",
+                "Static reference seed (not live telemetry).",
+                None
             )
             for p in PORTS
         ]

@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.belegante-byte/aetherx-mcp",
   "title": "Aether-X Port Congestion Oracle",
-  "description": "Predictive port congestion, ETA delay and demurrage signals for global trade and finance.",
-  "version": "0.2.1",
+"description": "Brazilian ports feed live line-ups (APPA, Santos, Lachmann); others use a reference seed.",
+  "version": "0.3.0",
   "websiteUrl": "https://aether-x-oracle-production.up.railway.app",
   "repository": {
     "url": "https://github.com/belegante-byte/aetherx-oracle-engine",
@@ -26,5 +26,8 @@
       "type": "streamable-http",
       "url": "https://aether-x-oracle-production.up.railway.app/mcp"
     }
-  ]
+  ],
+  "_meta": {
+    "br.aethergrid.status": "integrity-notice-published"
+  }
 }

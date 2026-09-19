@@ -15,6 +15,7 @@ from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 SUPPORTED_PORTS: list[dict[str, str]] = [
     {"port_id": "AEDXB", "port_name": "Dubai / Jebel Ali", "country": "EAU"},
     {"port_id": "BRRIO", "port_name": "Rio de Janeiro", "country": "Brasil"},
+    {"port_id": "BRPNG", "port_name": "Paranaguá", "country": "Brasil"},
     {"port_id": "BRSSZ", "port_name": "Santos", "country": "Brasil"},
     {"port_id": "CNNGB", "port_name": "Ningbo-Zhoushan", "country": "China"},
     {"port_id": "CNSHA", "port_name": "Shanghai", "country": "China"},
@@ -35,14 +36,17 @@ mcp = MCPServer(
     "aetherx-oracle",
     title="Aether-X Port Congestion Oracle",
     description=(
-        "Predictive port congestion signals for global trade, supply chain and "
-        "quantitative finance."
+"Reference port congestion signals for global trade, supply chain and "
+         "quantitative finance. Brazilian ports (BRSSZ, BRPNG) feed live line-ups; "
+         "the rest use a static reference seed."
     ),
     instructions=(
-        "Predictive port congestion signals for global trade, supply chain and "
-        "quantitative finance. Use get_port_risk for a single port, "
-        "get_ports_risk to scan a portfolio of ports in parallel and "
-        "get_port_trend for the 24h/48h/72h congestion projection."
+        "Reference congestion signals for ports. Use get_port_risk for a "
+        "single port, get_ports_risk to scan a portfolio of ports in parallel and "
+        "get_port_trend for the 24h/48h/72h synthetic projection. Every "
+        "result includes `data_source` and `as_of`. For Brazilian ports BRSSZ/BRPNG "
+        "it is `live:appa+santos+lachmann` (real line-ups); the rest are "
+        "`static_reference_seed` reference telemetry."
     ),
     version="0.2.1",
     website_url="https://aether-x-oracle-production.up.railway.app",
@@ -51,7 +55,7 @@ mcp = MCPServer(
 
 @mcp.tool()
 def get_port_risk(port_id: str) -> dict[str, Any]:
-    """Return the predictive congestion signal for a single port.
+    """Return the congestion signal for a single port (live for BR, reference seed otherwise).
 
     Args:
         port_id: UN/LOCODE of the port, e.g. "BRSSZ" (Santos), "CNSHA" (Shanghai).
@@ -61,7 +65,7 @@ def get_port_risk(port_id: str) -> dict[str, Any]:
 
 @mcp.tool()
 def get_ports_risk(port_ids: list[str]) -> list[dict[str, Any]]:
-    """Return congestion signals for several ports in parallel.
+    """Return congestion signals for several ports in parallel (live for BR, reference seed otherwise).
 
     Args:
         port_ids: list of UN/LOCODEs, e.g. ["BRSSZ", "CNSHA", "NLRTM"].
@@ -72,7 +76,7 @@ def get_ports_risk(port_ids: list[str]) -> list[dict[str, Any]]:
 
 @mcp.tool()
 def get_port_trend(port_id: str) -> dict[str, Any]:
-    """Return the 24h, 48h and 72h congestion projection for a single port.
+    """Return the 24h, 48h and 72h SYNTHETIC projection for a single port (not a live forecast).
 
     Args:
         port_id: UN/LOCODE of the port, e.g. "BRSSZ" (Santos), "CNSHA" (Shanghai).
@@ -82,7 +86,7 @@ def get_port_trend(port_id: str) -> dict[str, Any]:
 
 @mcp.tool()
 def list_supported_ports() -> list[dict[str, str]]:
-    """List the 16 ports pre-seeded in the oracle (id, name, country)."""
+    """List the 17 ports in the oracle (id, name, country)."""
     return SUPPORTED_PORTS
 
 

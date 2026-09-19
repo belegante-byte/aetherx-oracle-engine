@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python -m src.engine.init_prod_db && uvicorn src.api.main:app --host 0.0.0.0 --port $PORT",
+    "startCommand": "python -m src.engine.init_prod_db && ENABLE_LIVE_INGESTION=1 uvicorn src.api.main:app --host 0.0.0.0 --port $PORT",
     "healthcheckPath": "/",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",

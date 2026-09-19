@@ -1,6 +1,8 @@
 # Aether-X Port Congestion Oracle
 
-> Predictive port congestion signals for global trade, supply chain and quantitative finance. REST API, Python SDK and MCP server. Returns congestion score, ETA delay, waiting vessels, freight volatility, daily demurrage estimate and 24/48/72h congestion trends for 16 global ports.
+> **DATA INTEGRITY NOTICE**: **Brazilian ports feed LIVE operational line-ups.** Santos (BRSSZ) and Paranaguá (BRPNG) are refreshed from APPA Paranaguá, the Porto de Santos operations panel and Lachmann schedules (`data_source="live:appa+santos+lachmann"`, periodical in production). The remaining 15 ports serve a **reference seed** (`data_source="static_reference_seed"`). Every API/MCP response includes `data_source` and `as_of`. The 24/48/72h trend is a synthetic projection (`data_source="synthetic_projection"`), not a live forecast. Numbers from the seed are reference baselines, NOT real-time field data.
+
+Congestion signals for 17 global ports: congestion score, ETA delay, waiting vessels, freight volatility and daily demurrage estimate. REST API, Python SDK and MCP server.
 
 ## API
 
@@ -8,7 +10,7 @@
 - [Example call](https://aether-x-oracle-production.up.railway.app/v1/port-risk?port_id=BRSSZ): GET /v1/port-risk?port_id=BRSSZ
 - [Trend example](https://aether-x-oracle-production.up.railway.app/v1/port-trend?port_id=BRSSZ): GET /v1/port-trend?port_id=BRSSZ
 - [Batch example](https://aether-x-oracle-production.up.railway.app/v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM): GET /v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM
-- [Public feed (no key)](https://aether-x-oracle-production.up.railway.app/public/ports): GET /public/ports — all 16 ports, read-only, for widgets/embeds
+- [Public feed (no key)](https://aether-x-oracle-production.up.railway.app/public/ports): GET /public/ports — all 17 ports (BR live, others reference seed), read-only, for widgets/embeds
 - [Interactive docs](https://aether-x-oracle-production.up.railway.app/docs): Swagger UI
 - [RapidAPI marketplace](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle): metered plans (Free / Pro / Ultra / Mega)
 - [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)
@@ -21,9 +23,9 @@
 - [Aether-X MCP server page](https://aether-x-oracle-production.up.railway.app/mcp-page)
 - [Sitemap (all pages)](https://aether-x-oracle-production.up.railway.app/sitemap.xml)
 
-Per-port live pages (one per monitored port):
+Per-port pages (one per monitored port; BR ports live, others reference seed):
 
-- [Santos](https://aether-x-oracle-production.up.railway.app/port-congestion-santos) · [Shanghai](https://aether-x-oracle-production.up.railway.app/port-congestion-shanghai) · [Rotterdam](https://aether-x-oracle-production.up.railway.app/port-congestion-rotterdam) · [Singapore](https://aether-x-oracle-production.up.railway.app/port-congestion-singapore) · [Qingdao](https://aether-x-oracle-production.up.railway.app/port-congestion-qingdao) · [Los Angeles](https://aether-x-oracle-production.up.railway.app/port-congestion-los-angeles) · [Ningbo-Zhoushan](https://aether-x-oracle-production.up.railway.app/port-congestion-ningbo-zhoushan) · [Dubai / Jebel Ali](https://aether-x-oracle-production.up.railway.app/port-congestion-dubai-jebel-ali)
+- [Santos](https://aether-x-oracle-production.up.railway.app/port-congestion-santos) · [Paranaguá](https://aether-x-oracle-production.up.railway.app/port-congestion-paranagua) · [Shanghai](https://aether-x-oracle-production.up.railway.app/port-congestion-shanghai) · [Rotterdam](https://aether-x-oracle-production.up.railway.app/port-congestion-rotterdam) · [Singapore](https://aether-x-oracle-production.up.railway.app/port-congestion-singapore) · [Qingdao](https://aether-x-oracle-production.up.railway.app/port-congestion-qingdao) · [Los Angeles](https://aether-x-oracle-production.up.railway.app/port-congestion-los-angeles) · [Ningbo-Zhoushan](https://aether-x-oracle-production.up.railway.app/port-congestion-ningbo-zhoushan) · [Dubai / Jebel Ali](https://aether-x-oracle-production.up.railway.app/port-congestion-dubai-jebel-ali)
 - [New York](https://aether-x-oracle-production.up.railway.app/port-congestion-new-york) · [Hamburg](https://aether-x-oracle-production.up.railway.app/port-congestion-hamburg) · [Busan](https://aether-x-oracle-production.up.railway.app/port-congestion-busan) · [Cape Town](https://aether-x-oracle-production.up.railway.app/port-congestion-cape-town) · [Rio de Janeiro](https://aether-x-oracle-production.up.railway.app/port-congestion-rio-de-janeiro) · [Tanger Med](https://aether-x-oracle-production.up.railway.app/port-congestion-tanger-med) · [London Gateway](https://aether-x-oracle-production.up.railway.app/port-congestion-london-gateway) · [Manzanillo](https://aether-x-oracle-production.up.railway.app/port-congestion-manzanillo)
 
 ## SDKs and integrations
@@ -34,20 +36,21 @@ Per-port live pages (one per monitored port):
 - [Smithery gateway](https://smithery.ai/servers/belegante/aetherx-mcp): hosted MCP connection
 - [Source (GitHub, MIT)](https://github.com/belegante-byte/aetherx-oracle)
 
-- Official MCP Registry: `io.github.belegante-byte/aetherx-mcp` v0.2.1 (live) — install via `uvx aetherx-mcp` or remote `https://aether-x-oracle-production.up.railway.app/mcp`.
+- Official MCP Registry: `io.github.belegante-byte/aetherx-mcp` (active) — install via `uvx aetherx-mcp` or remote `https://aether-x-oracle-production.up.railway.app/mcp`.
 
 ## Dataset
 
-- [Aether-X Global Port Congestion Snapshot (Hugging Face)](https://huggingface.co/datasets/Aether-x/aetherx-port-congestion-metrics): frozen 16-port CSV, CC BY 4.0
-- [Aether-X Port Congestion Dashboard (Hugging Face Space)](https://huggingface.co/spaces/Aether-x/aetherx-port-congestion-dashboard): live static dashboard, no key
+- [Aether-X Global Port Congestion Snapshot (Hugging Face)](https://huggingface.co/datasets/Aether-x/aetherx-port-congestion-metrics): frozen 16-port reference CSV, CC BY 4.0
+- [Aether-X Port Congestion Dashboard](https://huggingface.co/spaces/Aether-x/aetherx-port-congestion-dashboard): static reference dashboard, no key
+- [DEV article](https://dev.to/giovanni_belegante_2b04c5/predicting-global-port-congestion-in-real-time-with-python-duckdb-and-mcp-1ahm): describes the live design; live line-ups for BR ports are now connected
 
 ## Writing
 
-- [Predicting Global Port Congestion in Real-Time with Python, DuckDB and MCP](https://dev.to/giovanni_belegante_2b04c5/predicting-global-port-congestion-in-real-time-with-python-duckdb-and-mcp-1ahm): DEV Community
+- [Predicting Global Port Congestion in Real-Time with Python, DuckDB and MCP](https://dev.to/giovanni_belegante_2b04c5/predicting-global-port-congestion-in-real-time-with-python-duckdb-and-mcp-1ahm): DEV Community (the live line-ups are now connected for BR ports)
 
 ## Supported ports
 
-AEDXB, BRRIO, BRSSZ, CNNGB, CNSHA, CNTAO, DEHAM, GBLGP, KRPUS, MPTNG, MXZLO, NLRTM, SGSIN, USLAX, USNYC, ZACPT
+AEDXB, BRPNG, BRRIO, BRSSZ, CNNGB, CNSHA, CNTAO, DEHAM, GBLGP, KRPUS, MPTNG, MXZLO, NLRTM, SGSIN, USLAX, USNYC, ZACPT
 
 Unknown ports fall back to a global statistical estimate (`country="Global"`).
 

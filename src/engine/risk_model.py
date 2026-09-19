@@ -1,4 +1,5 @@
 import functools
+import json
 import math
 import os
 
@@ -20,6 +21,12 @@ def _get_conn() -> "duckdb.DuckDBPyConnection":
         _CONN = duckdb.connect(DB_PATH, read_only=True)
     return _CONN
 
+
+# NOTA DE INTEGRIDADE DE DADOS:
+# Os portos brasileiros (BRSSZ/BRPNG) são alimentados por line-ups VIVAS
+# (APPA Paranaguá, Porto de Santos, Lachmann) via scripts/run_ingestion_live.py.
+# Os demais portos usam um seed estático de referência (ver init_prod_db.py).
+# Os campos `data_source` e `updated_at` tornam a proveniência explícita em toda resposta.
 
 # Estimativa fallback baseada em estatísticas globais genéricas de congestão portuária
 GLOBAL_ESTIMATE = {
@@ -43,6 +50,12 @@ def _estimate_demurrage(congestion_score: float) -> int:
     return int(DEMURRAGE_BASE_USD_PER_DAY * (1 + 1.25 * congestion_score))
 
 
+def invalidate_cache():
+    """Limpa os caches LRU após uma ingestão viva para que a API sirva dados frescos."""
+    calculate_port_risk.cache_clear()
+    calculate_port_trend.cache_clear()
+
+
 @functools.lru_cache(maxsize=1024)
 def calculate_port_risk(port_id: str) -> dict:
     """
@@ -60,12 +73,17 @@ def calculate_port_risk(port_id: str) -> dict:
         row = conn.execute("""
             SELECT port_id, port_name, country, congestion_score,
                    eta_delay_days, waiting_vessels, freight_volatility_index,
-                   CAST(updated_at AS VARCHAR) AS updated_at
+                   CAST(updated_at AS VARCHAR) AS updated_at,
+                   data_source, data_source_label, live_detail
             FROM port_metrics
             WHERE port_id = ?
         """, [port_id]).fetchone()
+        seed_at = conn.execute(
+            "SELECT CAST(MAX(updated_at) AS VARCHAR) FROM port_metrics"
+        ).fetchone()[0]
     except duckdb.Error:
         row = None
+        seed_at = now
 
     if row is None:
         score = GLOBAL_ESTIMATE["congestion_score"]
@@ -78,8 +96,32 @@ def calculate_port_risk(port_id: str) -> dict:
             "waiting_vessels": GLOBAL_ESTIMATE["waiting_vessels"],
             "freight_volatility_index": GLOBAL_ESTIMATE["freight_volatility_index"],
             "estimated_daily_demurrage_usd": _estimate_demurrage(score),
-            "updated_at": now,
+            "updated_at": seed_at,
+            "as_of": seed_at,
+            "data_source": "static_reference_seed",
+            "data_source_label": "Static reference seed (not live telemetry).",
+            "live_detail": None,
         }
+
+    data_source = row[8] or "static_reference_seed"
+    data_source_label = row[9] or "Static reference seed (not live telemetry)."
+    live_detail = row[10]
+
+    # Dados vivos trazem detalhe de fila real; exporta quando presente.
+    extra = {}
+    if data_source != "static_reference_seed" and live_detail:
+        try:
+            detail = json.loads(live_detail)
+            extra = {
+                "live": {
+                    "ao_largo": detail.get("ao_largo"),
+                    "esperados": detail.get("esperados"),
+                    "atracados": detail.get("atracados"),
+                    "programados": detail.get("programados"),
+                }
+            }
+        except Exception:
+            extra = {}
 
     return {
         "port_id": row[0],
@@ -91,6 +133,11 @@ def calculate_port_risk(port_id: str) -> dict:
         "freight_volatility_index": row[6],
         "estimated_daily_demurrage_usd": _estimate_demurrage(row[3]),
         "updated_at": row[7],
+        "as_of": row[7],
+        "data_source": data_source,
+        "data_source_label": data_source_label,
+        "live_detail": live_detail,
+        **extra,
     }
 
 
@@ -140,4 +187,7 @@ def calculate_port_trend(port_id: str, horizons: tuple = TREND_HORIZONS) -> dict
         "congestion_score": score,
         "projection": projection,
         "updated_at": base["updated_at"],
+        "as_of": base["as_of"],
+        "data_source": "synthetic_projection",
+        "data_source_label": "Synthetic projection from static reference seed (not a live forecast).",
     }

@@ -160,12 +160,12 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
 <div class="container">
 
   <div class="badge-row">
-    <span class="pill pill-green">● Remote MCP Server Live</span>
+    <span class="pill pill-blue">● Remote MCP Server Online</span>
     <span class="pill pill-blue">Glama Grade A</span>
   </div>
 
   <h1>Aether-X Port Congestion Oracle</h1>
-  <p class="subtitle">MCP &amp; REST Engine &mdash; predictive congestion, ETA delay and freight volatility for 16 global ports.</p>
+  <p class="subtitle">MCP &amp; REST Engine &mdash; congestion signals for 17 global ports. <strong>BR ports feed live line-ups; others use a reference seed.</strong></p>
 
   <p class="section-title">Connect in 5 seconds</p>
 
@@ -198,7 +198,7 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
 }</code></pre>
   </div>
 
-  <p class="section-title" style="margin-top:2rem">Live Intelligence Snapshot <span class="hint-inline">computed in-process at every request</span></p>
+  <p class="section-title" style="margin-top:2rem">Live Snapshot <span class="hint-inline">BR ports live; see data_source in each payload</span></p>
   __LIVE_SNAPSHOT__
 
   <p class="section-title" style="margin-top:2rem">Protocol &amp; Docs</p>
@@ -221,7 +221,7 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
     <a class="link-card" href="https://registry.modelcontextprotocol.io">Official MCP Registry</a>
   </div>
 
-  <p class="section-title" style="margin-top:2rem">Live per-port pages <span class="hint-inline">one page, one port, live data</span></p>
+  <p class="section-title" style="margin-top:2rem">Per-port reference pages <span class="hint-inline">one page, one port, static reference data</span></p>
   <div class="links-grid">
     <a class="link-card" href="/port-congestion-santos">Santos (BRSSZ)</a>
     <a class="link-card" href="/port-congestion-shanghai">Shanghai (CNSHA)</a>
@@ -275,6 +275,11 @@ class PortRiskResponse(BaseModel):
     freight_volatility_index: float
     estimated_daily_demurrage_usd: int
     updated_at: str
+    as_of: str
+    data_source: str
+    data_source_label: str
+    live_detail: str | None = None
+    live: dict | None = None
 
 
 class TrendPoint(BaseModel):
@@ -293,6 +298,9 @@ class PortTrendResponse(BaseModel):
     congestion_score: float
     projection: dict[str, TrendPoint]
     updated_at: str
+    as_of: str
+    data_source: str
+    data_source_label: str
 
 
 class PortsRiskResponse(BaseModel):
@@ -301,21 +309,27 @@ class PortsRiskResponse(BaseModel):
     results: list[PortRiskResponse]
 
 
-API_DESCRIPTION = """Predictive port congestion signals for global trade, supply chain and quantitative finance.
+API_DESCRIPTION = """Port congestion reference signals for global trade, supply chain and quantitative finance.
 
-Aether-X turns public port telemetry into machine-readable congestion scores, ETA delay estimates and freight volatility indices for the world's largest ports — so trading desks, logistics teams and autonomous agents can react before the market prices the delay in.
+**IMPORTANT · Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.
+Brazilian ports (BRSSZ, BRPNG) serve live line-ups: `data_source="live:appa+santos+lachmann"`. The remaining ports
+serve a **static reference seed**: `data_source="static_reference_seed"` means the value is a seeded baseline, not a
+live measurement. The 24/48/72h trend is a `synthetic_projection`, not a live forecast. Do not treat seed numbers as
+real-time field data.
 
 **The signal** — `GET /v1/port-risk?port_id=BRSSZ` returns:
 
 | Field | Meaning |
 |-------|---------|
-| `congestion_score` | Normalized 0.0–1.0 risk of operational congestion |
-| `eta_delay_days` | Expected delay applied to incoming vessels |
-| `waiting_vessels` | Ships anchored or queued |
+| `congestion_score` | Normalized 0.0–1.0 reference congestion level (seeded) |
+| `eta_delay_days` | Reference delay applied to incoming vessels |
+| `waiting_vessels` | Reference ships anchored or queued |
 | `freight_volatility_index` | Pressure indicator for freight pricing |
 | `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |
+| `data_source` | Always `static_reference_seed` until live telemetry is connected |
+| `as_of` | Timestamp of the seed (not a live refresh) |
 
-**Trend (24h/48h/72h)** — `GET /v1/port-trend?port_id=BRSSZ` returns the congestion projection with a `trend` label: `acelerando`, `estável` or `descongestionando`.
+**Trend (24h/48h/72h)** — `GET /v1/port-trend?port_id=BRSSZ` returns a **synthetic** projection with a `trend` label: `acelerando`, `estável` or `descongestionando`.
 
 **Free tier** — $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.
 
@@ -333,6 +347,34 @@ mcp_http_app = build_http_app()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if os.getenv("ENABLE_LIVE_INGESTION", "0") == "1":
+        import asyncio
+        from src.ingestion.live_sources import coletar_tudo
+        from scripts.run_ingestion_live import gravar_raw, aplicar_no_oracle, resumo_por_porto, _score_from_status, GRID
+        from src.engine.risk_model import invalidate_cache
+
+        async def ciclo_ingestao():
+            intervalo = int(os.getenv("LIVE_INGESTION_INTERVAL_S", "21600"))  # 6h padrão
+            while True:
+                try:
+                    res = coletar_tudo()
+                    resumos = resumo_por_porto(res.get("linhas", []))
+                    por_porto = {}
+                    for pid in GRID:
+                        r = resumos.get(pid)
+                        if r and r.get("total", 0) > 0:
+                            por_porto[pid] = _score_from_status(pid, r, res.get("fontes", {}))
+                    if por_porto:
+                        gravar_raw(res.get("linhas", []))
+                        aplicar_no_oracle(por_porto, resumos)
+                        invalidate_cache()
+                        print(f"[AETHER-X INGESTION] ciclo ok: {len(res.get('linhas', []))} linhas")
+                except Exception as e:
+                    print(f"[AETHER-X INGESTION] erro no ciclo: {type(e).__name__}: {e}")
+                finally:
+                    await asyncio.sleep(intervalo)
+
+        asyncio.create_task(ciclo_ingestao())
     async with mcp_server.session_manager.run():
         yield
 
@@ -383,7 +425,7 @@ def _fmt_usd(value: int) -> str:
 
 
 def _render_live_snapshot() -> str:
-    """Renderiza 'Live Intelligence Snapshot' com risco e tendência reais in-process."""
+    """Renderiza 'Reference Snapshot' com risco e tendência do seed (com provenance)."""
     cards = []
     trend_styles = {
         "acelerando": "trend-acc",
@@ -494,10 +536,12 @@ def port_congestion_detail(slug: str):
 
 @app.get("/public/ports", include_in_schema=False)
 def public_ports_all():
-    """Feed público read-only: sinal dos 16 portos para widget/embed, sem key."""
+    """Feed público read-only: sinal dos 17 portos (BR vivos + seed de referência) para widget/embed, sem key."""
     rows = [calculate_port_risk(m["port_id"]) for m in PORT_METAS]
     return {
-        "as_of": rows[0]["updated_at"],
+        "as_of": rows[0]["as_of"],
+        "data_source": "mixed",
+        "data_source_label": "Live line-ups for BR ports (BRSSZ/BRPNG); static reference seed elsewhere.",
         "count": len(rows),
         "results": rows,
     }
@@ -519,18 +563,20 @@ def ai_plugin_manifest():
     tags=["Port Risk"],
     summary="Get port congestion risk for a single port",
     description=(
-        "Returns the predictive congestion signal for a single global port: "
+        "Returns the reference congestion signal for a single global port: "
         "`congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, "
         "`freight_volatility_index` and the estimated `estimated_daily_demurrage_usd`. "
+        "Every response includes `data_source` (`static_reference_seed` until live "
+        "telemetry is connected) and `as_of` (seed timestamp, not a live refresh). "
         "Coverage: 16 ports (BRSSZ, CNSHA, CNTAO, NLRTM, ...). Unknown ports fall back "
         'to a global statistical estimate with `country="Global"`. Requests are protected '
         "by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header."
     ),
-    response_description="The current congestion signal for the requested port.",
+    response_description="The current reference signal for the requested port.",
     responses={
         200: {
             "model": PortRiskResponse,
-            "description": "The current congestion signal for the requested port.",
+            "description": "The current reference signal for the requested port.",
             "content": {"application/json": {"example": EXAMPLE_RISK_RESPONSE}},
         },
         401: {
@@ -565,8 +611,9 @@ def get_port_risk(
         "Returns the 24h, 48h and 72h congestion projections for a single global port, "
         "with a `trend` label (`acelerando`, `estável` or `descongestionando`). Each "
         "projection point includes `congestion_score`, `eta_delay_days` and the estimated "
-        "`estimated_daily_demurrage_usd`. Requests are protected by the RapidAPI proxy "
-        "secret and must send the `X-RapidAPI-Proxy-Secret` header."
+        "`estimated_daily_demurrage_usd`. NOTE: the projection is `synthetic_projection` "
+        "(derived from the static reference seed), not a live forecast. Requests are "
+        "protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header."
     ),
     response_description="The 24h, 48h and 72h congestion projections for the requested port.",
     responses={
