@@ -7,3 +7,4 @@ data/processed/*
 data/antaq_cache/
 .env
 .DS_Storedata/acumula_diario.log
+.DS_Store
