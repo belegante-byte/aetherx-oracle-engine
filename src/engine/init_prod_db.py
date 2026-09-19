@@ -35,6 +35,7 @@ PORTS = [
     {"port_id": "GBLGP", "port_name": "London Gateway", "country": "Reino Unido", "congestion_score": 0.37, "eta_delay_days": 0.7, "waiting_vessels": 4, "freight_volatility_index": 0.28},
     {"port_id": "ZACPT", "port_name": "Cape Town", "country": "África do Sul", "congestion_score": 0.66, "eta_delay_days": 1.4, "waiting_vessels": 11, "freight_volatility_index": 0.36},
     {"port_id": "MXZLO", "port_name": "Manzanillo", "country": "México", "congestion_score": 0.53, "eta_delay_days": 1.0, "waiting_vessels": 7, "freight_volatility_index": 0.39},
+    {"port_id": "MYPKG", "port_name": "Port Klang", "country": "Malásia", "congestion_score": 0.50, "eta_delay_days": 1.0, "waiting_vessels": 8, "freight_volatility_index": 0.36},
 ]
 
 
