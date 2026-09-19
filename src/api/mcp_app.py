@@ -11,6 +11,42 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
+from src.api.metrics import record_tool_call
+
+
+def _extract_port_id(args: dict) -> str | None:
+    """Extrai port_id (ou ids) dos argumentos da tool para a Control Tower."""
+    if not isinstance(args, dict):
+        return None
+    if args.get("port_id"):
+        return str(args["port_id"]).strip().upper()
+    ids = args.get("port_ids")
+    if ids:
+        first = next((p for p in ids if p and str(p).strip()), None)
+        return str(first).strip().upper() if first else None
+    return None
+
+
+def _run_tool(fn, tool_name: str, **kwargs):
+    """Executa uma tool e registra tool/porto/latência/status na Control Tower.
+
+    Recebe kwargs explícitos (como o MCPServer v2 chama) para extrair o porto
+    consultado sem ambiguidade de assinatura.
+    """
+    import time
+
+    t0 = time.monotonic()
+    ok = True
+    try:
+        result = fn(**kwargs)
+        return result
+    except Exception:
+        ok = False
+        raise
+    finally:
+        latency_ms = int((time.monotonic() - t0) * 1000)
+        port_id = _extract_port_id(kwargs)
+        record_tool_call(tool_name, port_id=port_id, ok=ok, latency_ms=latency_ms)
 
 SUPPORTED_PORTS: list[dict[str, str]] = [
     {"port_id": "AEDXB", "port_name": "Dubai / Jebel Ali", "country": "EAU"},
@@ -62,7 +98,7 @@ def get_port_risk(port_id: str) -> dict[str, Any]:
     Args:
         port_id: UN/LOCODE of the port, e.g. "BRSSZ" (Santos), "CNSHA" (Shanghai).
     """
-    return calculate_port_risk(port_id.strip().upper())
+    return _run_tool(lambda **kw: calculate_port_risk(str(kw["port_id"]).strip().upper()), "get_port_risk", port_id=port_id)
 
 
 @mcp.tool()
@@ -72,8 +108,11 @@ def get_ports_risk(port_ids: list[str]) -> list[dict[str, Any]]:
     Args:
         port_ids: list of UN/LOCODEs, e.g. ["BRSSZ", "CNSHA", "NLRTM"].
     """
-    ids = [p.strip().upper() for p in port_ids if p and p.strip()]
-    return [calculate_port_risk(p) for p in ids]
+    return _run_tool(
+        lambda **kw: [calculate_port_risk(str(p).strip().upper()) for p in kw["port_ids"] if p and str(p).strip()],
+        "get_ports_risk",
+        port_ids=port_ids,
+    )
 
 
 @mcp.tool()
@@ -83,13 +122,13 @@ def get_port_trend(port_id: str) -> dict[str, Any]:
     Args:
         port_id: UN/LOCODE of the port, e.g. "BRSSZ" (Santos), "CNSHA" (Shanghai).
     """
-    return calculate_port_trend(port_id.strip().upper())
+    return _run_tool(lambda **kw: calculate_port_trend(str(kw["port_id"]).strip().upper()), "get_port_trend", port_id=port_id)
 
 
 @mcp.tool()
 def list_supported_ports() -> list[dict[str, str]]:
     """List the 19 ports in the oracle (id, name, country)."""
-    return SUPPORTED_PORTS
+    return _run_tool(lambda **kw: SUPPORTED_PORTS, "list_supported_ports")
 
 
 def build_http_app():

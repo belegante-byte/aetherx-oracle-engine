@@ -579,6 +579,12 @@ def internal_metrics():
     return JSONResponse(metrics_snapshot())
 
 
+@app.get("/internal/control-tower", include_in_schema=False)
+def control_tower():
+    from src.api.control_tower import control_tower_html
+    return HTMLResponse(control_tower_html(metrics_snapshot()))
+
+
 @app.get("/.well-known/ai-plugin.json", include_in_schema=False)
 def ai_plugin_manifest():
     return JSONResponse(json.loads(AI_PLUGIN_PATH.read_text(encoding="utf-8")))

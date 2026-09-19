@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from src.api.main import app
 from src.engine.risk_model import calculate_port_risk
+from src.api.metrics import record_tool_call, metrics_snapshot, _tools, _ports, _recent_events, _lock
 
 
 client = TestClient(app, headers={"X-RapidAPI-Proxy-Secret": TEST_SECRET})
@@ -370,3 +371,52 @@ def test_public_ports_feed():
     data_sources = {r["data_source"] for r in body["results"]}
     assert "static_reference_seed" in data_sources
     assert any(ds.startswith("live:") for ds in data_sources)
+
+def test_control_tower_requires_secret():
+    resp = TestClient(app).get("/internal/control-tower")
+    assert resp.status_code == 401
+
+
+def test_control_tower_returns_html_with_metrics():
+    resp = client.get("/internal/control-tower")
+    assert resp.status_code == 200
+    body = resp.text
+    assert "AETHER-X CONTROL TOWER" in body
+    assert "SYSTEM" in body
+    assert "TOP TOOLS" in body
+    assert "DISCOVERY" in body
+    assert "DATA QUALITY" in body
+
+
+def test_metrics_snapshot_has_control_tower_fields():
+    s = metrics_snapshot()
+    for field in ("requests_total", "mcp_calls", "mcp_errors", "error_rate",
+                  "top_tools", "top_ports", "recent_events"):
+        assert field in s
+
+
+def test_record_tool_call_populates_tower():
+    with _lock:
+        _tools.clear()
+        _ports.clear()
+        _recent_events.clear()
+    record_tool_call("get_port_risk", port_id="BRPNG", ok=True, latency_ms=5)
+    s = metrics_snapshot()
+    assert s["mcp_calls"] >= 1
+    assert s["mcp_errors"] == 0
+    assert ("get_port_risk", 1) in s["top_tools"]
+    assert ("BRPNG", 1) in s["top_ports"]
+    kinds = [e["kind"] for e in s["recent_events"]]
+    assert "tool_call" in kinds and "port_query" in kinds
+
+
+def test_record_tool_call_tracks_error():
+    with _lock:
+        _tools.clear()
+        _ports.clear()
+        _recent_events.clear()
+    before_errors = metrics_snapshot()["mcp_errors"]
+    record_tool_call("get_port_trend", port_id="BRSSZ", ok=False, latency_ms=3)
+    s = metrics_snapshot()
+    assert s["mcp_errors"] == before_errors + 1
+    assert s["top_tools"][0][0] == "get_port_trend"
