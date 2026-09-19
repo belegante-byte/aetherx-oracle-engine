@@ -109,9 +109,9 @@ LANDING_HTML = """<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aether-X Port Congestion Oracle</title>
-<meta name="description" content="Predictive port congestion signals for global trade and supply chain: congestion score, ETA delay, waiting vessels, freight volatility and daily demurrage for 16 global ports. REST API, Python SDK and MCP server.">
+<meta name="description" content="Predictive port congestion signals for global trade and supply chain: congestion score, ETA delay, waiting vessels, freight volatility and daily demurrage for 19 global ports (5 Brazilian ports live). REST API, Python SDK and MCP server.">
 <meta property="og:title" content="Aether-X Port Congestion Oracle">
-<meta property="og:description" content="Predictive congestion, ETA delay and freight volatility signals for 16 global ports. REST API, Python SDK and MCP server.">
+<meta property="og:description" content="Predictive congestion, ETA delay and freight volatility signals for 19 global ports (5 Brazilian ports live). REST API, Python SDK and MCP server.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://aether-x-oracle-production.up.railway.app/">
 <meta name="twitter:card" content="summary">

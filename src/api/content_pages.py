@@ -250,7 +250,7 @@ print(risk.congestion_score, risk.eta_delay_days)</code></pre></div>
 
 
 def port_congestion_python_page() -> str:
-    body = f"""<p>You don't need heavy infrastructure to monitor port congestion. With a typed Python SDK you can pull congestion scores, ETA delays and demurrage exposure for 16 global ports in a few lines.</p>
+    body = f"""<p>You don't need heavy infrastructure to monitor port congestion. With a typed Python SDK you can pull congestion scores, ETA delays and demurrage exposure for 19 global ports (5 Brazilian ports live) in a few lines.</p>
 <h2>How to monitor port congestion with Python</h2>
 <div class="snippet-card"><div class="card-header"><span>1. Install</span></div><pre><code>pip install --upgrade aetherx-oracle</code></pre></div>
 <div class="snippet-card"><div class="card-header"><span>2. Call a port</span></div><pre><code>from aetherx import OracleClient
@@ -288,7 +288,7 @@ asyncio.run(main())</code></pre></div>
         "Port Congestion API with Python — Quick Start SDK",
         "Monitor port congestion with Python: install the aetherx-oracle SDK, call Santos, scan a portfolio of ports and add 24/48/72h ETA delay trends.",
         "Port Congestion Monitoring with Python",
-        "A 3-minute, typed-Python quick start for congestion scores, ETA delays and demurrage exposure across 16 global ports.",
+        "A 3-minute, typed-Python quick start for congestion scores, ETA delays and demurrage exposure across 19 global ports (5 Brazilian ports live).",
         body,
         "/port-congestion-python",
     )
