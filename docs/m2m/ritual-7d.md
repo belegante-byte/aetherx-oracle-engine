@@ -167,6 +167,14 @@ awesome-remote-mcp-servers (PR #403) · RapidAPI · PyPI SDK/MCP · GitHub · Hu
 | C | 20 first → 0 second | valor do produto | debater hipóteses de valor |
 | D | 20 first → 10 second → 5 repeat | sinal de valor real | combinar com economics → decisão de dobra |
 
+### Nota de rigor estatístico (2026-09-19)
+
+Observação pós-redeploy (~69 min de uptime): `mcp: unique 16, repeat 11` (equivalente a 68,8% na janela de boot). **Formulação correta:** "11 das 16 máquinas MCP observadas foram classificadas como repeat pela instrumentação atual nesta janela de boot" — evidência de **comportamento de retorno**, NÃO inferência de "valor percebido" (uma máquina pode retornar por razões técnicas). Contexto mais informativo que o D2 original: produto com dados reais, calibração, ANTAQ, domínio próprio, registry v0.4.2, public-apis aceito.
+
+**Próxima pergunta (próximo nível de instrumentação):** "o que exatamente essas máquinas fazem depois de encontrar o Aether-X?" — ferramentas invocadas, resultados, latência, erros.
+
+**Congelamento (decisão 2026-09-19):** não perseguir mcp.so/PulseMCP, não adicionar superfícies novas, não fazer marketing. Observar se o comportamento de retorno sobrevive por horas/dias após o efeito de sincronização/indexação inicial. Se `repeat` crescer enquanto `unique` estabiliza → regime 2.
+
 **Zero chamadas em 7 dias ≠ fracasso do produto.** 7 dias é janela de aquisição, não validação definitiva.
 
 ## Saída do ritual
