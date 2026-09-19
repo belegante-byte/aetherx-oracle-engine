@@ -22,6 +22,18 @@ def _get_conn() -> "duckdb.DuckDBPyConnection":
     return _CONN
 
 
+def close_conn():
+    """Fecha a conexão singleton read-only para permitir escrita no mesmo arquivo
+    (a ingestão viva grava em port_metrics; o DuckDB não permite read-only e
+    read-write abertos simultaneamente no mesmo processo)."""
+    global _CONN
+    if _CONN is not None:
+        try:
+            _CONN.close()
+        finally:
+            _CONN = None
+
+
 # NOTA DE INTEGRIDADE DE DADOS:
 # Os portos brasileiros (BRSSZ/BRPNG) são alimentados por line-ups VIVAS
 # (APPA Paranaguá, Porto de Santos, Lachmann) via scripts/run_ingestion_live.py.

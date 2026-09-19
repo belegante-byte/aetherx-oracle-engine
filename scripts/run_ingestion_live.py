@@ -126,6 +126,10 @@ def _score_from_status(pid: str, resumo: dict, fonte: dict) -> dict:
 
 
 def aplicar_no_oracle(por_porto: dict, resumos: dict) -> dict:
+    from src.engine.risk_model import close_conn
+    # DuckDB não permite read-only (API) e read-write (ingestão) abertos no
+    # mesmo processo sobre o mesmo arquivo. Fecha a conexão da API antes.
+    close_conn()
     conn = duckdb.connect(ORACLE_DB)
     now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     atualizados = {}
