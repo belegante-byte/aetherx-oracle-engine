@@ -64,3 +64,31 @@ aqui há: reconstruir fila que fontes oficiais não expõem em formato simples).
 - **Transnet** (Cape Town): timeout no probe — site lento, mas Anchorage Reports existe.
 - **Rotterdam/HVCC/MPA**: APIs requerem registro (guest account / pacotes) — mas gratuito ou com tier livre.
 - **Agregadores (shipdata/shipinfo)**: dados via JS — scraping necessário, verificar ToS/anti-bot.
+## Resultado do probe real das fontes oficiais (2026-09-19, tarde)
+
+| Fonte | Probe HTTP | Dados de fila acessíveis sem registro? |
+| --- | --- | --- |
+| Rotterdam `portal.api.portofrotterdam.com` | 200 | Não — SPA/Highcharts, guest account requerida |
+| Rotterdam `portofrotterdam.com/port-performance` | 200 | Não — charts carregam via JS (Highcharts data module) |
+| HVCC Hamburg `api-port-call-data` | 200 (301→HTTPS) | Não — API com 3 pacotes, requer contrato |
+| MPA Singapore `oceans-x.mpa.gov.sg` | 200 | Não — plataforma com registro |
+| PANYNJ `ocean-carriers.html` | 200 | Vessel schedules (chegada), não fila explícita |
+| Dubai Trade `dubaitrade.ae/pmisc1/vessel.do` | **WAF Rejected** | Bloqueado (Request Rejected) |
+| TNPA Transnet `SubsiteRender?id=8185344` | timeout | Anchorage Reports existe, site instável |
+| Contecon Manzanillo `trafico-de-naves` | timeout | Vessel traffic, lento |
+| **shipinfo `topos/api/v1`** | **200 ok** | **API anônima funcional** — `ports/search` (conf 0.92), `ports/{id}/congestion` (conf 0.88), mas congestion retorna `rows: []` (beta, não populado) |
+| shipdata `port/CNSHG` | 200 | Dados via JS (scrape) — "21 Anchored" não está no HTML estático |
+
+**Conclusão do probe:** Nenhuma fonte oficial entrega fila real em formato simples e
+imediato hoje. As APIs oficiais existem mas exigem registro/pacote (Rotterdam, HVCC,
+MPA) ou scraping de SPA (Rotterdam charts, shipdata). O shipinfo é a única API aberta
+que responde anonimamente, mas o endpoint de congestion está vazio (beta).
+
+**Estado da implementação:** NÃO foi possível destravar os 14 portos com fonte oficial
+sem (a) registro em 3+ portais ou (b) scraping de SPA. A via viável imediata é:
+- shipinfo `ports/search` + derivar âncoras de `bootstrap/vessels` quando disponível, OU
+- scraping do shipdata (anchorage counts) — verificar ToS/anti-bot, OU
+- AISHUB key grátis + bboxes de fundeadouro (caminho C da doutrina §9).
+
+Registrado para decisão do operador. Nenhum dado falso foi injetado — os 14 portos
+continuam `static_reference_seed` honestos.
