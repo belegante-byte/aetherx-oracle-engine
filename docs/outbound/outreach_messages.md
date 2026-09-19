@@ -55,7 +55,7 @@ feature for clients. Also available as MCP tools for maritime agents.
 
 Free tier ($0, no card) on RapidAPI:
 https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle
-Example live data: https://aether-x-oracle-production.up.railway.app/santos-port-congestion-api
+Example live data: https://aetherx.aether-grid.io/santos-port-congestion-api
 
 Open to a 15-min data-rooms chat.
 

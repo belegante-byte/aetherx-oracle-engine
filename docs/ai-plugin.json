@@ -9,10 +9,10 @@
     },
     "api": {
         "type": "openapi",
-        "url": "https://aether-x-oracle-production.up.railway.app/openapi.rapidapi.json",
+        "url": "https://aetherx.aether-grid.io/openapi.rapidapi.json",
         "is_user_authenticated": false
     },
-    "logo_url": "https://aether-x-oracle-production.up.railway.app/",
+    "logo_url": "https://aetherx.aether-grid.io/",
     "contact_email": "contato@aether-grid.io",
-    "legal_info_url": "https://aether-x-oracle-production.up.railway.app/terms"
+    "legal_info_url": "https://aetherx.aether-grid.io/terms"
 }

@@ -19,7 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE_URL = os.getenv(
-    "AETHERX_BASE_URL", "https://aether-x-oracle-production.up.railway.app"
+    "AETHERX_BASE_URL", "https://aetherx.aether-grid.io"
 )
 SECRET = None
 _env = ROOT / "config" / ".env"

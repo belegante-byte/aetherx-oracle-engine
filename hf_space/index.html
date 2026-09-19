@@ -64,17 +64,17 @@ a:hover{text-decoration:underline}
     <pre>{
   "mcpServers": {
     "aetherx-oracle": {
-      "url": "https://aether-x-oracle-production.up.railway.app/mcp"
+      "url": "https://aetherx.aether-grid.io/mcp"
     }
   }
 }</pre>
-    <p style="margin-top:.6rem;font-size:.85rem">Public dashboards: <a href="https://aether-x-oracle-production.up.railway.app/port-congestion-santos">per-port pages</a> · <a href="https://aether-x-oracle-production.up.railway.app/mcp-page">MCP page</a> · <a href="https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle">Get a free API key</a></p>
+    <p style="margin-top:.6rem;font-size:.85rem">Public dashboards: <a href="https://aetherx.aether-grid.io/port-congestion-santos">per-port pages</a> · <a href="https://aetherx.aether-grid.io/mcp-page">MCP page</a> · <a href="https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle">Get a free API key</a></p>
   </div>
 
   <p class="footer">Aether-X Port Congestion Oracle · MIT · Free tier $0.00 · Signals provided AS IS, not investment advice.</p>
 </div>
 <script>
-const LIVE = "https://aether-x-oracle-production.up.railway.app/public/ports";
+const LIVE = "https://aetherx.aether-grid.io/public/ports";
 function color(score){return score>=0.6?"var(--red)":score>=0.45?"var(--amber)":"var(--green)"}
 function money(v){return "$"+Number(v).toLocaleString("en-US")}
 async function load(){

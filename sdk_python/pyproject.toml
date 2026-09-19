@@ -21,10 +21,10 @@ async = ["httpx>=0.24.0"]
 test = ["pytest>=7.0", "responses>=0.23", "httpx>=0.24.0"]
 
 [project.urls]
-Homepage = "https://aether-x-oracle-production.up.railway.app"
+Homepage = "https://aetherx.aether-grid.io"
 Repository = "https://github.com/belegante-byte/aetherx-oracle"
-Documentation = "https://aether-x-oracle-production.up.railway.app/docs"
-Terms = "https://aether-x-oracle-production.up.railway.app/terms"
+Documentation = "https://aetherx.aether-grid.io/docs"
+Terms = "https://aetherx.aether-grid.io/terms"
 
 [tool.setuptools.packages.find]
 where = ["."]

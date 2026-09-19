@@ -9,7 +9,7 @@ Produto: **Aether-X Port Congestion Oracle** — API preditiva de congestão por
 - O produto está no ar mas é novo: indexação de buscadores/marketplaces leva dias/semanas.
 
 ## 2. Produto e API
-- **Base URL**: `https://aether-x-oracle-production.up.railway.app`
+- **Base URL**: `https://aetherx.aether-grid.io`
 - **Docs interativos**: `.../docs` (Swagger UI) · **OpenAPI**: `.../openapi.json`
 - Endpoints REST (via gateway RapidAPI):
   - `GET /v1/port-risk?port_id=BRSSZ` — risco por porto
@@ -24,7 +24,7 @@ Produto: **Aether-X Port Congestion Oracle** — API preditiva de congestão por
 |---|---|---|
 | **RapidAPI Marketplace** | https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle | Publicado, monetizado, health check PASS |
 | **MCP Registry oficial** | `io.github.belegante-byte/aetherx-mcp` v0.2.1 | **status active** (pacote PyPI + servidor remoto) |
-| **MCP servidor remoto** | `https://aether-x-oracle-production.up.railway.app/mcp` | Público, streamable-http, handshake OK |
+| **MCP servidor remoto** | `https://aetherx.aether-grid.io/mcp` | Público, streamable-http, handshake OK |
 | **PyPI — SDK** | `aetherx-oracle` **0.4.0** | Publicado (Python 3.10+, extra async) |
 | **PyPI — MCP server** | `aetherx-mcp` **0.2.1** | Publicado (instalação `uvx aetherx-mcp`) |
 | **Landing/SEO** | `.../` (landing) + `.../llms.txt` + `.../.well-known/ai-plugin.json` | No ar, aguardando indexação |
@@ -36,6 +36,7 @@ Produto: **Aether-X Port Congestion Oracle** — API preditiva de congestão por
 
 ## 4. Infraestrutura e operação
 - **Hosting**: Railway — conta `ag@osinc.com.br`, projeto `aether-platform-api`, serviço `aether-x-oracle`. Deploy via CLI. Região N. Virginia.
+  - ⚠️ **Organização (pendência longo prazo)**: o serviço `aether-x-oracle` (id `67c62a7b`) vive dentro do projeto `aether-platform-api` (id `23dd7aef`), que também abriga o serviço do app "aether-platform" (id `c52c9055`). Nada foi sobrescrito — os dois serviços são independentes. **Decisão 2026-09-19: manter como está por ora; estudar a longo prazo os prejuízos** (URL base Railway, 29 arquivos referenciando o domínio, registry/SDK/RapidAPI apontando para ele). Caminho de migração seguro se decidirmos mover: 1º fixar custom domain (`aetherx.aether-grid.io`) para a URL pública não depender do projeto; 2º criar projeto novo e mover o serviço; 3º atualizar refs que apontam para o domínio Railway interno.
 - **Segurança**: rota REST protegida por `RapidAPIGuard` (requer `X-RapidAPI-Proxy-Secret`); públicas: `/`, `/health`, `openapi`, `/llms.txt`, `/terms`, `/.well-known/*`, `/docs`, `/redoc`, `/mcp*`, OPTIONS.
 - **Credenciais** (nunca expor): `PYPI_TOKEN` + `RAPIDAPI_PROXY_SECRET` em `config/.env` (gitignored); cópia do proxy secret em nota-cofre local.
 - **GitHub**: conta `belegante-byte` · monorepo `aetherx-oracle-engine` (+ repo `aetherx-mcp`). CLI `mcp-publisher` instalado e logado (Go 1.27).

@@ -21,7 +21,7 @@ def test_health_check():
     assert resp.status_code == 200
     assert "text/html" in resp.headers["content-type"]
     assert "Aether-X Port Congestion Oracle" in resp.text
-    assert "https://aether-x-oracle-production.up.railway.app/mcp" in resp.text
+    assert "https://aetherx.aether-grid.io/mcp" in resp.text
     assert 'href="/docs"' in resp.text
     assert 'href="/llms.txt"' in resp.text
     assert 'href="/port-congestion-api"' in resp.text
@@ -60,7 +60,7 @@ def test_robots_txt():
     resp = client.get("/robots.txt")
     assert resp.status_code == 200
     assert "text/plain" in resp.headers["content-type"]
-    assert "Sitemap: https://aether-x-oracle-production.up.railway.app/sitemap.xml" in resp.text
+    assert "Sitemap: https://aetherx.aether-grid.io/sitemap.xml" in resp.text
 
 
 def test_port_detail_pages_live_for_all_monitored_ports():

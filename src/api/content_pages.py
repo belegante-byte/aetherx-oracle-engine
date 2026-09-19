@@ -11,7 +11,7 @@ import json
 
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 
-PRODUCTION_URL = "https://aether-x-oracle-production.up.railway.app"
+PRODUCTION_URL = "https://aetherx.aether-grid.io"
 RAPIDAPI_URL = "https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle"
 REGISTRY_URL = "io.github.belegante-byte/aetherx-mcp"
 PYPI_SDK = "https://pypi.org/project/aetherx-oracle/"

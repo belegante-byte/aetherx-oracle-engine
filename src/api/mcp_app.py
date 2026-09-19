@@ -51,7 +51,7 @@ mcp = MCPServer(
         "`static_reference_seed` reference telemetry."
     ),
     version="0.2.1",
-    website_url="https://aether-x-oracle-production.up.railway.app",
+    website_url="https://aetherx.aether-grid.io",
 )
 
 

@@ -12,8 +12,8 @@
     "type": "git",
     "url": "https://github.com/belegante-byte/aetherx-mcp.git"
   },
-  "homepage": "https://aether-x-oracle-production.up.railway.app",
-  "documentation": "https://aether-x-oracle-production.up.railway.app/docs",
+  "homepage": "https://aetherx.aether-grid.io",
+  "documentation": "https://aetherx.aether-grid.io/docs",
   "support": "https://github.com/belegante-byte/aetherx-mcp/issues",
   "server": {
     "type": "uv",

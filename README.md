@@ -4,7 +4,7 @@
 [![PyPI downloads](https://img.shields.io/pypi/dm/aetherx-oracle)](https://pypi.org/project/aetherx-oracle/)
 [![Python versions](https://img.shields.io/pypi/pyversions/aetherx-oracle)](https://pypi.org/project/aetherx-oracle/)
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-active-brightgreen)](https://registry.modelcontextprotocol.io)
-[![Status](https://img.shields.io/badge/status-online-blue)](https://aether-x-oracle-production.up.railway.app/)
+[![Status](https://img.shields.io/badge/status-online-blue)](https://aetherx.aether-grid.io/)
 
 **Port congestion signals for developers, AI agents, logistics systems and quantitative workflows.**
 
@@ -98,7 +98,7 @@ Add to your MCP client config:
   "mcpServers": {
     "aetherx-oracle": {
       "type": "url",
-      "url": "https://aether-x-oracle-production.up.railway.app/mcp"
+      "url": "https://aetherx.aether-grid.io/mcp"
     }
   }
 }
@@ -123,7 +123,7 @@ Published in the **[Official MCP Registry](https://registry.modelcontextprotocol
 
 ## REST API
 
-Base URL: `https://aether-x-oracle-production.up.railway.app`
+Base URL: `https://aetherx.aether-grid.io`
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -148,7 +148,7 @@ Base URL: `https://aether-x-oracle-production.up.railway.app`
 }
 ```
 
-Interactive docs: [Swagger UI](https://aether-x-oracle-production.up.railway.app/docs) · [OpenAPI](https://aether-x-oracle-production.up.railway.app/openapi.json)
+Interactive docs: [Swagger UI](https://aetherx.aether-grid.io/docs) · [OpenAPI](https://aetherx.aether-grid.io/openapi.json)
 
 ---
 
@@ -181,8 +181,8 @@ Grab a key on the **[RapidAPI listing](https://rapidapi.com/belegante/api/aether
 - [Official MCP Registry](https://registry.modelcontextprotocol.io) — `io.github.belegante-byte/aetherx-mcp`
 - [Glama connector](https://glama.ai/mcp/connectors/io.github.belegante-byte/aetherx-mcp)
 - [Smithery gateway](https://smithery.ai/servers/belegante/aetherx-mcp)
-- [llms.txt](https://aether-x-oracle-production.up.railway.app/llms.txt)
-- [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)
+- [llms.txt](https://aetherx.aether-grid.io/llms.txt)
+- [Terms of Service](https://aetherx.aether-grid.io/terms)
 
 ## Writing
 
@@ -214,6 +214,6 @@ Deploys to [Railway](https://railway.com) via `railway.json`; the DuckDB oracle 
 
 ## Terms & license
 
-Signals are provided **"AS IS"**, without warranty, and **do not constitute investment advice**. See [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms).
+Signals are provided **"AS IS"**, without warranty, and **do not constitute investment advice**. See [Terms of Service](https://aetherx.aether-grid.io/terms).
 
 The **Python SDK** is **MIT** licensed. The **API, reference engine and data pipeline** are proprietary — hosted usage is governed by the Terms.

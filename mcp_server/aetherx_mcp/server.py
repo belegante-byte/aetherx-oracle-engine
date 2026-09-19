@@ -19,7 +19,7 @@ from typing import Any
 import httpx
 from mcp.server.mcpserver import MCPServer
 
-PRODUCTION_URL = "https://aether-x-oracle-production.up.railway.app"
+PRODUCTION_URL = "https://aetherx.aether-grid.io"
 DEFAULT_RAPIDAPI_HOST = "aether-x-port-congestion-oracle.p.rapidapi.com"
 
 SUPPORTED_PORTS: list[dict[str, str]] = [
@@ -61,7 +61,7 @@ mcp = MCPServer(
         "`static_reference_seed` reference telemetry."
     ),
     version="0.2.4",
-    website_url="https://aether-x-oracle-production.up.railway.app",
+    website_url="https://aetherx.aether-grid.io",
 )
 
 

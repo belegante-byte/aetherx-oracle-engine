@@ -16,7 +16,7 @@ from src.api.content_pages import PORT_METAS, _SLUG_MAP
 from src.api.metrics import MetricsMiddleware, metrics_snapshot
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 
-PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aether-x-oracle-production.up.railway.app")
+PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aetherx.aether-grid.io")
 DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
 TERMS_PATH = DOCS_DIR / "TERMS_OF_SERVICE.md"
 RAPIDAPI_SPEC_PATH = Path(__file__).resolve().parent.parent.parent / "openapi.rapidapi.json"
@@ -116,7 +116,7 @@ LANDING_HTML = """<!DOCTYPE html>
 <meta property="og:title" content="Aether-X Port Congestion Oracle">
 <meta property="og:description" content="Predictive congestion, ETA delay and freight volatility signals for 19 global ports (5 Brazilian ports live). REST API, Python SDK and MCP server.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://aether-x-oracle-production.up.railway.app/">
+<meta property="og:url" content="https://aetherx.aether-grid.io/">
 <meta name="twitter:card" content="summary">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -174,7 +174,7 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
 
   <div class="snippet-card">
     <div class="card-header"><span>Remote Streamable HTTP</span><span class="hint">no install</span><button class="copy-btn" onclick="copyText(this)">Copy</button></div>
-    <pre><code>https://aether-x-oracle-production.up.railway.app/mcp</code></pre>
+    <pre><code>https://aetherx.aether-grid.io/mcp</code></pre>
   </div>
 
   <div class="snippet-card">
@@ -195,7 +195,7 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
   "mcpServers": {
     "aetherx-oracle": {
       "type": "url",
-      "url": "https://aether-x-oracle-production.up.railway.app/mcp"
+      "url": "https://aetherx.aether-grid.io/mcp"
     }
   }
 }</code></pre>
@@ -415,15 +415,15 @@ app = FastAPI(
         {"url": PRODUCTION_URL, "description": "Production (Railway)"},
         {"url": "http://127.0.0.1:8000", "description": "Local development"}
     ],
-    terms_of_service="https://aether-x-oracle-production.up.railway.app/terms",
+    terms_of_service="https://aetherx.aether-grid.io/terms",
     contact={
         "name": "Aether-X",
-        "url": "https://aether-x-oracle-production.up.railway.app",
+        "url": "https://aetherx.aether-grid.io",
         "email": "contato@aether-grid.io",
     },
     license_info={
         "name": "Machine-to-Machine Data Distribution (see /terms)",
-        "url": "https://aether-x-oracle-production.up.railway.app/terms"
+        "url": "https://aetherx.aether-grid.io/terms"
     },
     openapi_tags=[
         {

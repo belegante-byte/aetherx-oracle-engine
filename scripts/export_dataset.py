@@ -63,7 +63,7 @@ SGSIN, USLAX, USNYC, ZACPT
 
 ## Live data
 
-- API: https://aether-x-oracle-production.up.railway.app/v1/port-risk?port_id=BRSSZ
+- API: https://aetherx.aether-grid.io/v1/port-risk?port_id=BRSSZ
 - Python SDK: `pip install aetherx-oracle`
 - MCP server (AI agents): `uvx aetherx-mcp`
 - Source (MIT): https://github.com/belegante-byte/aetherx-oracle
@@ -72,7 +72,7 @@ SGSIN, USLAX, USNYC, ZACPT
 
 CC BY 4.0 for this snapshot. The signals are provided "AS IS", without
 warranty, and **do not constitute investment advice**. See the
-[Terms of Service](https://aether-x-oracle-production.up.railway.app/terms).
+[Terms of Service](https://aetherx.aether-grid.io/terms).
 """
 
 

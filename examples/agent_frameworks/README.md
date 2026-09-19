@@ -30,7 +30,7 @@ Every agent framework that speaks MCP can just point at the hosted server:
 {
   "mcpServers": {
     "aetherx-oracle": {
-      "url": "https://aether-x-oracle-production.up.railway.app/mcp"
+      "url": "https://aetherx.aether-grid.io/mcp"
     }
   }
 }

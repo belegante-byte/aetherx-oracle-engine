@@ -3,8 +3,8 @@
   "name": "io.github.belegante-byte/aetherx-mcp",
   "title": "Aether-X Port Congestion Oracle",
 "description": "Brazilian ports feed live line-ups (APPA, Santos, Lachmann, SILOG); others use a reference seed.",
-  "version": "0.4.0",
-  "websiteUrl": "https://aether-x-oracle-production.up.railway.app",
+  "version": "0.4.2",
+  "websiteUrl": "https://aetherx.aether-grid.io",
   "repository": {
     "url": "https://github.com/belegante-byte/aetherx-oracle-engine",
     "source": "github",
@@ -24,7 +24,7 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://aether-x-oracle-production.up.railway.app/mcp"
+      "url": "https://aetherx.aether-grid.io/mcp"
     }
   ],
   "_meta": {

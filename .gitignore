@@ -6,4 +6,4 @@ data/processed/*
 !data/processed/.gitkeep
 data/antaq_cache/
 .env
-.DS_Store
+.DS_Storedata/acumula_diario.log

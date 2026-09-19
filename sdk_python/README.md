@@ -107,7 +107,7 @@ asyncio.run(main())
 
 ## Termos de uso
 
-Os sinais são fornecidos "AS IS", sem garantia e **não constituem aconselhamento de investimento**. Consulte os [Termos de Serviço](https://aether-x-oracle-production.up.railway.app/terms).
+Os sinais são fornecidos "AS IS", sem garantia e **não constituem aconselhamento de investimento**. Consulte os [Termos de Serviço](https://aetherx.aether-grid.io/terms).
 
 ## Licença
 

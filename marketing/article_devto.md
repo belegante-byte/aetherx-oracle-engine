@@ -47,12 +47,12 @@ The same contract is available three ways, so you can pick the one that matches 
 The production service runs on Railway and is fully described by an OpenAPI 3 spec, so you can call it with plain `curl` or generate a client in any language:
 
 ```bash
-curl "https://aether-x-oracle-production.up.railway.app/v1/port-risk?port_id=BRSSZ"
+curl "https://aetherx.aether-grid.io/v1/port-risk?port_id=BRSSZ"
 ```
 
-- OpenAPI 3.0 (RapidAPI-compatible): `https://aether-x-oracle-production.up.railway.app/openapi.rapidapi.json`
-- OpenAPI 3.1 (native FastAPI): `https://aether-x-oracle-production.up.railway.app/openapi.json`
-- Interactive docs: `https://aether-x-oracle-production.up.railway.app/docs`
+- OpenAPI 3.0 (RapidAPI-compatible): `https://aetherx.aether-grid.io/openapi.rapidapi.json`
+- OpenAPI 3.1 (native FastAPI): `https://aetherx.aether-grid.io/openapi.json`
+- Interactive docs: `https://aetherx.aether-grid.io/docs`
 
 For metered, pay-as-you-go access the same endpoint is published on the **RapidAPI Hub**, which handles API keys, quotas and billing. You only change the base URL and add two headers:
 
@@ -165,14 +165,14 @@ Register it in Claude Desktop, Cursor or any MCP client:
 If you'd rather not run a process locally, the same tool surface is served remotely at:
 
 ```
-https://aether-x-oracle-production.up.railway.app/mcp
+https://aetherx.aether-grid.io/mcp
 ```
 
 ```json
 {
   "mcpServers": {
     "aetherx": {
-      "url": "https://aether-x-oracle-production.up.railway.app/mcp"
+      "url": "https://aetherx.aether-grid.io/mcp"
     }
   }
 }
@@ -198,7 +198,7 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
 async def main():
-    url = "https://aether-x-oracle-production.up.railway.app/mcp"
+    url = "https://aetherx.aether-grid.io/mcp"
     async with streamable_http_client(url) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
@@ -270,8 +270,8 @@ uvx aetherx-mcp                         # MCP server (stdio)
 - PyPI (MCP): https://pypi.org/project/aetherx-mcp/
 - GitHub (MIT SDK): https://github.com/belegante-byte/aetherx-oracle
 - GitHub (MIT MCP server): https://github.com/belegante-byte/aetherx-mcp
-- Live API: https://aether-x-oracle-production.up.railway.app/v1/port-risk?port_id=BRSSZ
-- Remote MCP: https://aether-x-oracle-production.up.railway.app/mcp
+- Live API: https://aetherx.aether-grid.io/v1/port-risk?port_id=BRSSZ
+- Remote MCP: https://aetherx.aether-grid.io/mcp
 - Smithery: https://smithery.ai/servers/belegante/aetherx-mcp
 
 The signals are provided "AS IS" and do not constitute investment advice. See the Terms of Service.

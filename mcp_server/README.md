@@ -2,7 +2,7 @@
 
 <!-- mcp-name: io.github.belegante-byte/aetherx-mcp -->
 
-**MCP server for the [Aether-X Port Congestion Oracle](https://aether-x-oracle-production.up.railway.app)** — gives any MCP-compatible agent (Claude Desktop, Cursor, VS Code, custom LLM agents) **reference** port congestion signals for global trade and quantitative finance.
+**MCP server for the [Aether-X Port Congestion Oracle](https://aetherx.aether-grid.io)** — gives any MCP-compatible agent (Claude Desktop, Cursor, VS Code, custom LLM agents) **reference** port congestion signals for global trade and quantitative finance.
 
 > **DATA INTEGRITY NOTICE**: Brazilian ports (BRSSZ Santos, BRPNG Paranaguá, BRRIO Rio de Janeiro) feed **live** operational line-ups (`data_source="live:appa+santos+lachmann"`); Niterói (BRNIT) and Itaguaí (BRITG) together with Rio de Janeiro feed **live** line-up from SILOG PortosRio (`data_source="live:portosrio_silog"`). The remaining ports serve a **static reference seed** (`data_source="static_reference_seed"`). Every tool result includes `data_source` and `as_of`. The 24/48/72h trend is a synthetic projection, not a live forecast. Seed values are NOT real-time field data.
 
@@ -75,7 +75,7 @@ Every response is a typed payload:
 |----------|---------|-------------|
 | `RAPIDAPI_KEY` | — | When set, requests are routed through the RapidAPI gateway (metered billing) |
 | `RAPIDAPI_HOST` | `aether-x-port-congestion-oracle.p.rapidapi.com` | RapidAPI host |
-| `AETHERX_BASE_URL` | `https://aether-x-oracle-production.up.railway.app` | Direct API base URL |
+| `AETHERX_BASE_URL` | `https://aetherx.aether-grid.io` | Direct API base URL |
 
 Without `RAPIDAPI_KEY`, the server calls the public production API directly.
 
@@ -88,4 +88,4 @@ Without `RAPIDAPI_KEY`, the server calls the public production API directly.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). The signals are provided "AS IS" and do not constitute investment advice. See the [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms).
+MIT — see [LICENSE](LICENSE). The signals are provided "AS IS" and do not constitute investment advice. See the [Terms of Service](https://aetherx.aether-grid.io/terms).

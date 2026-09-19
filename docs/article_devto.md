@@ -136,7 +136,7 @@ pip install --upgrade aetherx-oracle   # v0.3.1
 
 - PyPI: https://pypi.org/project/aetherx-oracle/
 - GitHub (MIT SDK): https://github.com/belegante-byte/aetherx-oracle
-- Live API: https://aether-x-oracle-production.up.railway.app/v1/port-risk?port_id=BRSSZ
+- Live API: https://aetherx.aether-grid.io/v1/port-risk?port_id=BRSSZ
 
 The signals are provided "AS IS" and do not constitute investment advice. See the Terms of Service.
 
