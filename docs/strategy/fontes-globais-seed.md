@@ -92,3 +92,24 @@ sem (a) registro em 3+ portais ou (b) scraping de SPA. A via viável imediata é
 
 Registrado para decisão do operador. Nenhum dado falso foi injetado — os 14 portos
 continuam `static_reference_seed` honestos.
+
+## Verificação aprofundada das vias AIS (2026-09-19, fim de tarde)
+
+**AISHub — DESCARTADO:** registro exige OPERAR UMA ESTAÇÃO AIS física
+(receptor NMEA contribuindo à rede). Não é "conta grátis". Inviável para o
+operador sem equipamento.
+
+**VesselAPI / VesselFinder / MarineTraffic — exigem API key** (free tier com
+limite), sem acesso imediato.
+
+**shipinfo API — a única funcional anonimamente:**
+- `ports/search` → OK (conf 0.92)
+- `ports/{id}/congestion` → **Hamburgo tem 175 rows REAIS de congestion**
+  (30D). Los Angeles/Singapore/NY/Dubai/Jebel Ali → vazio (cobertura seletiva).
+- **Limite anônimo: 6 requests/dia, daily_limit 120** → insuficiente para
+  produção, mas prova que a fonte entrega dados reais.
+
+**Estado:** para destravar os 14 portos globalmente com AIS, a via realista é
+uma conta com tier maior (shipinfo registrado, ou outro provedor AIS com key).
+O Hamburgo via shipinfo é a prova de conceito que funciona hoje (175 rows).
+Sem isso, os 14 seguem static_reference_seed honestos.
