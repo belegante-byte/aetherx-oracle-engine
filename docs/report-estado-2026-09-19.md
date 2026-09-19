@@ -177,3 +177,35 @@ Pares de calibração: 1 → **4** (BRPNG, BRRIO, BRITG, BRNIT).
 **Limitação honesta:** BRSSZ (Santos) permanece CONDITIONAL porque a fonte
 pública da APS não expõe a fila ao largo — apenas atracados/programados/
 esperados. Candidato natural a AIS futuro.
+
+## Cobertura dos 14 portos globais: static_reference_seed (honesto)
+
+Os 14 portos não-BR (CNSHA, NLRTM, SGSIN, USLAX, USNYC, DEHAM, KRPUS, AEDXB,
+CNNGB, CNTAO, MPTNG, GBLGP, ZACPT, MXZLO) servem **valores fixos**
+(`static_reference_seed`), rotulados honestamente no `data_source`. NÃO são
+dados reais em tempo real.
+
+**Caminho para trazê-los vivos — AIS (auditoria Fase 3):**
+```
+AIS (AISHUB getpositions bbox / aisstream WebSocket)
+   ↓
+navios com navstat = ancorado
+   ↓
+polígono do fundeadouro de cada porto
+   ↓
+waiting_vessels (fonte="ais_derivado", confidence própria)
+```
+- **AISHUB**: key GRÁTIS (cadastro), `getpositions?bbox=...` retorna navstat
+  (anchored/moored). Testado: endpoint existe, exige key (404 sem key).
+- **aisstream.io**: stream WebSocket global (requer key + coletor próprio).
+- **MarineTraffic**: key paga/limitada; não usar.
+
+**Bloqueio:** AIS exige uma key gratuita (AISHUB) — etapa manual do operador.
+Sem key, os 14 portos permanecem seed estático (honesto, mas não decisório).
+
+**Próxima ação (se aprovado):**
+1. Operador cria conta AISHUB (grátis) → key em config/.env
+2. Implementar coletor AIS: bboxes dos 14 portos + BRSSZ, contar navstat=ancorado
+3. Expor como `live:ais` com `fonte="ais_derivado"` + confidence própria (NUNCA
+   fundido com fila oficial, doutrina §9)
+4. BRSSZ ganharia fila via âncoras ao largo (resolve a limitação atual)
