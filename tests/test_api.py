@@ -53,7 +53,7 @@ def test_sitemap_lists_all_content_pages():
     resp = client.get("/sitemap.xml")
     assert resp.status_code == 200
     assert "application/xml" in resp.headers["content-type"]
-    assert resp.text.count("<url>") == 22
+    assert resp.text.count("<url>") == 24
 
 
 def test_robots_txt():
@@ -304,8 +304,8 @@ def test_public_ports_feed():
     resp = pub.get("/public/ports")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["count"] == 17
-    assert len(body["results"]) == 17
+    assert body["count"] == 19
+    assert len(body["results"]) == 19
     first = body["results"][0]
     for key in (
         "port_id", "port_name", "country", "congestion_score",

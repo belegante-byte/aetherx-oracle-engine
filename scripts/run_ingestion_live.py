@@ -37,6 +37,8 @@ GRID = {
     "BRPNG": {"port_name": "Paranaguá", "country": "Brasil"},
     "BRSSZ": {"port_name": "Santos", "country": "Brasil"},
     "BRRIO": {"port_name": "Rio de Janeiro", "country": "Brasil"},
+    "BRNIT": {"port_name": "Niterói", "country": "Brasil"},
+    "BRITG": {"port_name": "Itaguaí", "country": "Brasil"},
 }
 
 

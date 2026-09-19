@@ -14,6 +14,8 @@ from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 
 SUPPORTED_PORTS: list[dict[str, str]] = [
     {"port_id": "AEDXB", "port_name": "Dubai / Jebel Ali", "country": "EAU"},
+    {"port_id": "BRITG", "port_name": "Itaguaí", "country": "Brasil"},
+    {"port_id": "BRNIT", "port_name": "Niterói", "country": "Brasil"},
     {"port_id": "BRRIO", "port_name": "Rio de Janeiro", "country": "Brasil"},
     {"port_id": "BRPNG", "port_name": "Paranaguá", "country": "Brasil"},
     {"port_id": "BRSSZ", "port_name": "Santos", "country": "Brasil"},
@@ -37,14 +39,14 @@ mcp = MCPServer(
     title="Aether-X Port Congestion Oracle",
     description=(
 "Reference port congestion signals for global trade, supply chain and "
-         "quantitative finance. Brazilian ports (BRSSZ, BRPNG, BRRIO) feed live line-ups; "
+         "quantitative finance. Brazilian ports (BRSSZ, BRPNG, BRRIO, BRNIT, BRITG) feed live line-ups; "
          "the rest use a static reference seed."
     ),
     instructions=(
         "Reference congestion signals for ports. Use get_port_risk for a "
         "single port, get_ports_risk to scan a portfolio of ports in parallel and "
         "get_port_trend for the 24h/48h/72h synthetic projection. Every "
-        "result includes `data_source` and `as_of`. For Brazilian ports BRSSZ/BRPNG/BRRIO "
+        "result includes `data_source` and `as_of`. For Brazilian ports BRSSZ/BRPNG/BRRIO/BRNIT/BRITG "
         "it is live (`live:appa+santos+lachmann`, `live:portosrio_silog`); the rest are "
         "`static_reference_seed` reference telemetry."
     ),
@@ -86,7 +88,7 @@ def get_port_trend(port_id: str) -> dict[str, Any]:
 
 @mcp.tool()
 def list_supported_ports() -> list[dict[str, str]]:
-    """List the 17 ports in the oracle (id, name, country)."""
+    """List the 19 ports in the oracle (id, name, country)."""
     return SUPPORTED_PORTS
 
 

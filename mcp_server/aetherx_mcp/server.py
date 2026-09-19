@@ -24,6 +24,8 @@ DEFAULT_RAPIDAPI_HOST = "aether-x-port-congestion-oracle.p.rapidapi.com"
 
 SUPPORTED_PORTS: list[dict[str, str]] = [
     {"port_id": "AEDXB", "port_name": "Dubai / Jebel Ali", "country": "EAU"},
+    {"port_id": "BRITG", "port_name": "Itaguaí", "country": "Brasil"},
+    {"port_id": "BRNIT", "port_name": "Niterói", "country": "Brasil"},
     {"port_id": "BRPNG", "port_name": "Paranaguá", "country": "Brasil"},
     {"port_id": "BRRIO", "port_name": "Rio de Janeiro", "country": "Brasil"},
     {"port_id": "BRSSZ", "port_name": "Santos", "country": "Brasil"},
@@ -134,7 +136,7 @@ async def get_port_trend(port_id: str) -> dict[str, Any]:
 
 @mcp.tool()
 def list_supported_ports() -> list[dict[str, str]]:
-    """List the 17 ports in the oracle (id, name, country)."""
+    """List the 19 ports in the oracle (id, name, country)."""
     return SUPPORTED_PORTS
 
 

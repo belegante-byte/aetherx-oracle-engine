@@ -54,7 +54,7 @@ SOURCE_LABELS = {
     "lachmann": "Lachmann schedules",
     "santos": "Porto de Santos",
     "santos_painel": "Painel de operações de Santos",
-    "portosrio_silog": "SILOG Rio de Janeiro (PortosRio)",
+    "portosrio_silog": "SILOG PortosRio (Rio de Janeiro, Niterói, Itaguaí)",
 }
 
 
@@ -317,8 +317,8 @@ def fetch_santos_painel(timeout: int = 30) -> list:
 
 SILOG_DOMINIOS = {
     "BRRIO": 1,      # Rio de Janeiro
-    # "BRNIT": 2,    # Niterói (fora do catálogo atual)
-    # "BRITG": 3,    # Itaguaí / Sepetiba (fora do catálogo atual)
+    "BRNIT": 2,      # Niterói
+    "BRITG": 3,      # Itaguaí / Sepetiba
 }
 SILOG_URL = (
     "https://silog.portosrio.gov.br/silog/pesquisa.aspx"

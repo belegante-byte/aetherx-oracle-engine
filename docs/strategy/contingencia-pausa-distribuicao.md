@@ -2,7 +2,7 @@
 
 > Criado em 2026-09-18. Motivo: o oráculo servia um seed estático apresentado como "live telemetry".
 > Ação tomada: (1) código tornou a proveniência explícita em todas as respostas; (2) distribuição em análise de pausa.
-> ESTADO ATUALIZADO (2026-09-19, madrugada): **fontes BR conectadas** para BRPNG/BRSSZ/BRRIO.
+> ESTADO ATUALIZADO (2026-09-19, madrugada): **fontes BR conectadas** para BRPNG/BRSSZ/BRRIO/BRNIT/BRITG.
 > (`data_source=live:appa+santos+lachmann` e `live:portosrio_silog`). Demais 14 portos seguem com seed referenciado.
 > Pausa **total** (remover das listagens) exige ações manuais em dashboards — checklist reavaliado.
 
@@ -11,10 +11,8 @@
 | Frente | Estado |
 |---|---|
 | Servidor live (Railway) | ✅ Deploy honesto no ar. Landing, /v1/*, /mcp, /public/ports, llms.txt, ai-plugin, OpenAPI, Terms, README corrigidos. |
-| Fonte viva BR | ✅ APPA Paranaguá + Porto de Santos + Lachmann conectados; ingestão periódica (6h) no Procfile/railway.json; `scripts/run_ingestion_live.py` grava `raw_port_lineup` + `port_metrics` com `data_source=live:...`. |
-| Porto Paranaguá | ✅ BRPNG adicionado ao oracle (17 portos) com score 0.95, 203 aguardando (34 ao largo + 169 esperados). |
-| Porto Santos | ✅ BRSSZ agora vivo: 595 atracados + 135 programados (score 0.329, fila refletida em `live`). |
-| Porto Rio de Janeiro | ✅ BRRIO vivo via SILOG PortosRio (`data_source=live:portosrio_silog`; pré-pauta com 88 agendamentos reais e IMO). |
+| Fonte viva BR | ✅ APPA Paranaguá + Porto de Santos + Lachmann + SILOG PortosRio (Rio/Niterói/Itaguaí) conectados; ingestão periódica (6h) no Procfile/railway.json; `scripts/run_ingestion_live.py` grava `raw_port_lineup` + `port_metrics` com `data_source=live:...`. |
+| Portos BR vivos | ✅ 5: BRPNG, BRSSZ, BRRIO, BRNIT, BRITG (`live:appa+santos+lachmann` / `live:portosrio_silog`). |
 | Snapshot histórico | ✅ `scripts/snapshot_history.py` integrado ao ciclo do lifespan (1 linha/porto/dia, preserva `data_source` real). |
 | Testes | ✅ 36 green (incl. `tests/test_live_sources.py` contra fontes reais + SILOG; `test_api.py` ajustado p/ proveniência mista). |
 | MCP Registry `io.github.belegante-byte/aetherx-mcp` | ✅ server.json v0.3.0 republished (token renovado). |
@@ -27,9 +25,9 @@
 - Os **valores numéricos para os 15 portos globais** continuam seed de referência (`init_prod_db.py`).
 - O que mudou: **todo** payload agora declara `data_source`, `as_of` e `data_source_label`.
 - **BRSSZ/BRPNG passam a ter `data_source=live:appa+santos+lachmann`** (line-ups reais de APPA, painel da CODESP/Porto de Santos e cronograma Lachmann), com detalhe em `live` (`ao_largo`/`esperados`/`atracados`/`programados`).
-- **BRRIO tem `data_source=live:portosrio_silog`** — pré-pauta SILOG do Rio de Janeiro (manobras com IMO real).
+- **BRRIO/BRNIT/BRITG têm `data_source=live:portosrio_silog`** — pré-pauta SILOG PortosRio (Rio, Niterói, Itaguaí) com IMO real.
 - Ainda **não existem chaves comerciais** (AIS/MarineTraffic/VesselFinder/Datalastic) no ambiente — só fontes abertas.
-- ANTAQ `dadosabertos` (DNS) segue fora de alcance; Niterói/Itaguaí SILOG disponíveis (domínios 2/3) mas fora do catálogo atual; anotados no `backlog_fontes_portuarias.md` do GP5.
+- ANTAQ: `dadosabertos` segue com DNS fora; painel gov.br é Qlik/PowerBI sem CSV estático; dataset "Situação dos Portos em Tempo Real" (dados.gov.br) é app self-report de criticidade, sem line-up com IMO — não serve como fonte viva, mas é candidato a camada de validação/ground-truth.
 
 ## Checklist de contingências
 
@@ -41,8 +39,9 @@
 - [x] Trocar `data_source` de `static_reference_seed` para `live:appa+santos+lachmann` em BRSSZ/BRPNG.
 - [x] Adicionar BRPNG ao seed (17 portos) e aos metadados SEO/MCP (`PORT_METAS`, `mcp_app`, `llms.txt`).
 - [x] Conectar BRRIO via SILOG PortosRio (`live:portosrio_silog`) e incluir no GRID de ingestão.
+- [x] Expandir SILOG para Niterói (BRNIT) e Itaguaí (BRITG) — mesma fonte, catálogo agora com 19 portos.
 - [x] Agendar `scripts/snapshot_history.py` no ciclo do lifespan (histórico diário com `data_source` real).
-- [ ] Expandir cobertura: ANTAQ datasets, Niterói/Itaguaí (SILOG domínios 2/3) caso entrem no catálogo, demais autoridades BR.
+- [ ] ANTAQ como camada de validação/ground-truth (mapear datasets primeiro; `dadosabertos` fora do ar).
 - [ ] Considerar chave comercial (MarineTraffic/Kpler/VesselFinder/Datalastic) para AIS global.
 
 ### 2. Republish do MCP Registry (server.json v0.3.0)

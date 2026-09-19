@@ -2,7 +2,7 @@
 
 All pages reuse the same dark theme as the landing page and render the
 oracle signals (calculate_port_risk / calculate_port_trend). Every page
-states the data provenance explicitly: Brazilian ports (BRPNG/BRSSZ/BRRIO) are fed
+states the data provenance explicitly: Brazilian ports (BRPNG/BRSSZ/BRRIO/BRNIT/BRITG) are fed
 by live line-ups; the rest serve a static reference seed.
 """
 
@@ -20,12 +20,14 @@ PYPI_MCP = "https://pypi.org/project/aetherx-mcp/"
 REMOTE_CFG = '{"mcpServers": {"aetherx-oracle": {"type": "url", "url": "%s/mcp"}}}' % PRODUCTION_URL
 STDIO_CFG = '{"mcpServers": {"aetherx-oracle": {"command": "uvx", "args": ["aetherx-mcp"]}}}'
 
-# 17 portos monitorados, espelhando src/engine/init_prod_db.py. O slug alimenta
+# 19 portos monitorados, espelhando src/engine/init_prod_db.py. O slug alimenta
 # o SEO programático (/port-congestion-<slug>) e o sitemap.
 PORT_METAS = [
     {"port_id": "BRSSZ", "slug": "santos", "port_name": "Santos", "country": "Brasil"},
     {"port_id": "BRPNG", "slug": "paranagua", "port_name": "Paranaguá", "country": "Brasil"},
     {"port_id": "BRRIO", "slug": "rio-de-janeiro", "port_name": "Rio de Janeiro", "country": "Brasil"},
+    {"port_id": "BRNIT", "slug": "niteroi", "port_name": "Niterói", "country": "Brasil"},
+    {"port_id": "BRITG", "slug": "itaguai", "port_name": "Itaguaí", "country": "Brasil"},
     {"port_id": "CNSHA", "slug": "shanghai", "port_name": "Shanghai", "country": "China"},
     {"port_id": "CNNGB", "slug": "ningbo-zhoushan", "port_name": "Ningbo-Zhoushan", "country": "China"},
     {"port_id": "CNTAO", "slug": "qingdao", "port_name": "Qingdao", "country": "China"},
@@ -135,8 +137,8 @@ print(risk.estimated_daily_demurrage_usd)</code></pre></div>
 
 
 def mcp_page_html() -> str:
-    body = f"""<div class="snippet-card"><div class="card-header"><span>Data integrity</span></div><pre><code>Brazilian ports (BRPNG/BRSSZ/BRRIO) serve LIVE line-ups from
-APPA Paranaguá, Porto de Santos, Lachmann schedules and SILOG Rio de Janeiro.
+    body = f"""<div class="snippet-card"><div class="card-header"><span>Data integrity</span></div><pre><code>Brazilian ports (BRPNG/BRSSZ/BRRIO/BRNIT/BRITG) serve LIVE line-ups from
+APPA Paranaguá, Porto de Santos, Lachmann schedules and SILOG PortosRio.
 Other ports serve data_source="static_reference_seed".
 Every response includes data_source and as_of.</code></pre></div>
 <p class="lede">Query port congestion signals, ETA delays, vessel queues and modeled demurrage exposure through an <strong>MCP-compatible AI agent</strong>.</p>

@@ -35,7 +35,7 @@ def close_conn():
 
 
 # NOTA DE INTEGRIDADE DE DADOS:
-# Os portos brasileiros (BRSSZ/BRPNG/BRRIO) são alimentados por line-ups VIVAS
+# Os portos brasileiros (BRSSZ/BRPNG/BRRIO/BRNIT/BRITG) são alimentados por line-ups VIVAS
 # (APPA Paranaguá, Porto de Santos, Lachmann, SILOG PortosRio) via scripts/run_ingestion_live.py.
 # Os demais portos usam um seed estático de referência (ver init_prod_db.py).
 # Os campos `data_source` e `updated_at` tornam a proveniência explícita em toda resposta.

@@ -4,7 +4,7 @@
 
 **MCP server for the [Aether-X Port Congestion Oracle](https://aether-x-oracle-production.up.railway.app)** — gives any MCP-compatible agent (Claude Desktop, Cursor, VS Code, custom LLM agents) **reference** port congestion signals for global trade and quantitative finance.
 
-> **DATA INTEGRITY NOTICE**: Brazilian ports (BRSSZ Santos, BRPNG Paranaguá) feed **live** operational line-ups (`data_source="live:appa+santos+lachmann"`); Rio de Janeiro (BRRIO) feeds **live** line-up from SILOG PortosRio (`data_source="live:portosrio_silog"`). The remaining ports serve a **static reference seed** (`data_source="static_reference_seed"`). Every tool result includes `data_source` and `as_of`. The 24/48/72h trend is a synthetic projection, not a live forecast. Seed values are NOT real-time field data.
+> **DATA INTEGRITY NOTICE**: Brazilian ports (BRSSZ Santos, BRPNG Paranaguá, BRRIO Rio de Janeiro) feed **live** operational line-ups (`data_source="live:appa+santos+lachmann"`); Niterói (BRNIT) and Itaguaí (BRITG) together with Rio de Janeiro feed **live** line-up from SILOG PortosRio (`data_source="live:portosrio_silog"`). The remaining ports serve a **static reference seed** (`data_source="static_reference_seed"`). Every tool result includes `data_source` and `as_of`. The 24/48/72h trend is a synthetic projection, not a live forecast. Seed values are NOT real-time field data.
 
 ## Install
 
@@ -51,7 +51,7 @@ uvx aetherx-mcp
 | `get_port_risk` | `port_id` (UN/LOCODE) | Congestion score, ETA delay, waiting vessels, freight volatility, daily demurrage estimate |
 | `get_ports_risk` | `port_ids` (list) | Same, for a whole portfolio, fetched in parallel |
 | `get_port_trend` | `port_id` (UN/LOCODE) | 24h / 48h / 72h congestion projection + trend label (acelerando / estável / descongestionando) |
-| `list_supported_ports` | — | The 17 ports (id, name, country) |
+| `list_supported_ports` | — | The 19 ports (id, name, country) |
 
 Every response is a typed payload:
 

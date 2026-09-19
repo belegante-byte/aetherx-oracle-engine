@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Aether-X Port Congestion Oracle",
-    "description": "Port congestion reference signals for global trade, supply chain and quantitative finance.\n\n**IMPORTANT \u00b7 Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.\nBrazilian ports (BRSSZ, BRPNG, BRRIO) serve live line-ups: `data_source=\"live:appa+santos+lachmann\"` (BRSSZ/BRPNG) and `data_source=\"live:portosrio_silog\"` (BRRIO). The remaining ports\nserve a **static reference seed**: `data_source=\"static_reference_seed\"` means the value is a seeded baseline, not a\nlive measurement. The 24/48/72h trend is a `synthetic_projection`, not a live forecast. Do not treat seed numbers as\nreal-time field data.\n\n**The signal** \u2014 `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0\u20131.0 reference congestion level (seeded) |\n| `eta_delay_days` | Reference delay applied to incoming vessels |\n| `waiting_vessels` | Reference ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n| `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |\n| `data_source` | Always `static_reference_seed` until live telemetry is connected |\n| `as_of` | Timestamp of the seed (not a live refresh) |\n\n**Trend (24h/48h/72h)** \u2014 `GET /v1/port-trend?port_id=BRSSZ` returns a **synthetic** projection with a `trend` label: `acelerando`, `est\u00e1vel` or `descongestionando`.\n\n**Free tier** \u2014 $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) \u2014 tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`\n\n**Coverage** \u2014 16 ports: BRSSZ, BRRIO, CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
+    "description": "Port congestion reference signals for global trade, supply chain and quantitative finance.\n\n**IMPORTANT \u00b7 Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.\nBrazilian ports (BRSSZ, BRPNG, BRRIO, BRNIT, BRITG) serve live line-ups: `data_source=\"live:appa+santos+lachmann\"` (BRSSZ/BRPNG) and `data_source=\"live:portosrio_silog\"` (BRRIO/BRNIT/BRITG). The remaining ports\nserve a **static reference seed**: `data_source=\"static_reference_seed\"` means the value is a seeded baseline, not a\nlive measurement. The 24/48/72h trend is a `synthetic_projection`, not a live forecast. Do not treat seed numbers as\nreal-time field data.\n\n**The signal** \u2014 `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0\u20131.0 reference congestion level (seeded) |\n| `eta_delay_days` | Reference delay applied to incoming vessels |\n| `waiting_vessels` | Reference ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n| `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |\n| `data_source` | Always `static_reference_seed` until live telemetry is connected |\n| `as_of` | Timestamp of the seed (not a live refresh) |\n\n**Trend (24h/48h/72h)** \u2014 `GET /v1/port-trend?port_id=BRSSZ` returns a **synthetic** projection with a `trend` label: `acelerando`, `est\u00e1vel` or `descongestionando`.\n\n**Free tier** \u2014 $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) \u2014 tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`\n\n**Coverage** \u2014 19 ports: BRSSZ, BRPNG, BRRIO, BRNIT, BRITG, CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
     "termsOfService": "https://aether-x-oracle-production.up.railway.app/terms",
     "contact": {
       "name": "Aether-X",
@@ -32,7 +32,7 @@
           "Port Risk"
         ],
         "summary": "Get port congestion risk for a single port",
-        "description": "Returns the reference congestion signal for a single global port: `congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, `freight_volatility_index` and the estimated `estimated_daily_demurrage_usd`. Every response includes `data_source` (`static_reference_seed` until live telemetry is connected) and `as_of` (seed timestamp, not a live refresh). Coverage: 16 ports (BRSSZ, CNSHA, CNTAO, NLRTM, ...). Unknown ports fall back to a global statistical estimate with `country=\"Global\"`. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
+        "description": "Returns the reference congestion signal for a single global port: `congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, `freight_volatility_index` and the estimated `estimated_daily_demurrage_usd`. Every response includes `data_source` (`static_reference_seed` until live telemetry is connected) and `as_of` (seed timestamp, not a live refresh). Coverage: 19 ports (BRSSZ, CNSHA, CNTAO, NLRTM, ...). Unknown ports fall back to a global statistical estimate with `country=\"Global\"`. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
         "operationId": "get_port_risk_v1_port_risk_get",
         "parameters": [
           {
@@ -67,10 +67,10 @@
                   "waiting_vessels": 0,
                   "freight_volatility_index": 0.4,
                   "estimated_daily_demurrage_usd": 45200,
-                  "updated_at": "2026-09-19 01:21:52",
-                  "as_of": "2026-09-19 01:21:52",
+                  "updated_at": "2026-09-19 01:34:42",
+                  "as_of": "2026-09-19 01:34:42",
                   "data_source": "live:santos+santos_painel",
-                  "data_source_label": "Live line-up from santos, santos painel.",
+                  "data_source_label": "Live line-up from Porto de Santos + Painel de opera\u00e7\u00f5es de Santos.",
                   "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 591, \"programados\": 135}",
                   "live": {
                     "ao_largo": 0,
@@ -169,8 +169,8 @@
                       "estimated_daily_demurrage_usd": 46400
                     }
                   },
-                  "updated_at": "2026-09-19 01:21:52",
-                  "as_of": "2026-09-19 01:21:52",
+                  "updated_at": "2026-09-19 01:34:42",
+                  "as_of": "2026-09-19 01:34:42",
                   "data_source": "synthetic_projection",
                   "data_source_label": "Synthetic projection from static reference seed (not a live forecast)."
                 }
@@ -252,10 +252,10 @@
                       "waiting_vessels": 0,
                       "freight_volatility_index": 0.4,
                       "estimated_daily_demurrage_usd": 45200,
-                      "updated_at": "2026-09-19 01:21:52",
-                      "as_of": "2026-09-19 01:21:52",
+                      "updated_at": "2026-09-19 01:34:42",
+                      "as_of": "2026-09-19 01:34:42",
                       "data_source": "live:santos+santos_painel",
-                      "data_source_label": "Live line-up from santos, santos painel.",
+                      "data_source_label": "Live line-up from Porto de Santos + Painel de opera\u00e7\u00f5es de Santos.",
                       "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 591, \"programados\": 135}",
                       "live": {
                         "ao_largo": 0,
@@ -420,11 +420,11 @@
         "title": "PortRiskResponse",
         "examples": [
           {
-            "as_of": "2026-09-19 01:21:52",
+            "as_of": "2026-09-19 01:34:42",
             "congestion_score": 0.33,
             "country": "Brasil",
             "data_source": "live:santos+santos_painel",
-            "data_source_label": "Live line-up from santos, santos painel.",
+            "data_source_label": "Live line-up from Porto de Santos + Painel de opera\u00e7\u00f5es de Santos.",
             "estimated_daily_demurrage_usd": 45200,
             "eta_delay_days": 0.2,
             "freight_volatility_index": 0.4,
@@ -437,7 +437,7 @@
             "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 591, \"programados\": 135}",
             "port_id": "BRSSZ",
             "port_name": "Santos",
-            "updated_at": "2026-09-19 01:21:52",
+            "updated_at": "2026-09-19 01:34:42",
             "waiting_vessels": 0
           }
         ]
@@ -504,7 +504,7 @@
         "title": "PortTrendResponse",
         "examples": [
           {
-            "as_of": "2026-09-19 01:21:52",
+            "as_of": "2026-09-19 01:34:42",
             "congestion_score": 0.33,
             "country": "Brasil",
             "data_source": "synthetic_projection",
@@ -529,7 +529,7 @@
               }
             },
             "trend": "acelerando",
-            "updated_at": "2026-09-19 01:21:52"
+            "updated_at": "2026-09-19 01:34:42"
           }
         ]
       },
@@ -552,11 +552,11 @@
           {
             "results": [
               {
-                "as_of": "2026-09-19 01:21:52",
+                "as_of": "2026-09-19 01:34:42",
                 "congestion_score": 0.33,
                 "country": "Brasil",
                 "data_source": "live:santos+santos_painel",
-                "data_source_label": "Live line-up from santos, santos painel.",
+                "data_source_label": "Live line-up from Porto de Santos + Painel de opera\u00e7\u00f5es de Santos.",
                 "estimated_daily_demurrage_usd": 45200,
                 "eta_delay_days": 0.2,
                 "freight_volatility_index": 0.4,
@@ -569,7 +569,7 @@
                 "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 591, \"programados\": 135}",
                 "port_id": "BRSSZ",
                 "port_name": "Santos",
-                "updated_at": "2026-09-19 01:21:52",
+                "updated_at": "2026-09-19 01:34:42",
                 "waiting_vessels": 0
               },
               {

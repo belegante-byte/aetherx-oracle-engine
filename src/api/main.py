@@ -312,7 +312,7 @@ class PortsRiskResponse(BaseModel):
 API_DESCRIPTION = """Port congestion reference signals for global trade, supply chain and quantitative finance.
 
 **IMPORTANT · Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.
-Brazilian ports (BRSSZ, BRPNG, BRRIO) serve live line-ups: `data_source="live:appa+santos+lachmann"` (BRSSZ/BRPNG) and `data_source="live:portosrio_silog"` (BRRIO). The remaining ports
+Brazilian ports (BRSSZ, BRPNG, BRRIO, BRNIT, BRITG) serve live line-ups: `data_source="live:appa+santos+lachmann"` (BRSSZ/BRPNG) and `data_source="live:portosrio_silog"` (BRRIO/BRNIT/BRITG). The remaining ports
 serve a **static reference seed**: `data_source="static_reference_seed"` means the value is a seeded baseline, not a
 live measurement. The 24/48/72h trend is a `synthetic_projection`, not a live forecast. Do not treat seed numbers as
 real-time field data.
@@ -337,7 +337,7 @@ real-time field data.
 - Python SDK: `pip install aetherx-oracle`
 - MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) — tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`
 
-**Coverage** — 16 ports: BRSSZ, BRRIO, CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country="Global"`).
+**Coverage** — 19 ports: BRSSZ, BRPNG, BRRIO, BRNIT, BRITG, CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country="Global"`).
 
 Signals are provided "AS IS" and do not constitute investment advice.
 """
@@ -550,12 +550,12 @@ def port_congestion_detail(slug: str):
 
 @app.get("/public/ports", include_in_schema=False)
 def public_ports_all():
-    """Feed público read-only: sinal dos 17 portos (BR vivos + seed de referência) para widget/embed, sem key."""
+    """Feed público read-only: sinal dos 19 portos (BR vivos + seed de referência) para widget/embed, sem key."""
     rows = [calculate_port_risk(m["port_id"]) for m in PORT_METAS]
     return {
         "as_of": rows[0]["as_of"],
         "data_source": "mixed",
-        "data_source_label": "Live line-ups for Brasil ports (BRSSZ/BRPNG/BRRIO); static reference seed elsewhere.",
+        "data_source_label": "Live line-ups for Brasil ports (BRSSZ/BRPNG/BRRIO/BRNIT/BRITG); static reference seed elsewhere.",
         "count": len(rows),
         "results": rows,
     }
@@ -582,7 +582,7 @@ def ai_plugin_manifest():
         "`freight_volatility_index` and the estimated `estimated_daily_demurrage_usd`. "
         "Every response includes `data_source` (`static_reference_seed` until live "
         "telemetry is connected) and `as_of` (seed timestamp, not a live refresh). "
-        "Coverage: 16 ports (BRSSZ, CNSHA, CNTAO, NLRTM, ...). Unknown ports fall back "
+        "Coverage: 19 ports (BRSSZ, CNSHA, CNTAO, NLRTM, ...). Unknown ports fall back "
         'to a global statistical estimate with `country="Global"`. Requests are protected '
         "by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header."
     ),

@@ -1,8 +1,8 @@
 # Aether-X Port Congestion Oracle
 
-> **DATA INTEGRITY NOTICE**: **Brazilian ports feed LIVE operational line-ups.** Santos (BRSSZ) and Paranaguá (BRPNG) are refreshed from APPA Paranaguá, the Porto de Santos operations panel and Lachmann schedules (`data_source="live:appa+santos+lachmann"`); Rio de Janeiro (BRRIO) from SILOG PortosRio (`data_source="live:portosrio_silog"`), refreshed periodically in production. The remaining 14 ports serve a **reference seed** (`data_source="static_reference_seed"`). Every API/MCP response includes `data_source` and `as_of`. The 24/48/72h trend is a synthetic projection (`data_source="synthetic_projection"`), not a live forecast. Numbers from the seed are reference baselines, NOT real-time field data.
+> **DATA INTEGRITY NOTICE**: **Brazilian ports feed LIVE operational line-ups.** Santos (BRSSZ), Paranaguá (BRPNG) and Rio de Janeiro (BRRIO) are refreshed from APPA Paranaguá, the Porto de Santos operations panel and Lachmann schedules (`data_source="live:appa+santos+lachmann"`); Rio de Janeiro (BRRIO), Niterói (BRNIT) and Itaguaí (BRITG) come from SILOG PortosRio (`data_source="live:portosrio_silog"`), refreshed periodically in production. The remaining 14 ports serve a **reference seed** (`data_source="static_reference_seed"`). Every API/MCP response includes `data_source` and `as_of`. The 24/48/72h trend is a synthetic projection (`data_source="synthetic_projection"`), not a live forecast. Numbers from the seed are reference baselines, NOT real-time field data.
 
-Congestion signals for 17 global ports: congestion score, ETA delay, waiting vessels, freight volatility and daily demurrage estimate. REST API, Python SDK and MCP server.
+Congestion signals for 19 global ports: congestion score, ETA delay, waiting vessels, freight volatility and daily demurrage estimate. REST API, Python SDK and MCP server.
 
 ## API
 
@@ -10,7 +10,7 @@ Congestion signals for 17 global ports: congestion score, ETA delay, waiting ves
 - [Example call](https://aether-x-oracle-production.up.railway.app/v1/port-risk?port_id=BRSSZ): GET /v1/port-risk?port_id=BRSSZ
 - [Trend example](https://aether-x-oracle-production.up.railway.app/v1/port-trend?port_id=BRSSZ): GET /v1/port-trend?port_id=BRSSZ
 - [Batch example](https://aether-x-oracle-production.up.railway.app/v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM): GET /v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM
-- [Public feed (no key)](https://aether-x-oracle-production.up.railway.app/public/ports): GET /public/ports — all 17 ports (BR live, others reference seed), read-only, for widgets/embeds
+- [Public feed (no key)](https://aether-x-oracle-production.up.railway.app/public/ports): GET /public/ports — all 19 ports (BR live, others reference seed), read-only, for widgets/embeds
 - [Interactive docs](https://aether-x-oracle-production.up.railway.app/docs): Swagger UI
 - [RapidAPI marketplace](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle): metered plans (Free / Pro / Ultra / Mega)
 - [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)
@@ -50,7 +50,7 @@ Per-port pages (one per monitored port; BR ports live, others reference seed):
 
 ## Supported ports
 
-AEDXB, BRPNG, BRRIO, BRSSZ, CNNGB, CNSHA, CNTAO, DEHAM, GBLGP, KRPUS, MPTNG, MXZLO, NLRTM, SGSIN, USLAX, USNYC, ZACPT
+AEDXB, BRITG, BRNIT, BRPNG, BRRIO, BRSSZ, CNNGB, CNSHA, CNTAO, DEHAM, GBLGP, KRPUS, MPTNG, MXZLO, NLRTM, SGSIN, USLAX, USNYC, ZACPT
 
 Unknown ports fall back to a global statistical estimate (`country="Global"`).
 
