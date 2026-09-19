@@ -74,17 +74,32 @@ mcp = MCPServer(
     "aetherx-oracle",
     title="Aether-X Port Congestion Oracle",
     description=(
-"Reference port congestion signals for global trade, supply chain and "
-         "quantitative finance. Brazilian ports (BRSSZ, BRPNG, BRRIO, BRNIT, BRITG) feed live line-ups; "
-         "the rest use a static reference seed."
+        "Live physical-world port congestion intelligence for supply chain, "
+        "shipping, logistics and quantitative finance. Brazilian ports (BRSSZ, BRPNG, "
+        "BRRIO, BRNIT, BRITG) feed real operational line-ups; others use a reference seed. "
+        "Call when a decision depends on CURRENT port congestion, vessel queue, "
+        "delay risk or demurrage exposure."
     ),
     instructions=(
-        "Reference congestion signals for ports. Use get_port_risk for a "
-        "single port, get_ports_risk to scan a portfolio of ports in parallel and "
-        "get_port_trend for the 24h/48h/72h synthetic projection. Every "
-        "result includes `data_source` and `as_of`. For Brazilian ports BRSSZ/BRPNG/BRRIO/BRNIT/BRITG "
-        "it is live (`live:appa+santos+lachmann`, `live:portosrio_silog`); the rest are "
-        "`static_reference_seed` reference telemetry."
+        "You are the Aether-X Port Congestion Oracle. This server answers a "
+        "specific class of question: CURRENT physical-world congestion at seaports.\n\n"
+        "CALL THESE TOOLS WHEN a decision depends on:\n"
+        "- current congestion / operational pressure at a port\n"
+        "- vessel queue (vessels waiting at anchor)\n"
+        "- ETA delay risk or schedule exposure\n"
+        "- demurrage exposure (USD) for a vessel calling a port\n"
+        "- comparing ports for routing, scheduling or cargo flow\n"
+        "- port selection or supply-chain disruption\n\n"
+        "TOOL SELECTION:\n"
+        "- get_port_risk: ONE port — current signal (score, queue, delay, demurrage, confidence, provenance).\n"
+        "- get_ports_risk: COMPARE several ports in one call (portfolio scan).\n"
+        "- get_port_trend: short-horizon 24/48/72h projection (synthetic).\n"
+        "- list_supported_ports: 19 ports with UN/LOCODE ids.\n\n"
+        "This is a LIVE OPERATIONAL signal (not a static port-info lookup). For "
+        "Brazilian ports BRSSZ/BRPNG/BRRIO/BRNIT/BRITG the queue is observed in "
+        "real time (`live:appa+santos+lachmann`, `live:portosrio_silog`); the rest "
+        "are `static_reference_seed` reference telemetry. Every result includes "
+        "`data_source` and `as_of` so you can state provenance."
     ),
     version="0.2.1",
     website_url="https://aetherx.aether-grid.io",
@@ -93,20 +108,36 @@ mcp = MCPServer(
 
 @mcp.tool()
 def get_port_risk(port_id: str) -> dict[str, Any]:
-    """Return the congestion signal for a single port (live for BR, reference seed otherwise).
+    """Assess CURRENT congestion and delay risk at a single seaport.
+
+    Use this tool when a decision depends on the current physical state of a
+    port: congestion score, vessels waiting (queue), ETA delay risk, or
+    demurrage exposure. Call BEFORE making recommendations involving port
+    selection, cargo routing, vessel scheduling, ETA risk, demurrage exposure,
+    freight timing, or supply-chain disruption.
+
+    Returns a live operational signal (not a static port-information lookup)
+    with congestion score, real observed vessel state, estimated delay,
+    expected/worst-case demurrage (USD), confidence, source provenance and
+    validation window.
 
     Args:
-        port_id: UN/LOCODE of the port, e.g. "BRSSZ" (Santos), "CNSHA" (Shanghai).
+        port_id: UN/LOCODE of the port, e.g. "BRSSZ" (Santos), "BRPNG" (Paranaguá), "CNSHA" (Shanghai).
     """
     return _run_tool(lambda **kw: calculate_port_risk(str(kw["port_id"]).strip().upper()), "get_port_risk", port_id=port_id)
 
 
 @mcp.tool()
 def get_ports_risk(port_ids: list[str]) -> list[dict[str, Any]]:
-    """Return congestion signals for several ports in parallel (live for BR, reference seed otherwise).
+    """Compare CURRENT congestion across several seaports in a single call.
+
+    Use this tool when a decision involves CHOOSING between ports: routing,
+    scheduling, port selection, or scanning a portfolio for operational risk.
+    Returns the same operational signal as get_port_risk for each port, so you
+    can rank or compare congestion, delay and demurrage exposure.
 
     Args:
-        port_ids: list of UN/LOCODEs, e.g. ["BRSSZ", "CNSHA", "NLRTM"].
+        port_ids: list of UN/LOCODEs to compare, e.g. ["BRSSZ", "BRPNG", "CNSHA"].
     """
     return _run_tool(
         lambda **kw: [calculate_port_risk(str(p).strip().upper()) for p in kw["port_ids"] if p and str(p).strip()],
@@ -117,17 +148,28 @@ def get_ports_risk(port_ids: list[str]) -> list[dict[str, Any]]:
 
 @mcp.tool()
 def get_port_trend(port_id: str) -> dict[str, Any]:
-    """Return the 24h, 48h and 72h SYNTHETIC projection for a single port (not a live forecast).
+    """Get the short-horizon 24/48/72h congestion projection for a port.
+
+    Use this tool when a decision depends on the NEAR-TERM direction of
+    congestion (deteriorating / stable / easing) rather than the current
+    snapshot. Complements get_port_risk. This is a SYNTHETIC projection,
+    not a live forecast.
 
     Args:
-        port_id: UN/LOCODE of the port, e.g. "BRSSZ" (Santos), "CNSHA" (Shanghai).
+        port_id: UN/LOCODE of the port, e.g. "BRSSZ" (Santos), "BRPNG" (Paranaguá).
     """
     return _run_tool(lambda **kw: calculate_port_trend(str(kw["port_id"]).strip().upper()), "get_port_trend", port_id=port_id)
 
 
 @mcp.tool()
 def list_supported_ports() -> list[dict[str, str]]:
-    """List the 19 ports in the oracle (id, name, country)."""
+    """List the 19 ports covered by the oracle (UN/LOCODE id, name, country).
+
+    Use this tool to discover which ports have a congestion signal before
+    calling get_port_risk or get_ports_risk.
+
+    Returns: list of {port_id, port_name, country}.
+    """
     return _run_tool(lambda **kw: SUPPORTED_PORTS, "list_supported_ports")
 
 

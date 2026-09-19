@@ -526,3 +526,26 @@ def test_repeat_tool_detects_product_retention():
     assert any(
         x.get("ports", {}).get("BRPNG") for x in s["machines"] if x["id"] == "rpt1111"
     )
+
+
+def test_payload_has_decision_signal():
+    data = calculate_port_risk("BRPNG")
+    sig = data.get("signal")
+    assert sig is not None
+    for field in ("level", "live_observation", "queue_vessels", "decision_implication", "as_of"):
+        assert field in sig
+    assert sig["level"] in ("HIGH OPERATIONAL PRESSURE", "ELEVATED OPERATIONAL PRESSURE", "MODERATE / LOW PRESSURE")
+    assert "decision_implication" in sig
+
+
+def test_mcp_tool_descriptions_are_decision_oriented():
+    from src.api.mcp_app import mcp
+    import asyncio
+    async def _get():
+        tools = await mcp.list_tools()
+        return tools if not hasattr(tools, "tools") else tools.tools
+    tools = asyncio.run(_get())
+    by_name = {t.name: (t.description or "") for t in tools}
+    assert "Use this tool when a decision depends" in by_name.get("get_port_risk", "")
+    assert "Compare CURRENT congestion" in by_name.get("get_ports_risk", "")
+    assert "SYNTHETIC projection" in by_name.get("get_port_trend", "")

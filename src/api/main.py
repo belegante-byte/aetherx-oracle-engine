@@ -293,6 +293,7 @@ class PortRiskResponse(BaseModel):
     paired_windows: int | None = None
     fonte: str | None = None
     semantica: str | None = None
+    signal: dict | None = None
 
 
 class TrendPoint(BaseModel):

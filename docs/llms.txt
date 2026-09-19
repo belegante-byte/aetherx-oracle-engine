@@ -4,13 +4,31 @@
 
 Congestion signals for 19 global ports: congestion score, ETA delay, waiting vessels, freight volatility and daily demurrage estimate. REST API, Python SDK and MCP server.
 
+## When should I call Aether-X?
+
+Call Aether-X when a decision depends on **current physical-world congestion at a seaport** — not static port information:
+
+- Before assessing whether a port is currently operationally constrained.
+- Before comparing routing/scheduling options involving congested ports (use `get_ports_risk`).
+- Before estimating exposure to vessel delay or demurrage (the signal returns USD exposure).
+- When current physical port conditions matter more than historical averages.
+- When an agent needs a current port-risk signal (`signal.level`) rather than generic port data.
+
+**Tool selection for agents:**
+- `get_port_risk(port_id)` — one port: current signal (score, queue, delay, demurrage, confidence, provenance).
+- `get_ports_risk([ids])` — compare ports in one call.
+- `get_port_trend(port_id)` — 24/48/72h synthetic projection.
+- `list_supported_ports()` — discover which ports are covered.
+
+Every response includes a `signal` block with `level`, `live_observation`, `queue_vessels`, `decision_implication`, `as_of` — the machine-readable meaning of the data.
+
 ## API
 
-- [OpenAPI 3.0.3 spec](https://aether-x-oracle-production.up.railway.app/openapi.rapidapi.json): machine-readable contract (RapidAPI-compatible)
-- [Example call](https://aether-x-oracle-production.up.railway.app/v1/port-risk?port_id=BRSSZ): GET /v1/port-risk?port_id=BRSSZ
-- [Trend example](https://aether-x-oracle-production.up.railway.app/v1/port-trend?port_id=BRSSZ): GET /v1/port-trend?port_id=BRSSZ
-- [Batch example](https://aether-x-oracle-production.up.railway.app/v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM): GET /v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM
-- [Public feed (no key)](https://aether-x-oracle-production.up.railway.app/public/ports): GET /public/ports — all 19 ports (BR live, others reference seed), read-only, for widgets/embeds
+- [OpenAPI 3.0.3 spec](https://aetherx.aether-grid.io/openapi.rapidapi.json): machine-readable contract (RapidAPI-compatible)
+- [Example call](https://aetherx.aether-grid.io/v1/port-risk?port_id=BRSSZ): GET /v1/port-risk?port_id=BRSSZ
+- [Trend example](https://aetherx.aether-grid.io/v1/port-trend?port_id=BRSSZ): GET /v1/port-trend?port_id=BRSSZ
+- [Batch example](https://aetherx.aether-grid.io/v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM): GET /v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM
+- [Public feed (no key)](https://aetherx.aether-grid.io/public/ports): GET /public/ports — all 19 ports (BR live, others reference seed), read-only, for widgets/embeds
 - [Interactive docs](https://aether-x-oracle-production.up.railway.app/docs): Swagger UI
 - [RapidAPI marketplace](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle): metered plans (Free / Pro / Ultra / Mega)
 - [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)

@@ -253,6 +253,34 @@ def calculate_port_risk(port_id: str) -> dict:
     except Exception:
         pass
 
+    # Resumo de decisão legível por máquina: sintetiza os campos já existentes
+    # (score, fila, delay, demurrage, confidence, fonte) num sinal acionável.
+    # É DERIVED (transformação dos campos observados/validados), não um dado novo.
+    score = result.get("congestion_score", 0.0)
+    if score >= 0.7:
+        _level = "HIGH OPERATIONAL PRESSURE"
+    elif score >= 0.45:
+        _level = "ELEVATED OPERATIONAL PRESSURE"
+    else:
+        _level = "MODERATE / LOW PRESSURE"
+    _live = bool((result.get("live") or {}).get("ao_largo") is not None)
+    result["signal"] = {
+        "level": _level,
+        "live_observation": _live,
+        "queue_vessels": result.get("waiting_vessels"),
+        "expected_delay_days": result.get("eta_delay_days"),
+        "demurrage_expected_usd": result.get("expected_demurrage_usd"),
+        "demurrage_p90_usd": result.get("p90_demurrage_usd"),
+        "confidence": result.get("confidence"),
+        "provenance": result.get("fonte") or result.get("data_source"),
+        "decision_implication": (
+            f"Current conditions indicate {_level.lower()} at {result.get('port_name')}. "
+            f"Use caution when making schedule-sensitive routing, vessel-scheduling or "
+            f"demurrage-sensitive decisions."
+        ),
+        "as_of": result.get("as_of"),
+    }
+
     return result
 
 
