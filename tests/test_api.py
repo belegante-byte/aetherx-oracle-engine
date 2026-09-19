@@ -608,3 +608,20 @@ def test_snapshot_has_roles_last_tool_window_lifetime():
     assert s["last_tool_call"]["port"] == "BRSSZ"
     assert "window" in s and "lifetime" in s
     assert "mcp_calls" in s["lifetime"]
+
+
+def test_data_quality_is_derived_not_mocked():
+    from src.api.control_tower import port_quality_matrix
+    matrix = port_quality_matrix()
+    assert isinstance(matrix, list) and len(matrix) >= 5
+    by_id = {q["port_id"]: q for q in matrix}
+    # BRPNG é o único VALIDATED (fila observável + par de calibração)
+    assert by_id["BRPNG"]["grade"] == "VALIDATED"
+    assert by_id["BRPNG"]["live"] is True
+    # Os demais BR são CONDITIONAL ou REFERENCE
+    for pid in ("BRSSZ", "BRRIO", "BRNIT", "BRITG"):
+        assert by_id[pid]["grade"] in ("CONDITIONAL", "VALIDATED")
+        assert by_id[pid]["live"] is True
+    # Seed (não BR) é REFERENCE
+    ref = [q for q in matrix if not q["live"]]
+    assert ref and all(q["grade"] == "REFERENCE" for q in ref)

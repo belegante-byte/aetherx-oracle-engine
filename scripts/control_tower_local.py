@@ -342,8 +342,12 @@ function render(d){
     ((d.paid_users||[]).slice(0,10).map(u=>'<div class="row muted"><span>'+esc(u)+'</span></div>').join(''))||'';
   const disc=[['MCP Registry','live'],['Glama','live'],['Smithery','live'],['RapidAPI','live'],['Google','indexing'],['public-apis','pending'],['GitHub','live'],['Hugging Face','live'],['PyPI','live'],['mcp.so','blocked'],['PulseMCP','blocked']];
   document.getElementById('discovery').innerHTML=disc.map(([n,s])=>'<div class="row"><span>'+n+'</span><span class="val"><span class="dot" style="color:'+(COLORS[s]||'gray')+'">'+(s==='blocked'?'○':'●')+'</span> '+s+'</span></div>').join('');
-  const q=[['BRPNG','LIVE','VALIDATED','green'],['BRSSZ','LIVE','CONDITIONAL','orange'],['BRRIO','LIVE','CONDITIONAL','orange'],['BRNIT','LIVE','CONDITIONAL','orange'],['BRITG','LIVE','CONDITIONAL','orange']];
-  document.getElementById('quality').innerHTML=q.map(([p,l,g,c])=>'<div class="row"><span>'+p+'</span><span class="val"><span class="dot" style="color:'+c+'">●</span> '+l+' / '+g+'</span></div>').join('')+'<div class="row muted"><span>+14 portos</span><span class="val">REFERENCE</span></div>';
+  const dq=d.data_quality||[];
+  const gradeColor={VALIDATED:'limegreen',CONDITIONAL:'orange',REFERENCE:'gray'};
+  const seedCount=dq.filter(x=>!x.live).length;
+  document.getElementById('quality').innerHTML=
+    dq.filter(x=>x.live).map(p=>'<div class="row"><span>'+p.port_id+'</span><span class="val"><span class="dot" style="color:'+(gradeColor[p.grade]||'gray')+'">●</span> LIVE / '+p.grade+'</span></div>').join('')+
+    (seedCount?'<div class="row muted"><span>+'+seedCount+' portos</span><span class="val">REFERENCE</span></div>':'');
   document.getElementById('events').innerHTML=(d.recent_events||[]).slice(0,30).map(e=>'<div class="event"><span class="ts">'+ts(e.ts)+'</span><span class="kind">'+(ICONS[e.kind]||'•')+' '+esc(e.kind)+'</span><span class="det">'+esc(e.detail||'')+'</span></div>').join('')||'<div class="muted">sem eventos</div>';
 }
 function tick(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleTimeString('pt-BR');}

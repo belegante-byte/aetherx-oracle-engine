@@ -499,7 +499,49 @@ def metrics_snapshot() -> dict:
                 "mcp_calls": _mcp_total,
                 "requests": total_req,
             },
+            # Matriz de qualidade por porto (derivada do DuckDB real a cada snapshot).
+            "data_quality": _quality_matrix_snapshot(),
         }
+
+def _quality_matrix_snapshot() -> list[dict]:
+    """Deriva a matriz de qualidade dos portos a partir do DuckDB real."""
+    try:
+        import duckdb
+        import json as _json
+        conn = duckdb.connect(os.environ.get("DATABASE_PATH", "data/oracle.duckdb"), read_only=True)
+        rows = conn.execute(
+            "SELECT port_id, data_source, live_detail FROM port_metrics ORDER BY port_id"
+        ).fetchall()
+        paired = set(
+            r[0] for r in conn.execute(
+                "SELECT port_id FROM calibration_pairs WHERE matched=1"
+            ).fetchall()
+        )
+        out = []
+        for pid, ds, ld in rows:
+            live = ds is not None and ds.startswith("live:")
+            queue_observable = False
+            if ld:
+                try:
+                    detail = _json.loads(ld)
+                    queue_observable = bool(detail.get("ao_largo"))
+                except Exception:
+                    queue_observable = False
+            has_pair = pid in paired
+            if live and queue_observable and has_pair:
+                grade = "VALIDATED"
+            elif live:
+                grade = "CONDITIONAL"
+            else:
+                grade = "REFERENCE"
+            out.append({"port_id": pid, "live": live, "grade": grade})
+        try:
+            conn.close()
+        except Exception:
+            pass
+        return out
+    except Exception:
+        return []
 
 def _persist_now() -> None:
     """Grava o estado dos contadores em disco para sobreviver a restarts/deploys."""

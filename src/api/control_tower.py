@@ -26,14 +26,6 @@ def _status_dot(ok: bool) -> str:
 
 
 # Matriz de qualidade por porto (espelha docs/strategy/aetherx-operating-audit.md).
-PORT_QUALITY = {
-    "BRPNG": ("LIVE", "VALIDATED", True),
-    "BRSSZ": ("LIVE", "CONDITIONAL", True),
-    "BRRIO": ("LIVE", "CONDITIONAL", True),
-    "BRNIT": ("LIVE", "CONDITIONAL", True),
-    "BRITG": ("LIVE", "CONDITIONAL", True),
-}
-
 # Superfícies de descoberta (verificação aproximada por HTTP no carregamento).
 DISCOVERY_SURFACES = [
     ("MCP Registry", "live"),
@@ -48,6 +40,55 @@ DISCOVERY_SURFACES = [
     ("mcp.so", "blocked"),
     ("PulseMCP", "blocked"),
 ]
+
+
+def port_quality_matrix(conn=None) -> list[dict]:
+    """Deriva a matriz de qualidade de cada porto a partir do DuckDB real.
+
+    Regra (honesta, não fixa):
+    - LIVE: port_id começa com 'BR' e data_source é live:* (fonte viva)
+    - fila observável: live_detail JSON contém ao_largo > 0
+    - par de calibração: existe registro em calibration_pairs com matched=1
+    - VALIDATED: LIVE + fila observável + par de calibração  → decision grade
+    - CONDITIONAL: LIVE + ANTAQ disponível, mas sem fila observável E/OU sem par
+    - REFERENCE: seed estático (não é LIVE)
+    """
+    import json as _json
+    if conn is None:
+        import duckdb
+        conn = duckdb.connect(_db_path(), read_only=True)
+    rows = conn.execute(
+        "SELECT port_id, data_source, live_detail FROM port_metrics ORDER BY port_id"
+    ).fetchall()
+    paired = set(
+        r[0] for r in conn.execute(
+            "SELECT port_id FROM calibration_pairs WHERE matched=1"
+        ).fetchall()
+    )
+    out = []
+    for pid, ds, ld in rows:
+        live = ds is not None and ds.startswith("live:")
+        queue_observable = False
+        if ld:
+            try:
+                detail = _json.loads(ld)
+                queue_observable = bool(detail.get("ao_largo"))
+            except Exception:
+                queue_observable = False
+        has_pair = pid in paired
+        if live and queue_observable and has_pair:
+            grade, status = "VALIDATED", "decision"
+        elif live:
+            grade, status = "CONDITIONAL", "conditional"
+        else:
+            grade, status = "REFERENCE", "reference"
+        out.append({"port_id": pid, "live": live, "grade": grade, "status": status})
+    return out
+
+
+def _db_path() -> str:
+    import os
+    return os.getenv("DATABASE_PATH", "data/oracle.duckdb")
 
 
 def control_tower_html(snapshot: dict) -> str:
@@ -90,19 +131,21 @@ def control_tower_html(snapshot: dict) -> str:
         paid_html += '<div class="muted" style="margin-top:.4rem">usuários pagos:</div>' + paid_users_html
 
     quality_html = ""
-    for pid, (live, grade, ok) in sorted(PORT_QUALITY.items()):
-        status = live if ok else "DEGRADED"
+    try:
+        _quality_rows = port_quality_matrix()
+    except Exception:
+        _quality_rows = []
+    for q in _quality_rows:
+        ok = q["live"]
         dot = _status_dot(ok)
+        color = "limegreen" if ok else "gray"
         quality_html += (
-            f'<div class="row"><span>{pid}</span>'
-            f'<span class="val"><span class="dot" style="color:{ "limegreen" if ok else "orange" }">{dot}</span>'
-            f' {status} / {grade}</span></div>'
+            f'<div class="row"><span>{q["port_id"]}</span>'
+            f'<span class="val"><span class="dot" style="color:{color}">{dot}</span>'
+            f' {"LIVE" if q["live"] else "SEED"} / {q["grade"]}</span></div>'
         )
-    # demais portos = reference seed
-    quality_html += (
-        '<div class="row muted"><span>+14 portos</span>'
-        '<span class="val">REFERENCE (seed estático)</span></div>'
-    )
+    if not _quality_rows:
+        quality_html += '<div class="row muted"><span>sem dados de portos</span></div>'
 
     disc_html = ""
     _status_colors = {
