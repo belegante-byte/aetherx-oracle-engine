@@ -14,9 +14,10 @@
 | Fonte viva BR | ✅ APPA Paranaguá + Porto de Santos + Lachmann + SILOG PortosRio (Rio/Niterói/Itaguaí) conectados; ingestão periódica (6h) no Procfile/railway.json; `scripts/run_ingestion_live.py` grava `raw_port_lineup` + `port_metrics` com `data_source=live:...`. |
 | Portos BR vivos | ✅ 5: BRPNG, BRSSZ, BRRIO, BRNIT, BRITG (`live:appa+santos+lachmann` / `live:portosrio_silog`). |
 | Snapshot histórico | ✅ `scripts/snapshot_history.py` integrado ao ciclo do lifespan (1 linha/porto/dia, preserva `data_source` real). |
-| Testes | ✅ 36 green (incl. `tests/test_live_sources.py` contra fontes reais + SILOG; `test_api.py` ajustado p/ proveniência mista). |
-| MCP Registry `io.github.belegante-byte/aetherx-mcp` | ✅ server.json v0.3.0 republished (token renovado). |
-| PyPI `aetherx-mcp` 0.2.2 / `aetherx-oracle` 0.4.1 | ✅ Publicados via twine com descrições/proveniência honestas. |
+| Validação ANTAQ | ✅ `scripts/validate_antaq.py` (ground-truth tardio): espelho Estatístico Aquaviário c/ IMO → `antaq_validation` + campo `validation` na API. |
+| Testes | ✅ 42 green (incl. SILOG + familia de mapeamento ANTAQ; `test_api.py` p/ proveniência mista). |
+| MCP Registry `io.github.belegante-byte/aetherx-mcp` | ⚠️ server.json v0.4.0 validado; **republish pendente** (JWT exala — pedir novo `mcp-publisher login github`). |
+| PyPI `aetherx-mcp` 0.2.4 / `aetherx-oracle` 0.4.1 | ✅ Publicados via twine com descrições/proveniência honestas. |
 | RapidAPI marketplace | 🔒 Dashboard manual (não acessível via CLI). |
 | Cursor Directory / Glama / Smithery | 🔒 Dashboards/manuais. |
 
