@@ -88,14 +88,24 @@ _mcp_consumer_ips = set()  # set[str]
 
 # ---- Funil M2M por máquina anônima ----
 # Cada máquina (ip_hash) tem os estágios do funil comportamental que atingiu:
-#   discovery -> mcp_connect -> tool_call -> repeat -> paid
+#   discovery -> mcp_connect -> tool_call -> repeat_transport -> repeat_tool -> paid
 # Agregado no snapshot como funnel; a Control Tower mostra máquinas individuais.
 _MACHINE_STAGES = {}    # {ip_hash: set[str]}  estágios atingidos
 _MACHINE_FIRST = {}     # {ip_hash: int}  ts do primeiro contato
 _MACHINE_LAST = {}      # {ip_hash: int}  ts do último contato
 _MACHINE_CALLS = {}     # {ip_hash: int}  total de chamadas (qualquer canal)
+_MACHINE_TOOL_TS = {}   # {ip_hash: list[int]}  timestamps de tools executadas
+_MACHINE_TOOL_PORTS = {}  # {ip_hash: Counter[port]}  portos consultados via tool
 
-FUNNEL_STAGES = ("discovery", "mcp_connect", "tool_call", "repeat", "paid")
+# Estágios do funil. Ordem: infraestrutura (descoberta/transporte) depois produto.
+FUNNEL_STAGES = (
+    "discovery", "mcp_connect", "tool_call", "repeat_transport", "repeat_tool", "paid",
+)
+
+# Janela (segundos) entre tool calls para considerar "retorno de produto".
+# Se uma máquina executa tools com intervalo >= TOOL_REPEAT_WINDOW, é retenção
+# de produto (voltou para consumir de novo), não transporte.
+TOOL_REPEAT_WINDOW = int(os.environ.get("AETHERX_TOOL_REPEAT_WINDOW_S", "300"))
 
 
 def _mark_stage(ip_hash: str | None, stage: str) -> None:
@@ -108,6 +118,25 @@ def _mark_stage(ip_hash: str | None, stage: str) -> None:
         _MACHINE_FIRST.setdefault(ip_hash, now)
         _MACHINE_LAST[ip_hash] = now
         _MACHINE_CALLS[ip_hash] = _MACHINE_CALLS.get(ip_hash, 0) + 1
+
+
+def _record_tool_ts(ip_hash: str, port_id: str | None) -> None:
+    """Registra timestamp de tool executada e detecta repeat_tool (retenção de produto).
+
+    repeat_tool: a máquina executou tools em >=2 janelas distintas (intervalo
+    >= TOOL_REPEAT_WINDOW). Distingue 'voltou para consumir o sinal' de
+    'voltou ao transporte' (repeat_transport).
+    """
+    now = int(time.time())
+    with _lock:
+        ts_list = _MACHINE_TOOL_TS.setdefault(ip_hash, [])
+        ts_list.append(now)
+        ts_list[:] = ts_list[-50:]
+        if port_id:
+            _MACHINE_TOOL_PORTS.setdefault(ip_hash, collections.Counter())[port_id] += 1
+        # repeat_tool: existe tool anterior em janela distinta
+        if len(ts_list) >= 2 and (now - ts_list[0]) >= TOOL_REPEAT_WINDOW:
+            _MACHINE_STAGES.setdefault(ip_hash, set()).add("repeat_tool")
 
 
 def _classify_stage(path: str, channel: str) -> str | None:
@@ -167,6 +196,7 @@ def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, lat
     mid = get_current_machine()
     if mid:
         _mark_stage(mid, "tool_call")
+        _record_tool_ts(mid, port_id)
     with _lock:
         _mcp_total += 1
         _tools[tool] = _tools.get(tool, 0) + 1
@@ -316,7 +346,7 @@ def record_http(scope, status_holder: dict | None = None) -> None:
             _recent_events.appendleft({"ts": int(time.time()), "kind": "new_machine", "detail": channel})
         elif c[key] >= 2:
             _recent_events.appendleft({"ts": int(time.time()), "kind": "repeat_machine", "detail": channel})
-            _mark_stage(key, "repeat")
+            _mark_stage(key, "repeat_transport")
     logger.info(
         "AETHERX_METRIC %s",
         json.dumps(
@@ -381,6 +411,8 @@ def metrics_snapshot() -> dict:
                     "last": _MACHINE_LAST.get(mid),
                     "calls": _MACHINE_CALLS.get(mid, 0),
                     "stages": sorted(_MACHINE_STAGES.get(mid, set())),
+                    "tools": _MACHINE_TOOL_TS.get(mid, []),
+                    "ports": dict(_MACHINE_TOOL_PORTS.get(mid, {})),
                 }
                 for mid in sorted(_MACHINE_STAGES.keys(),
                                  key=lambda m: -_MACHINE_CALLS.get(m, 0))[:12]
@@ -411,6 +443,8 @@ def _persist_now() -> None:
                 "machine_first": dict(_MACHINE_FIRST),
                 "machine_last": dict(_MACHINE_LAST),
                 "machine_calls": dict(_MACHINE_CALLS),
+                "machine_tool_ts": {k: list(v) for k, v in _MACHINE_TOOL_TS.items()},
+                "machine_tool_ports": {k: dict(v) for k, v in _MACHINE_TOOL_PORTS.items()},
                 "saved_at": int(time.time()),
             }
         os.makedirs(os.path.dirname(os.path.abspath(_STATE_PATH)), exist_ok=True)
@@ -450,6 +484,9 @@ def _load_state() -> None:
             _MACHINE_FIRST.update(state.get("machine_first", {}))
             _MACHINE_LAST.update(state.get("machine_last", {}))
             _MACHINE_CALLS.update(state.get("machine_calls", {}))
+            _MACHINE_TOOL_TS.update(state.get("machine_tool_ts", {}))
+            for k, v in state.get("machine_tool_ports", {}).items():
+                _MACHINE_TOOL_PORTS.setdefault(k, collections.Counter()).update(v)
             events = state.get("events", [])
             if events:
                 _recent_events.extend(events[-100:])

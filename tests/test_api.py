@@ -489,16 +489,40 @@ def test_funnel_tracks_machine_stages():
     m._mark_stage("faaa11", "mcp_connect")
     m.set_current_machine("faaa11")
     m.record_tool_call("get_port_risk", port_id="BRPNG", ok=True)
-    m._mark_stage("faaa11", "repeat")
+    m._mark_stage("faaa11", "repeat_transport")
     m._mark_stage("fbbb22", "discovery")
     s = m.metrics_snapshot()
     f = s["funnel"]
     assert f["discovery"] == 2
     assert f["mcp_connect"] == 1
     assert f["tool_call"] == 1
-    assert f["repeat"] == 1
+    assert f["repeat_transport"] == 1
+    assert f["repeat_tool"] == 0
     assert f["paid"] == 0
     ids = {x["id"] for x in s["machines"]}
     assert "faaa11" in ids
     stages = {x["id"]: x["stages"] for x in s["machines"]}
     assert "tool_call" in stages["faaa11"]
+
+
+def test_repeat_tool_detects_product_retention():
+    from src.api import metrics as m
+    from src.api.metrics import _MACHINE_STAGES, _MACHINE_TOOL_TS, _MACHINE_TOOL_PORTS, _lock
+    with _lock:
+        _MACHINE_STAGES.clear(); _MACHINE_TOOL_TS.clear(); _MACHINE_TOOL_PORTS.clear()
+    # executa tool agora
+    m.set_current_machine("rpt1111")
+    m.record_tool_call("get_port_risk", port_id="BRPNG", ok=True)
+    # simula retorno em janela posterior (força o ts antigo)
+    with _lock:
+        _MACHINE_TOOL_TS["rpt1111"] = [int(__import__("time").time()) - 1000]
+    m.set_current_machine("rpt1111")
+    m.record_tool_call("get_port_risk", port_id="BRPNG", ok=True)
+    s = m.metrics_snapshot()
+    assert s["funnel"]["tool_call"] == 1  # 1 máquina executou tool
+    assert s["funnel"]["repeat_tool"] == 1  # e essa máquina retornou p/ tool
+    stages = {x["id"]: x["stages"] for x in s["machines"]}
+    assert "repeat_tool" in stages["rpt1111"]
+    assert any(
+        x.get("ports", {}).get("BRPNG") for x in s["machines"] if x["id"] == "rpt1111"
+    )

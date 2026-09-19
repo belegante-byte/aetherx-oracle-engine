@@ -144,22 +144,31 @@ def control_tower_html(snapshot: dict) -> str:
     ) or '<div class="row muted"><span>nenhuma tool executada</span></div>'
 
     funnel = m.get("funnel", {}) or {}
-    _funnel_order = ("discovery", "mcp_connect", "tool_call", "repeat", "paid")
+    # Dois funis: infraestrutura (descoberta/transporte) vs produto (consumo).
+    infra_stages = ("discovery", "mcp_connect", "repeat_transport")
+    product_stages = ("discovery", "tool_call", "repeat_tool", "paid")
     _funnel_label = {
         "discovery": "DISCOVERY", "mcp_connect": "MCP CONNECT",
-        "tool_call": "TOOL CALL", "repeat": "REPEAT", "paid": "PAID",
+        "tool_call": "TOOL CALL", "repeat_transport": "TRANSPORT REPEAT",
+        "repeat_tool": "TOOL REPEAT", "paid": "PAID",
     }
-    funnel_html = "".join(
+    infra_funnel = "".join(
         f'<div class="row"><span>{_funnel_label.get(s, s)}</span>'
         f'<span class="val">{funnel.get(s, 0)}</span></div>'
-        for s in _funnel_order
+        for s in infra_stages
+    )
+    product_funnel = "".join(
+        f'<div class="row"><span>{_funnel_label.get(s, s)}</span>'
+        f'<span class="val">{funnel.get(s, 0)}</span></div>'
+        for s in product_stages
     )
 
     machines = m.get("machines", []) or []
     machines_html = "".join(
         f'<div class="event"><span class="ts">{_fmt_ts(mach.get("first", 0))}</span>'
         f'<span class="kind">{mach.get("id")}…</span>'
-        f'<span class="det">{", ".join(mach.get("stages", [])) or "—"} · {mach.get("calls", 0)}c</span></div>'
+        f'<span class="det">{", ".join(mach.get("stages", [])) or "—"} · {mach.get("calls", 0)}c'
+        f'{" · " + ",".join(mach.get("ports", {}).keys()) if mach.get("ports") else ""}</span></div>'
         for mach in machines[:10]
     ) or '<div class="row muted"><span>sem máquinas ainda</span></div>'
 
@@ -213,8 +222,12 @@ h1{{font-size:1.4rem;letter-spacing:2px;color:#58a6ff;margin-bottom:1.5rem}}
     {consumers_html}
   </div>
   <div class="card">
-    <h2>FUNNEL M2M</h2>
-    {funnel_html}
+    <h2>FUNNEL · INFRAESTRUTURA</h2>
+    {infra_funnel}
+  </div>
+  <div class="card">
+    <h2>FUNNEL · PRODUTO</h2>
+    {product_funnel}
   </div>
   <div class="card">
     <h2>MACHINES (anônimas)</h2>

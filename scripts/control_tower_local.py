@@ -255,6 +255,9 @@ h1{font-size:1.3rem;letter-spacing:2px;color:#58a6ff;margin-bottom:.4rem}
   <div class="card"><h2>CONSUMERS (tools)</h2><div id="consumers">…</div></div>
   <div class="card"><h2>TOP PORTS</h2><div id="ports">…</div></div>
   <div class="card"><h2>MONETIZATION</h2><div id="money">…</div></div>
+  <div class="card"><h2>FUNNEL · INFRAESTRUTURA</h2><div id="funnel-infra">…</div></div>
+  <div class="card"><h2>FUNNEL · PRODUTO</h2><div id="funnel-prod">…</div></div>
+  <div class="card"><h2>MACHINES (anônimas)</h2><div id="machines">…</div></div>
   <div class="card"><h2>DISCOVERY</h2><div id="discovery">…</div></div>
   <div class="card"><h2>DATA QUALITY</h2><div id="quality">…</div></div>
   <div class="card"><h2>RECENT EVENTS</h2><div id="events">…</div></div>
@@ -290,6 +293,19 @@ function render(d){
     Object.entries((d.mcp_consumers&&d.mcp_consumers.calls_by_machine)||{}).slice(0,6).map(([m,c])=>'<div class="row"><span>'+esc(m.slice(0,8))+'…</span><span class="val">'+c+' calls</span></div>').join('')+
     ((d.mcp_consumers&&d.mcp_consumers.unique)?'':'<div class="muted">nenhuma tool executada</div>');
   document.getElementById('ports').innerHTML=(d.top_ports||[]).map(p=>'<div class="row"><span>'+esc(p[0])+'</span><span class="val">'+p[1]+'</span></div>').join('')||'<div class="muted">sem dados</div>';
+  const f=d.funnel||{};
+  const fLabel={discovery:'DISCOVERY',mcp_connect:'MCP CONNECT',tool_call:'TOOL CALL',repeat_transport:'TRANSPORT REPEAT',repeat_tool:'TOOL REPEAT',paid:'PAID'};
+  const row=(n,v)=>'<div class="row"><span>'+n+'</span><span class="val">'+v+'</span></div>';
+  document.getElementById('funnel-infra').innerHTML=
+    ['discovery','mcp_connect','repeat_transport'].map(s=>row(fLabel[s],f[s]||0)).join('');
+  document.getElementById('funnel-prod').innerHTML=
+    ['discovery','tool_call','repeat_tool','paid'].map(s=>row(fLabel[s],f[s]||0)).join('');
+  document.getElementById('machines').innerHTML=(d.machines||[]).map(mach=>
+    '<div class="event"><span class="ts">'+new Date((mach.first||0)*1000).toISOString().slice(11,19)+'</span>'+
+    '<span class="kind">'+esc(mach.id)+'…</span>'+
+    '<span class="det">'+(mach.stages||[]).join(', ')||'—'+' · '+mach.calls+'c'+
+    ((mach.ports&&Object.keys(mach.ports).length)?' · '+Object.keys(mach.ports).join(', '):'')+'</span></div>'
+  ).join('')||'<div class="muted">sem máquinas</div>';
   const paidPlans=d.paid_plans||{};
   const paidTotal=Object.values(paidPlans).reduce((a,b)=>a+b,0);
   document.getElementById('money').innerHTML=
