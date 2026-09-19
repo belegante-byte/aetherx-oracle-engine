@@ -608,12 +608,13 @@ def ai_plugin_manifest():
     tags=["Port Risk"],
     summary="Get port congestion risk for a single port",
     description=(
-        "Returns the reference congestion signal for a single global port: "
+        "Returns the current congestion signal for a port: "
         "`congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, "
-        "`freight_volatility_index` and the estimated `estimated_daily_demurrage_usd`. "
-        "Every response includes `data_source` (`static_reference_seed` until live "
-        "telemetry is connected) and `as_of` (seed timestamp, not a live refresh). "
-        "Coverage: 19 ports (BRSSZ, CNSHA, CNTAO, NLRTM, ...). Unknown ports fall back "
+        "`freight_volatility_index`, demurrage exposure and `decision_grade`. "
+        "Every response includes `data_source` and `as_of`. Coverage: 19 ports — "
+        "**5 Brazilian LIVE** (BRSSZ conditional; BRPNG, BRRIO, BRNIT, BRITG validated "
+        "against ANTAQ), **14 reference seed** (`static_reference_seed`, not live). "
+        "Unknown ports fall back "
         'to a global statistical estimate with `country="Global"`. Requests are protected '
         "by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header."
     ),

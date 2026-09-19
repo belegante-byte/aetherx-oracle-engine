@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Aether-X Port Congestion Oracle",
-    "description": "Port congestion reference signals for global trade, supply chain and quantitative finance.\n\n**IMPORTANT · Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.\nBrazilian ports (BRSSZ, BRPNG, BRRIO, BRNIT, BRITG) serve live line-ups: `data_source=\"live:appa+santos+lachmann\"` (BRSSZ/BRPNG) and `data_source=\"live:portosrio_silog\"` (BRRIO/BRNIT/BRITG). The remaining ports\nserve a **static reference seed**: `data_source=\"static_reference_seed\"` means the value is a seeded baseline, not a\nlive measurement. The 24/48/72h trend is a `synthetic_projection`, not a live forecast. Do not treat seed numbers as\nreal-time field data.\n\n**The signal** — `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0–1.0 reference congestion level (seeded) |\n| `eta_delay_days` | Reference delay applied to incoming vessels |\n| `waiting_vessels` | Reference ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n| `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |\n| `data_source` | Always `static_reference_seed` until live telemetry is connected |\n| `as_of` | Timestamp of the seed (not a live refresh) |\n\n**Trend (24h/48h/72h)** — `GET /v1/port-trend?port_id=BRSSZ` returns a **synthetic** projection with a `trend` label: `acelerando`, `estável` or `descongestionando`.\n\n**Free tier** — $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) — tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`\n\n**Coverage** — 19 ports: BRSSZ, BRPNG, BRRIO, BRNIT, BRITG, CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
+    "description": "Port congestion reference signals for global trade, supply chain and quantitative finance.\n\n**IMPORTANT \u00b7 Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.\nBrazilian ports (BRSSZ, BRPNG, BRRIO, BRNIT, BRITG) serve live line-ups: `data_source=\"live:appa+santos+lachmann\"` (BRSSZ/BRPNG) and `data_source=\"live:portosrio_silog\"` (BRRIO/BRNIT/BRITG). The remaining ports\nserve a **static reference seed**: `data_source=\"static_reference_seed\"` means the value is a seeded baseline, not a\nlive measurement. The 24/48/72h trend is a `synthetic_projection`, not a live forecast. Do not treat seed numbers as\nreal-time field data.\n\n**The signal** \u2014 `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0\u20131.0 reference congestion level (seeded) |\n| `eta_delay_days` | Reference delay applied to incoming vessels |\n| `waiting_vessels` | Reference ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n| `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |\n| `data_source` | Always `static_reference_seed` until live telemetry is connected |\n| `as_of` | Timestamp of the seed (not a live refresh) |\n\n**Trend (24h/48h/72h)** \u2014 `GET /v1/port-trend?port_id=BRSSZ` returns a **synthetic** projection with a `trend` label: `acelerando`, `est\u00e1vel` or `descongestionando`.\n\n**Free tier** \u2014 $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) \u2014 tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`\n\n**Coverage** \u2014 19 ports. **5 LIVE (BR):** BRSSZ (conditional), BRPNG, BRRIO, BRNIT, BRITG (validated). **14 reference seed:** CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
     "termsOfService": "https://aetherx.aether-grid.io/terms",
     "contact": {
       "name": "Aether-X",
@@ -32,7 +32,7 @@
           "Port Risk"
         ],
         "summary": "Get port congestion risk for a single port",
-        "description": "Returns the reference congestion signal for a single global port: `congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, `freight_volatility_index` and the estimated `estimated_daily_demurrage_usd`. Every response includes `data_source` (`static_reference_seed` until live telemetry is connected) and `as_of` (seed timestamp, not a live refresh). Coverage: 19 ports (BRSSZ, CNSHA, CNTAO, NLRTM, ...). Unknown ports fall back to a global statistical estimate with `country=\"Global\"`. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
+        "description": "Returns the current congestion signal for a port: `congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, `freight_volatility_index`, demurrage exposure and `decision_grade`. Every response includes `data_source` and `as_of`. Coverage: 19 ports \u2014 **5 Brazilian LIVE** (BRSSZ conditional; BRPNG, BRRIO, BRNIT, BRITG validated against ANTAQ), **14 reference seed** (`static_reference_seed`, not live). Unknown ports fall back to a global statistical estimate with `country=\"Global\"`. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
         "operationId": "get_port_risk_v1_port_risk_get",
         "parameters": [
           {
@@ -41,7 +41,11 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai), NLRTM (Rotterdam)."
+              "description": "UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai), NLRTM (Rotterdam).",
+              "examples": [
+                "BRSSZ"
+              ],
+              "title": "Port Id"
             },
             "description": "UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai), NLRTM (Rotterdam)."
           }
@@ -58,16 +62,16 @@
                   "port_id": "BRSSZ",
                   "port_name": "Santos",
                   "country": "Brasil",
-                  "congestion_score": 0.33,
+                  "congestion_score": 0.25,
                   "eta_delay_days": 0.2,
                   "waiting_vessels": 0,
                   "freight_volatility_index": 0.4,
-                  "estimated_daily_demurrage_usd": 45200,
-                  "updated_at": "2026-09-19 01:34:42",
-                  "as_of": "2026-09-19 01:34:42",
+                  "estimated_daily_demurrage_usd": 42000,
+                  "updated_at": "2026-09-19 18:11:43",
+                  "as_of": "2026-09-19 18:11:43",
                   "data_source": "live:santos+santos_painel",
-                  "data_source_label": "Live line-up from Porto de Santos + Painel de operações de Santos.",
-                  "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 591, \"programados\": 135}",
+                  "data_source_label": "Live line-up from Porto de Santos + Painel de opera\u00e7\u00f5es de Santos.",
+                  "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 595, \"programados\": 135}",
                   "validation": {
                     "source": "antaq_estatistico_aquaviario",
                     "ano": 2026,
@@ -84,8 +88,21 @@
                   "live": {
                     "ao_largo": 0,
                     "esperados": 0,
-                    "atracados": 591,
+                    "atracados": 595,
                     "programados": 135
+                  },
+                  "decision_grade": "conditional",
+                  "signal": {
+                    "level": "MODERATE / LOW PRESSURE",
+                    "live_observation": true,
+                    "queue_vessels": 0,
+                    "expected_delay_days": 0.2,
+                    "demurrage_expected_usd": null,
+                    "demurrage_p90_usd": null,
+                    "confidence": null,
+                    "provenance": "live:santos+santos_painel",
+                    "decision_implication": "Current conditions indicate moderate / low pressure at Santos. Use caution when making schedule-sensitive routing, vessel-scheduling or demurrage-sensitive decisions.",
+                    "as_of": "2026-09-19 18:11:43"
                   }
                 }
               }
@@ -110,7 +127,7 @@
           "Port Risk"
         ],
         "summary": "Get port risk trend",
-        "description": "Returns the 24h, 48h and 72h congestion projections for a single global port, with a `trend` label (`acelerando`, `estável` or `descongestionando`). Each projection point includes `congestion_score`, `eta_delay_days` and the estimated `estimated_daily_demurrage_usd`. NOTE: the projection is `synthetic_projection` (derived from the static reference seed), not a live forecast. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
+        "description": "Returns the 24h, 48h and 72h congestion projections for a single global port, with a `trend` label (`acelerando`, `est\u00e1vel` or `descongestionando`). Each projection point includes `congestion_score`, `eta_delay_days` and the estimated `estimated_daily_demurrage_usd`. NOTE: the projection is `synthetic_projection` (derived from the static reference seed), not a live forecast. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
         "operationId": "get_port_trend_v1_port_trend_get",
         "parameters": [
           {
@@ -119,7 +136,11 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai), NLRTM (Rotterdam)."
+              "description": "UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai), NLRTM (Rotterdam).",
+              "examples": [
+                "BRSSZ"
+              ],
+              "title": "Port Id"
             },
             "description": "UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai), NLRTM (Rotterdam)."
           }
@@ -137,26 +158,26 @@
                   "port_name": "Santos",
                   "country": "Brasil",
                   "trend": "acelerando",
-                  "congestion_score": 0.33,
+                  "congestion_score": 0.25,
                   "projection": {
                     "h24": {
-                      "congestion_score": 0.35,
-                      "eta_delay_days": 0.21,
-                      "estimated_daily_demurrage_usd": 46000
+                      "congestion_score": 0.27,
+                      "eta_delay_days": 0.22,
+                      "estimated_daily_demurrage_usd": 42800
                     },
                     "h48": {
-                      "congestion_score": 0.35,
-                      "eta_delay_days": 0.21,
-                      "estimated_daily_demurrage_usd": 46000
+                      "congestion_score": 0.28,
+                      "eta_delay_days": 0.22,
+                      "estimated_daily_demurrage_usd": 43200
                     },
                     "h72": {
-                      "congestion_score": 0.36,
+                      "congestion_score": 0.28,
                       "eta_delay_days": 0.22,
-                      "estimated_daily_demurrage_usd": 46400
+                      "estimated_daily_demurrage_usd": 43200
                     }
                   },
-                  "updated_at": "2026-09-19 01:34:42",
-                  "as_of": "2026-09-19 01:34:42",
+                  "updated_at": "2026-09-19 18:11:43",
+                  "as_of": "2026-09-19 18:11:43",
                   "data_source": "synthetic_projection",
                   "data_source_label": "Synthetic projection from static reference seed (not a live forecast)."
                 }
@@ -191,7 +212,11 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "Comma-separated UN/LOCODEs, e.g. BRSSZ,CNSHA,NLRTM (max 20)."
+              "description": "Comma-separated UN/LOCODEs, e.g. BRSSZ,CNSHA,NLRTM (max 20).",
+              "examples": [
+                "BRSSZ,CNSHA,NLRTM"
+              ],
+              "title": "Port Ids"
             },
             "description": "Comma-separated UN/LOCODEs, e.g. BRSSZ,CNSHA,NLRTM (max 20)."
           }
@@ -210,16 +235,16 @@
                       "port_id": "BRSSZ",
                       "port_name": "Santos",
                       "country": "Brasil",
-                      "congestion_score": 0.33,
+                      "congestion_score": 0.25,
                       "eta_delay_days": 0.2,
                       "waiting_vessels": 0,
                       "freight_volatility_index": 0.4,
-                      "estimated_daily_demurrage_usd": 45200,
-                      "updated_at": "2026-09-19 01:34:42",
-                      "as_of": "2026-09-19 01:34:42",
+                      "estimated_daily_demurrage_usd": 42000,
+                      "updated_at": "2026-09-19 18:11:43",
+                      "as_of": "2026-09-19 18:11:43",
                       "data_source": "live:santos+santos_painel",
-                      "data_source_label": "Live line-up from Porto de Santos + Painel de operações de Santos.",
-                      "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 591, \"programados\": 135}",
+                      "data_source_label": "Live line-up from Porto de Santos + Painel de opera\u00e7\u00f5es de Santos.",
+                      "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 595, \"programados\": 135}",
                       "validation": {
                         "source": "antaq_estatistico_aquaviario",
                         "ano": 2026,
@@ -236,8 +261,21 @@
                       "live": {
                         "ao_largo": 0,
                         "esperados": 0,
-                        "atracados": 591,
+                        "atracados": 595,
                         "programados": 135
+                      },
+                      "decision_grade": "conditional",
+                      "signal": {
+                        "level": "MODERATE / LOW PRESSURE",
+                        "live_observation": true,
+                        "queue_vessels": 0,
+                        "expected_delay_days": 0.2,
+                        "demurrage_expected_usd": null,
+                        "demurrage_p90_usd": null,
+                        "confidence": null,
+                        "provenance": "live:santos+santos_painel",
+                        "decision_implication": "Current conditions indicate moderate / low pressure at Santos. Use caution when making schedule-sensitive routing, vessel-scheduling or demurrage-sensitive decisions.",
+                        "as_of": "2026-09-19 18:11:43"
                       }
                     },
                     {
@@ -249,12 +287,25 @@
                       "waiting_vessels": 18,
                       "freight_volatility_index": 0.38,
                       "estimated_daily_demurrage_usd": 60800,
-                      "updated_at": "2026-09-19 00:44:19",
-                      "as_of": "2026-09-19 00:44:19",
+                      "updated_at": "2026-09-19 11:24:44",
+                      "as_of": "2026-09-19 11:24:44",
                       "data_source": "static_reference_seed",
-                      "data_source_label": "Static reference data (no live telemetry connected).",
+                      "data_source_label": "Static reference seed (not live telemetry).",
                       "live_detail": null,
-                      "validation": null
+                      "validation": null,
+                      "decision_grade": "reference",
+                      "signal": {
+                        "level": "HIGH OPERATIONAL PRESSURE",
+                        "live_observation": false,
+                        "queue_vessels": 18,
+                        "expected_delay_days": 1.5,
+                        "demurrage_expected_usd": null,
+                        "demurrage_p90_usd": null,
+                        "confidence": null,
+                        "provenance": "static_reference_seed",
+                        "decision_implication": "Current conditions indicate high operational pressure at Shanghai. Use caution when making schedule-sensitive routing, vessel-scheduling or demurrage-sensitive decisions.",
+                        "as_of": "2026-09-19 11:24:44"
+                      }
                     }
                   ]
                 }
@@ -290,54 +341,198 @@
       "PortRiskResponse": {
         "properties": {
           "port_id": {
-            "type": "string"
+            "type": "string",
+            "title": "Port Id"
           },
           "port_name": {
-            "type": "string"
+            "type": "string",
+            "title": "Port Name"
           },
           "country": {
-            "type": "string"
+            "type": "string",
+            "title": "Country"
           },
           "congestion_score": {
-            "type": "number"
+            "type": "number",
+            "title": "Congestion Score"
           },
           "eta_delay_days": {
-            "type": "number"
+            "type": "number",
+            "title": "Eta Delay Days"
           },
           "waiting_vessels": {
-            "type": "integer"
+            "type": "integer",
+            "title": "Waiting Vessels"
           },
           "freight_volatility_index": {
-            "type": "number"
+            "type": "number",
+            "title": "Freight Volatility Index"
           },
           "estimated_daily_demurrage_usd": {
-            "type": "integer"
+            "type": "integer",
+            "title": "Estimated Daily Demurrage Usd"
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "title": "Updated At"
           },
           "as_of": {
-            "type": "string"
+            "type": "string",
+            "title": "As Of"
           },
           "data_source": {
-            "type": "string"
+            "type": "string",
+            "title": "Data Source"
           },
           "data_source_label": {
-            "type": "string"
+            "type": "string",
+            "title": "Data Source Label"
           },
           "live_detail": {
-            "type": "string",
-            "nullable": true
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Detail"
           },
           "live": {
-            "additionalProperties": true,
-            "type": "object",
-            "nullable": true
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live"
           },
           "validation": {
-            "additionalProperties": true,
-            "type": "object",
-            "nullable": true
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation"
+          },
+          "historical_expected_wait_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Historical Expected Wait H"
+          },
+          "p90_wait_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P90 Wait H"
+          },
+          "expected_demurrage_usd": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Demurrage Usd"
+          },
+          "p90_demurrage_usd": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P90 Demurrage Usd"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "paired_windows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paired Windows"
+          },
+          "fonte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fonte"
+          },
+          "semantica": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semantica"
+          },
+          "signal": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signal"
+          },
+          "decision_grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Grade"
           }
         },
         "type": "object",
@@ -354,42 +549,99 @@
           "as_of",
           "data_source",
           "data_source_label"
+        ],
+        "title": "PortRiskResponse",
+        "examples": [
+          {
+            "as_of": "2026-09-19 18:11:43",
+            "congestion_score": 0.25,
+            "country": "Brasil",
+            "data_source": "live:santos+santos_painel",
+            "data_source_label": "Live line-up from Porto de Santos + Painel de opera\u00e7\u00f5es de Santos.",
+            "decision_grade": "conditional",
+            "estimated_daily_demurrage_usd": 42000,
+            "eta_delay_days": 0.2,
+            "freight_volatility_index": 0.4,
+            "live": {
+              "ao_largo": 0,
+              "atracados": 595,
+              "esperados": 0,
+              "programados": 135
+            },
+            "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 595, \"programados\": 135}",
+            "port_id": "BRSSZ",
+            "port_name": "Santos",
+            "signal": {
+              "as_of": "2026-09-19 18:11:43",
+              "decision_implication": "Current conditions indicate moderate / low pressure at Santos. Use caution when making schedule-sensitive routing, vessel-scheduling or demurrage-sensitive decisions.",
+              "expected_delay_days": 0.2,
+              "level": "MODERATE / LOW PRESSURE",
+              "live_observation": true,
+              "provenance": "live:santos+santos_painel",
+              "queue_vessels": 0
+            },
+            "updated_at": "2026-09-19 18:11:43",
+            "validation": {
+              "ano": 2026,
+              "atracado_h_avg": 50.1,
+              "espera_atracacao_h_avg": 51.4,
+              "espera_atracacao_h_med": 10.2,
+              "espera_atracacao_h_p90": 151.1,
+              "estadia_h_avg": 101.3,
+              "mes": "jan",
+              "n_atracacoes": 500,
+              "n_com_imo": 491,
+              "source": "antaq_estatistico_aquaviario",
+              "validado_em": "2026-09-19 01:49:06"
+            },
+            "waiting_vessels": 0
+          }
         ]
       },
       "PortTrendResponse": {
         "properties": {
           "port_id": {
-            "type": "string"
+            "type": "string",
+            "title": "Port Id"
           },
           "port_name": {
-            "type": "string"
+            "type": "string",
+            "title": "Port Name"
           },
           "country": {
-            "type": "string"
+            "type": "string",
+            "title": "Country"
           },
           "trend": {
-            "type": "string"
+            "type": "string",
+            "title": "Trend"
           },
           "congestion_score": {
-            "type": "number"
+            "type": "number",
+            "title": "Congestion Score"
           },
           "projection": {
             "additionalProperties": {
               "$ref": "#/components/schemas/TrendPoint"
             },
-            "type": "object"
+            "type": "object",
+            "title": "Projection"
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "title": "Updated At"
           },
           "as_of": {
-            "type": "string"
+            "type": "string",
+            "title": "As Of"
           },
           "data_source": {
-            "type": "string"
+            "type": "string",
+            "title": "Data Source"
           },
           "data_source_label": {
-            "type": "string"
+            "type": "string",
+            "title": "Data Source Label"
           }
         },
         "type": "object",
@@ -404,6 +656,37 @@
           "as_of",
           "data_source",
           "data_source_label"
+        ],
+        "title": "PortTrendResponse",
+        "examples": [
+          {
+            "as_of": "2026-09-19 18:11:43",
+            "congestion_score": 0.25,
+            "country": "Brasil",
+            "data_source": "synthetic_projection",
+            "data_source_label": "Synthetic projection from static reference seed (not a live forecast).",
+            "port_id": "BRSSZ",
+            "port_name": "Santos",
+            "projection": {
+              "h24": {
+                "congestion_score": 0.27,
+                "estimated_daily_demurrage_usd": 42800,
+                "eta_delay_days": 0.22
+              },
+              "h48": {
+                "congestion_score": 0.28,
+                "estimated_daily_demurrage_usd": 43200,
+                "eta_delay_days": 0.22
+              },
+              "h72": {
+                "congestion_score": 0.28,
+                "estimated_daily_demurrage_usd": 43200,
+                "eta_delay_days": 0.22
+              }
+            },
+            "trend": "acelerando",
+            "updated_at": "2026-09-19 18:11:43"
+          }
         ]
       },
       "PortsRiskResponse": {
@@ -412,24 +695,103 @@
             "items": {
               "$ref": "#/components/schemas/PortRiskResponse"
             },
-            "type": "array"
+            "type": "array",
+            "title": "Results"
           }
         },
         "type": "object",
         "required": [
           "results"
+        ],
+        "title": "PortsRiskResponse",
+        "examples": [
+          {
+            "results": [
+              {
+                "as_of": "2026-09-19 18:11:43",
+                "congestion_score": 0.25,
+                "country": "Brasil",
+                "data_source": "live:santos+santos_painel",
+                "data_source_label": "Live line-up from Porto de Santos + Painel de opera\u00e7\u00f5es de Santos.",
+                "decision_grade": "conditional",
+                "estimated_daily_demurrage_usd": 42000,
+                "eta_delay_days": 0.2,
+                "freight_volatility_index": 0.4,
+                "live": {
+                  "ao_largo": 0,
+                  "atracados": 595,
+                  "esperados": 0,
+                  "programados": 135
+                },
+                "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 595, \"programados\": 135}",
+                "port_id": "BRSSZ",
+                "port_name": "Santos",
+                "signal": {
+                  "as_of": "2026-09-19 18:11:43",
+                  "decision_implication": "Current conditions indicate moderate / low pressure at Santos. Use caution when making schedule-sensitive routing, vessel-scheduling or demurrage-sensitive decisions.",
+                  "expected_delay_days": 0.2,
+                  "level": "MODERATE / LOW PRESSURE",
+                  "live_observation": true,
+                  "provenance": "live:santos+santos_painel",
+                  "queue_vessels": 0
+                },
+                "updated_at": "2026-09-19 18:11:43",
+                "validation": {
+                  "ano": 2026,
+                  "atracado_h_avg": 50.1,
+                  "espera_atracacao_h_avg": 51.4,
+                  "espera_atracacao_h_med": 10.2,
+                  "espera_atracacao_h_p90": 151.1,
+                  "estadia_h_avg": 101.3,
+                  "mes": "jan",
+                  "n_atracacoes": 500,
+                  "n_com_imo": 491,
+                  "source": "antaq_estatistico_aquaviario",
+                  "validado_em": "2026-09-19 01:49:06"
+                },
+                "waiting_vessels": 0
+              },
+              {
+                "as_of": "2026-09-19 11:24:44",
+                "congestion_score": 0.72,
+                "country": "China",
+                "data_source": "static_reference_seed",
+                "data_source_label": "Static reference seed (not live telemetry).",
+                "decision_grade": "reference",
+                "estimated_daily_demurrage_usd": 60800,
+                "eta_delay_days": 1.5,
+                "freight_volatility_index": 0.38,
+                "port_id": "CNSHA",
+                "port_name": "Shanghai",
+                "signal": {
+                  "as_of": "2026-09-19 11:24:44",
+                  "decision_implication": "Current conditions indicate high operational pressure at Shanghai. Use caution when making schedule-sensitive routing, vessel-scheduling or demurrage-sensitive decisions.",
+                  "expected_delay_days": 1.5,
+                  "level": "HIGH OPERATIONAL PRESSURE",
+                  "live_observation": false,
+                  "provenance": "static_reference_seed",
+                  "queue_vessels": 18
+                },
+                "updated_at": "2026-09-19 11:24:44",
+                "waiting_vessels": 18
+              }
+            ]
+          }
         ]
       },
       "TrendPoint": {
         "properties": {
           "congestion_score": {
-            "type": "number"
+            "type": "number",
+            "title": "Congestion Score"
           },
           "eta_delay_days": {
-            "type": "number"
+            "type": "number",
+            "title": "Eta Delay Days"
           },
           "estimated_daily_demurrage_usd": {
-            "type": "integer"
+            "type": "integer",
+            "title": "Estimated Daily Demurrage Usd"
           }
         },
         "type": "object",
@@ -437,7 +799,8 @@
           "congestion_score",
           "eta_delay_days",
           "estimated_daily_demurrage_usd"
-        ]
+        ],
+        "title": "TrendPoint"
       }
     }
   },
