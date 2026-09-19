@@ -208,6 +208,42 @@ def control_tower_html(snapshot: dict) -> str:
         f'<div class="row"><span>TOOL CALLS (janela)</span><span class="val">{tool_calls}</span></div>'
     )
 
+    # ---- Classificação: o que as máquinas SÃO ----
+    roles = m.get("roles", {}) or {}
+    _role_label = {
+        "automated": "BOTS / CRAWLERS / LIVENESS",
+        "seo": "SEO CRAWLERS",
+        "discovery": "MACHINE DISCOVERY",
+        "mcp_client": "MCP CLIENTS (connect)",
+        "api_client": "API CLIENTS",
+        "consumer": "PRODUCT CONSUMERS (tool)",
+    }
+    role_html = "".join(
+        f'<div class="row"><span>{_role_label.get(r, r)}</span>'
+        f'<span class="val">{roles.get(r, 0)}</span></div>'
+        for r in ("automated", "seo", "discovery", "mcp_client", "api_client", "consumer")
+    )
+
+    # ---- Last tool call ----
+    ltc = m.get("last_tool_call") or {}
+    if ltc:
+        last_tool_html = (
+            f'<div class="row"><span>MACHINE</span><span class="val">{ltc.get("machine")}</span></div>'
+            f'<div class="row"><span>TOOL</span><span class="val">{ltc.get("tool")}</span></div>'
+            f'<div class="row"><span>PORT</span><span class="val">{ltc.get("port") or "—"}</span></div>'
+            f'<div class="row"><span>INTENT</span><span class="val">{ltc.get("intent") or "—"}</span></div>'
+            f'<div class="row"><span>WHEN</span><span class="val">{_fmt_ts(ltc.get("ts", 0))} UTC</span></div>'
+        )
+    else:
+        last_tool_html = '<div class="row muted"><span>nenhum tool_call neste processo</span></div>'
+
+    win = m.get("window", {}) or {}
+    life = m.get("lifetime", {}) or {}
+    window_lifetime_html = (
+        f'<div class="row"><span>JANELA (processo)</span><span class="val">MCP {win.get("mcp_calls", 0)} · REQ {win.get("requests", 0)}</span></div>'
+        f'<div class="row"><span>LIFETIME (persistido)</span><span class="val">MCP {life.get("mcp_calls", 0)} · REQ {life.get("requests", 0)}</span></div>'
+    )
+
     return f"""<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -251,6 +287,16 @@ h1{{font-size:1.4rem;letter-spacing:2px;color:#58a6ff;margin-bottom:1.5rem}}
   <div class="card">
     <h2>M2M ACTIVITY (aberto)</h2>
     {activity_html}
+  </div>
+  <div class="card">
+    <h2>CLASSIFICATION (o que são)</h2>
+    {role_html}
+    <div class="muted" style="margin-top:.4rem">janela vs lifetime</div>
+    {window_lifetime_html}
+  </div>
+  <div class="card">
+    <h2>LAST TOOL CALL</h2>
+    {last_tool_html}
   </div>
   <div class="card">
     <h2>TOP TOOLS</h2>

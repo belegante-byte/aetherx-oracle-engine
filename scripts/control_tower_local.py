@@ -252,6 +252,8 @@ h1{font-size:1.3rem;letter-spacing:2px;color:#58a6ff;margin-bottom:.4rem}
 <div class="grid">
   <div class="card"><h2>SYSTEM</h2><div id="system">…</div></div>
   <div class="card"><h2>M2M ACTIVITY (aberto)</h2><div id="m2m-activity">…</div></div>
+  <div class="card"><h2>CLASSIFICATION</h2><div id="classification">…</div></div>
+  <div class="card"><h2>LAST TOOL CALL</h2><div id="last-tool">…</div></div>
   <div class="card"><h2>TOP TOOLS</h2><div id="tools">…</div></div>
   <div class="card"><h2>CONSUMERS (tools)</h2><div id="consumers">…</div></div>
   <div class="card"><h2>TOP PORTS</h2><div id="ports">…</div></div>
@@ -309,6 +311,18 @@ function render(d){
     row('├ TOOL REPEAT',f.repeat_tool||0)+
     row('FIRST-TIME',firstTime)+
     row('TOOL CALLS (janela)',f.tool_call||0);
+  const roleLabels={automated:'BOTS/CRAWLERS',seo:'SEO',discovery:'DISCOVERY',mcp_client:'MCP CLIENTS',api_client:'API CLIENTS',consumer:'CONSUMERS (tool)'};
+  const roles=d.roles||{};
+  document.getElementById('classification').innerHTML=
+    Object.entries(roleLabels).map(([k,l])=>row(l,roles[k]||0)).join('')+
+    '<div class="muted" style="margin-top:.4rem">janela vs lifetime</div>'+
+    row('JANELA MCP',((d.window||{}).mcp_calls||0))+
+    row('LIFETIME MCP',((d.lifetime||{}).mcp_calls||0));
+  const ltc=d.last_tool_call;
+  document.getElementById('last-tool').innerHTML=ltc?
+    row('MACHINE',ltc.machine||'—')+row('TOOL',ltc.tool||'—')+row('PORT',ltc.port||'—')+
+    row('INTENT',ltc.intent||'—')+row('WHEN',new Date((ltc.ts||0)*1000).toISOString().slice(11,19)+' UTC')
+    :'<div class="muted">nenhum tool_call neste processo</div>';
   document.getElementById('funnel-infra').innerHTML=
     ['discovery','mcp_connect','repeat_transport'].map(s=>row(fLabel[s],f[s]||0)).join('');
   document.getElementById('funnel-prod').innerHTML=

@@ -98,6 +98,16 @@ _MACHINE_TOOL_TS = {}   # {ip_hash: list[int]}  timestamps de tools executadas
 _MACHINE_TOOL_PORTS = {}  # {ip_hash: Counter[port]}  portos consultados via tool
 _MACHINE_INTENT = {}    # {ip_hash: Counter[intent]}  famílias de intenção por tool_call
 
+# ---- Classificação por role (o que a máquina É, não só o que fez) ----
+# Separa o tráfego mascarado: automated (bot/crawler/liveness) vs máquina
+# de descoberta MCP vs consumidor real de produto (executou tool).
+_MACHINE_ROLE = {}      # {ip_hash: str}  'automated' | 'discovery' | 'mcp_client' | 'consumer' | 'api_client' | 'seo'
+_MACHINE_UA = {}        # {ip_hash: str}  user-agent truncado (diagnóstico)
+_last_tool_call: dict | None = None  # último tool_call: {ts, machine, tool, port, intent, ok}
+
+# Baseline do processo atual (para separar CURRENT WINDOW de LIFETIME).
+_window_base = {}       # {'mcp_total': int, 'requests': int, 'tools': {tool:int}, 't0': float}
+
 # Estágios do funil. Ordem: infraestrutura (descoberta/transporte) depois produto.
 FUNNEL_STAGES = (
     "discovery", "mcp_connect", "tool_call", "repeat_transport", "repeat_tool", "paid",
@@ -150,6 +160,44 @@ def _classify_stage(path: str, channel: str) -> str | None:
         return None  # REST usa o estágio 'paid' via subscription; consumo via tool
     return None
 
+
+def _classify_machine_role(ip_hash: str, channel: str, ua: str) -> None:
+    """Classifica o que uma máquina É (role), não só o canal da requisição.
+
+    - automated: bot/crawler/liveness (health checks, diretórios MCP scanners)
+    - discovery: acessou paths de descoberta (llms.txt, openapi, sitemap)
+    - mcp_client: conectou ao endpoint MCP
+    - api_client: usou REST
+    - seo: crawler de busca (Googlebot etc.) — medido à parte
+    - consumer: executou pelo menos uma tool (upgraded em record_tool_call)
+    A role só sobe de 'automated' para 'consumer' — nunca desce.
+    """
+    with _lock:
+        cur = _MACHINE_ROLE.get(ip_hash)
+        ua_l = ua.lower()
+        if cur == "consumer":
+            return
+        if any(t in ua_l for t in _BOT_TOKENS):
+            role = "automated"
+        elif channel == "bot":
+            role = "automated"
+        elif channel == "seo":
+            role = "seo"
+        elif channel == "discovery":
+            role = "discovery"
+        elif channel == "mcp":
+            role = "mcp_client"
+        elif channel == "rest":
+            role = "api_client"
+        else:
+            role = "automated"
+        # máquina já classificada com role mais forte não regride
+        order = {"automated": 0, "seo": 1, "discovery": 2, "api_client": 3, "mcp_client": 4, "consumer": 5}
+        if cur is None or order.get(role, 0) > order.get(cur, 0):
+            _MACHINE_ROLE[ip_hash] = role
+        if ua and ip_hash not in _MACHINE_UA:
+            _MACHINE_UA[ip_hash] = ua[:60]
+
 # Contextvar: identidade da máquina na requisição HTTP atual, lida pelo
 # _run_tool para correlacionar tool -> máquina.
 from contextvars import ContextVar
@@ -193,7 +241,7 @@ def record_rapidapi_call(plan: str | None, user: str | None) -> None:
 
 def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, latency_ms: int | None = None, intent: str | None = None) -> None:
     """Registra uma invocação de tool MCP (ou de produto) para a Control Tower."""
-    global _mcp_total, _mcp_errors
+    global _mcp_total, _mcp_errors, _last_tool_call
     mid = get_current_machine()
     if mid:
         _mark_stage(mid, "tool_call")
@@ -206,6 +254,7 @@ def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, lat
         if mid:
             _mcp_consumers[mid] = _mcp_consumers.get(mid, 0) + 1
             _mcp_consumer_ips.add(mid)
+            _MACHINE_ROLE[mid] = "consumer"
         if port_id:
             _ports[port_id] = _ports.get(port_id, 0) + 1
             _recent_events.appendleft({
@@ -213,6 +262,14 @@ def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, lat
                 "kind": "port_query",
                 "detail": port_id,
             })
+        _last_tool_call = {
+            "ts": int(time.time()),
+            "machine": mid[:8] if mid else None,
+            "tool": tool,
+            "port": port_id,
+            "intent": intent,
+            "ok": ok,
+        }
         if not ok:
             _mcp_errors += 1
         _recent_events.appendleft({
@@ -336,6 +393,7 @@ def record_http(scope, status_holder: dict | None = None) -> None:
     if not channel:
         return
     key = _bucket(_client_ip(headers, scope))
+    _classify_machine_role(key, channel, ua)
     stage = _classify_stage(path, channel)
     if stage:
         _mark_stage(key, stage)
@@ -426,6 +484,21 @@ def metrics_snapshot() -> dict:
                 family: sum(1 for c in _MACHINE_INTENT.values() if c.get(family))
                 for family in ("congestion", "queue", "delay", "economic", "decision")
             },
+            # Classificação: o que as máquinas SÃO (não só o que fizeram)
+            "roles": {
+                role: sum(1 for r in _MACHINE_ROLE.values() if r == role)
+                for role in ("automated", "seo", "discovery", "api_client", "mcp_client", "consumer")
+            },
+            "last_tool_call": _last_tool_call,
+            # CURRENT PROCESS WINDOW vs LIFETIME (para não confundir reset com ausência)
+            "window": {
+                "mcp_calls": _mcp_total - _window_base.get("mcp_total", 0),
+                "requests": total_req - _window_base.get("requests", 0),
+            },
+            "lifetime": {
+                "mcp_calls": _mcp_total,
+                "requests": total_req,
+            },
         }
 
 def _persist_now() -> None:
@@ -455,6 +528,9 @@ def _persist_now() -> None:
                 "machine_tool_ts": {k: list(v) for k, v in _MACHINE_TOOL_TS.items()},
                 "machine_tool_ports": {k: dict(v) for k, v in _MACHINE_TOOL_PORTS.items()},
                 "machine_intent": {k: dict(v) for k, v in _MACHINE_INTENT.items()},
+                "machine_role": dict(_MACHINE_ROLE),
+                "machine_ua": dict(_MACHINE_UA),
+                "last_tool_call": _last_tool_call,
                 "saved_at": int(time.time()),
             }
         os.makedirs(os.path.dirname(os.path.abspath(_STATE_PATH)), exist_ok=True)
@@ -466,7 +542,7 @@ def _persist_now() -> None:
 
 def _load_state() -> None:
     """Recarrega o estado persistido no boot (se existir)."""
-    global _mcp_total, _mcp_errors, _errors_total
+    global _mcp_total, _mcp_errors, _errors_total, _last_tool_call
     try:
         import os
         if not os.path.exists(_STATE_PATH):
@@ -499,6 +575,10 @@ def _load_state() -> None:
                 _MACHINE_TOOL_PORTS.setdefault(k, collections.Counter()).update(v)
             for k, v in state.get("machine_intent", {}).items():
                 _MACHINE_INTENT.setdefault(k, collections.Counter()).update(v)
+            _MACHINE_ROLE.update(state.get("machine_role", {}))
+            _MACHINE_UA.update(state.get("machine_ua", {}))
+            if _last_tool_call is None:
+                _last_tool_call = state.get("last_tool_call")
             events = state.get("events", [])
             if events:
                 _recent_events.extend(events[-100:])
@@ -509,9 +589,14 @@ def _load_state() -> None:
 
 def start_persistence(interval: int | None = None) -> None:
     """Inicia o thread de persistência periódica (chamado no boot da API)."""
-    global _persist_thread
+    global _persist_thread, _window_base
     interval = interval or _STATE_INTERVAL
     _load_state()
+    # Baseline da janela do processo atual (para distinguir CURRENT WINDOW de LIFETIME).
+    _window_base = {
+        "mcp_total": _mcp_total,
+        "requests": sum(_counts.values()),
+    }
     if _persist_thread and _persist_thread.is_alive():
         return
 

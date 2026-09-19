@@ -572,3 +572,39 @@ def test_tool_call_records_intent_per_machine():
     s = m.metrics_snapshot()
     assert s["intent_by_family"]["congestion"] == 1
     assert any("congestion" in (x.get("intent") or {}) for x in s["machines"] if x["id"] == "intx1111")
+
+
+def test_machine_role_classification():
+    from src.api import metrics as m
+    from src.api.metrics import _MACHINE_ROLE, _MACHINE_UA, _lock
+    with _lock:
+        _MACHINE_ROLE.clear(); _MACHINE_UA.clear()
+    # bot -> automated
+    m._classify_machine_role("bot123", "bot", "mcpbeat/0.1 (+https://mcpbeat.com/bot)")
+    assert m._MACHINE_ROLE["bot123"] == "automated"
+    # mcp client
+    m._classify_machine_role("mcp123", "mcp", "python-httpx/0.28")
+    assert m._MACHINE_ROLE["mcp123"] == "mcp_client"
+    # discovery
+    m._classify_machine_role("disc123", "discovery", "curl/8.7")
+    assert m._MACHINE_ROLE["disc123"] == "discovery"
+    # consumer upgrade via tool call
+    m.set_current_machine("mcp123")
+    m.record_tool_call("get_port_risk", port_id="BRPNG", ok=True, intent="congestion")
+    assert m._MACHINE_ROLE["mcp123"] == "consumer"
+
+
+def test_snapshot_has_roles_last_tool_window_lifetime():
+    from src.api import metrics as m
+    from src.api.metrics import _MACHINE_ROLE, _lock, _last_tool_call
+    with _lock:
+        _MACHINE_ROLE.clear()
+    m.set_current_machine("rolexxx1")
+    m.record_tool_call("get_port_risk", port_id="BRSSZ", ok=True, intent="congestion")
+    s = m.metrics_snapshot()
+    assert "roles" in s
+    assert s["roles"].get("consumer", 0) >= 1
+    assert s["last_tool_call"]["tool"] == "get_port_risk"
+    assert s["last_tool_call"]["port"] == "BRSSZ"
+    assert "window" in s and "lifetime" in s
+    assert "mcp_calls" in s["lifetime"]
