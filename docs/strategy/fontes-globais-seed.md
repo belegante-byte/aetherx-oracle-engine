@@ -113,3 +113,17 @@ limite), sem acesso imediato.
 uma conta com tier maior (shipinfo registrado, ou outro provedor AIS com key).
 O Hamburgo via shipinfo é a prova de conceito que funciona hoje (175 rows).
 Sem isso, os 14 seguem static_reference_seed honestos.
+
+## Correção pós-auditoria (2026-09-19, noite)
+
+O coletor ShipInfo adicionado ao Aether-X estava incompleto/quebrado: faltava
+`import json` no módulo e o pipeline de métricas só aplicava dados ao GRID BR.
+Na prática, ele podia consumir o rate limit anônimo sem atualizar nenhum porto
+global. Ele foi **desabilitado por padrão** na branch
+`fix/ingestion-integrity-audit` (`SHIPINFO_ENABLED=1` para uso manual), com
+port map cacheado e batch limitado.
+
+Os conectores GP5 auditados também **não trazem AIS real**:
+`ais_connector.py` usa Yahoo Search + Ollama e `vessel_tracking_connector.py`
+usa DuckDuckGo Search. Portanto, a decisão acima permanece: sem key/tier pago
+ou registro oficial, os 14 portos globais continuam `static_reference_seed`.
