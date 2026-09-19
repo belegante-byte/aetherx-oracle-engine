@@ -54,6 +54,7 @@ class RapidAPIGuard:
 
     @staticmethod
     def is_public_path(path: str) -> bool:
+        import re as _re
         return (
             path in {
                 "/",
@@ -70,6 +71,8 @@ class RapidAPIGuard:
             or path.startswith("/port-congestion-")
             or path.startswith(("/docs", "/redoc", "/mcp", "/public/"))
             or path == "/.well-known/ai-plugin.json"
+            or bool(_re.fullmatch(r"/google[0-9a-f]{20,}\.html", path))
+            or path == "/BingSiteAuth.xml"
         )
 
     async def __call__(self, scope, receive, send):
@@ -717,6 +720,24 @@ def get_ports_risk(
         return {"results": [calculate_port_risk(pid) for pid in ids]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/{filename}", include_in_schema=False)
+def verification_file(filename: str):
+    """Serve arquivos de verificação de propriedade do Google/Bing.
+
+    Google Search Console / Bing Webmaster exigem um arquivo `google<Token>.html`
+    (ou `BingSiteAuth.xml`) na raiz do domínio. Se o arquivo existir em
+    `data/verification/`, servimos em texto HTML; caso contrário 404.
+    Registrada antes do mount do MCP para não ser capturada por ele.
+    """
+    import re as _re
+    if not (_re.fullmatch(r"(google[0-9a-f]{20,}\.html)|(BingSiteAuth\.xml)", filename)):
+        raise HTTPException(status_code=404, detail="Not found")
+    path = Path(__file__).resolve().parent.parent.parent / "data" / "verification" / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Not found")
+    return HTMLResponse(path.read_text(encoding="utf-8"))
 
 
 app.mount("/", mcp_http_app)

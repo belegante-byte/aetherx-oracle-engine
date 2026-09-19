@@ -238,6 +238,21 @@ def test_guard_exempts_public_paths():
     assert public.get("/public/ports").status_code == 200
 
 
+def test_guard_exempts_verification_files():
+    """Arquivos de verificação Google/Bing são públicos (sem secret) e a rota
+    genérica não captura páginas normais nem aceita arquivos arbitrários."""
+    public = TestClient(app)
+    # arquivo de verificação ausente → 404 (rota existe, é pública, mas sem arquivo)
+    assert public.get("/google0123456789abcdef0123456789abcdef01234567.html").status_code == 404
+    assert public.get("/BingSiteAuth.xml").status_code == 404
+    # arquivo arbitrário não é isento do guard → 401 (não é verificação válida)
+    assert public.get("/foo.html").status_code == 401
+    # páginas normais não são capturadas pela rota genérica
+    assert public.get("/mcp-page").status_code == 200
+    assert public.get("/santos-port-congestion-api").status_code == 200
+    assert public.get("/openapi.rapidapi.json").status_code == 200
+
+
 def test_guard_exempts_mcp():
     with TestClient(app) as c:
         resp = c.post(
