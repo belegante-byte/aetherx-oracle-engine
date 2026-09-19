@@ -99,13 +99,83 @@ def snapshot(print_fn=print, per_port_latest_day: bool = True) -> int:
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             rows,
-        )
+        ) if rows else None
         n = conn.execute("SELECT COUNT(*) FROM port_metrics_history").fetchone()[0]
+        # Calibração BRPNG (anchor): acumula pares (fila observada hoje ↔ janela
+        # ANTAQ vigente). Nunca pode quebrar o snapshot.
+        try:
+            register_calibration(conn, print_fn=print_fn)
+        except Exception as e:
+            if print_fn:
+                print_fn(f"[SNAPSHOT] calibração ignorada: {type(e).__name__}: {e}")
     finally:
         conn.close()
     if print_fn:
         print_fn(f"[SNAPSHOT] Histórico anexado: {len(rows)} portos. Total: {n}")
     return n
+
+
+def register_calibration(conn, print_fn=print) -> None:
+    """Acumula pares de calibração BRPNG (Fase 2 — anchor).
+
+    Lê a fila real observada (ao_largo + esperados) do raw DB e emparelha com a
+    janela ANTAQ vigente. Um par por porto/dia (idempotente por data).
+    """
+    from src.engine.calibration import ensure_calibration_table, register_pair
+
+    ensure_calibration_table(conn)
+    hoje = datetime.now(timezone.utc).date()
+    ja_registrado = conn.execute(
+        "SELECT COUNT(*) FROM calibration_pairs WHERE port_id='BRPNG' AND observed_at=?",
+        [hoje],
+    ).fetchone()[0]
+    if ja_registrado:
+        return
+
+    raw_path = os.getenv("RAW_DATABASE_PATH", "data/processed/aether_oracle.duckdb")
+    if not os.path.exists(raw_path):
+        return
+    import duckdb
+
+    raw = duckdb.connect(raw_path, read_only=True)
+    try:
+        r = raw.execute(
+            """
+            SELECT
+              SUM(CASE WHEN status IN ('AO_LARGO','ESPERADO') THEN 1 ELSE 0 END),
+              SUM(CASE WHEN status='AO_LARGO' THEN 1 ELSE 0 END),
+              SUM(CASE WHEN status='ESPERADO' THEN 1 ELSE 0 END),
+              SUM(CASE WHEN status='ATRACADO' THEN 1 ELSE 0 END)
+            FROM raw_port_lineup WHERE port_id='BRPNG'
+            """
+        ).fetchone()
+    finally:
+        raw.close()
+    if not r or not r[0]:
+        return
+
+    par = register_pair(
+        conn, "BRPNG",
+        waiting_vessels=int(r[0]), ao_largo=int(r[1]),
+        esperados=int(r[2]), atracados=int(r[3] or 0),
+        source="appa",
+    )
+    if par:
+        conn.execute(
+            """
+            INSERT INTO calibration_pairs (
+                port_id, observed_at, waiting_vessels, ao_largo, esperados,
+                atracados, source, antaq_espera_avg_h, antaq_espera_med_h,
+                antaq_espera_p90_h, antaq_janela, matched
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            list(par.values()),
+        )
+        if print_fn:
+            print_fn(
+                f"[CALIB] par BRPNG {par['observed_at']}: fila={par['waiting_vessels']} "
+                f"↔ ANTAQ {par['antaq_janela']} avg={round(par['antaq_espera_avg_h'],1)}h"
+            )
 
 
 def main() -> int:
