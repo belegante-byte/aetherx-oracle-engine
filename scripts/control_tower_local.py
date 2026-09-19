@@ -79,7 +79,9 @@ def _load_local_state():
 def _save_local_state():
     import json as _json
     try:
-        out = {k: v for k, v in _local_state.items() if not k.startswith("_last")}
+        # Persiste TAMBÉM o estado de delta (_last_*): sem ele, um restart do
+        # dashboard soma o total inteiro no primeiro poll (inflando o acumulado).
+        out = dict(_local_state)
         out["cum_paid_users"] = sorted(out["cum_paid_users"])
         _LOCAL_STATE_PATH.write_text(_json.dumps(out, ensure_ascii=False), encoding="utf-8")
     except Exception:
