@@ -49,6 +49,14 @@ TO_STATUS = {
     "em_operacao": "EM_OPERACAO",
 }
 
+SOURCE_LABELS = {
+    "appa": "APPA Paranaguá",
+    "lachmann": "Lachmann schedules",
+    "santos": "Porto de Santos",
+    "santos_painel": "Painel de operações de Santos",
+    "portosrio_silog": "SILOG Rio de Janeiro (PortosRio)",
+}
+
 
 def _fetch(url: str, timeout: int = 30, binary: bool = False):
     req = urllib.request.Request(url, headers=HEADERS)
@@ -305,6 +313,96 @@ def fetch_santos_painel(timeout: int = 30) -> list:
     return linhas
 
 
+# ---------------------------------------------------------------- PortosRio SILOG
+
+SILOG_DOMINIOS = {
+    "BRRIO": 1,      # Rio de Janeiro
+    # "BRNIT": 2,    # Niterói (fora do catálogo atual)
+    # "BRITG": 3,    # Itaguaí / Sepetiba (fora do catálogo atual)
+}
+SILOG_URL = (
+    "https://silog.portosrio.gov.br/silog/pesquisa.aspx"
+    "?WCI=relPrePautaSimplificado&Mv=Link&sqlCodDominio={dominio}"
+    "&sqlFLG_PUBLICO_EXTERNO=1"
+)
+
+_SILOG_STATUS_MAP = {
+    "ATRACADO": "atracado",
+    "EM OPERAÇÃO": "atracado",
+    "SAÍDA": "atracado",
+    "MUDANÇA": "atracado",
+    "ATRACAÇÃO": "programado",
+    "ENTRADA": "programado",
+    "FUNDEADO": "ao_largo",
+    "AGUARDANDO": "ao_largo",
+}
+
+
+def fetch_silog_pre_pauta(dominio: int, timeout: int = 30) -> list:
+    """Baixa a pré-pauta SILOG (agendamentos reais) de um domínio PortosRio."""
+    html_bytes = _fetch(SILOG_URL.format(dominio=dominio), timeout=timeout, binary=True)
+    soup = BeautifulSoup(html_bytes, "html.parser")
+    linhas = []
+    for tabela in soup.find_all("table"):
+        cabecalho = [c.get_text(strip=True).upper() for c in tabela.find_all("th")]
+        if not cabecalho or "NAVIO" not in " ".join(cabecalho):
+            continue
+        for tr in tabela.find_all("tr"):
+            cells = [c.get_text(strip=True) for c in tr.find_all(["td", "th"])]
+            if len(cells) < 4 or not cells[2]:
+                continue
+            if not re.search(r"[A-Z]{4,}", cells[2] or ""):
+                continue
+            navio = " ".join(cells[2].split())
+            if not navio or navio.upper() == "NAVIO":
+                continue
+            imo = None
+            if "IMO" in " ".join(cabecalho):
+                idx = cabecalho.index("IMO/CAPITANIA")
+                campo = cells[idx] if idx < len(cells) else ""
+            else:
+                campo = ""
+            match = re.search(r"\b(\d{6,7})\b", campo)
+            if match:
+                imo = match.group(1)
+            tipo = cells[3].upper() if len(cells) > 3 else "AGENDAMENTO"
+            status = "programado"
+            for chave, valor in _SILOG_STATUS_MAP.items():
+                if chave in tipo or chave in " ".join(cells[:6]).upper():
+                    status = valor
+                    break
+            data_raw = cells[0] if cells else ""
+            eta = None
+            m_data = re.search(r"(\d{2}/\d{2}/\d{4})", data_raw)
+            if m_data:
+                d, mo, a = m_data.group(1).split("/")
+                eta = f"{a}-{mo}-{d}"
+            linhas.append({
+                "port_id": "BRRIO" if dominio == 1 else ("BRNIT" if dominio == 2 else "BRITG"),
+                "source": "portosrio_silog",
+                "vessel_name": navio.upper(),
+                "imo": imo,
+                "status": status,
+                "cargo": "N/D",
+                "agency": cells[6].upper() if len(cells) > 6 and cells[6] else "PORTOSRIO",
+                "dwt": 0.0,
+                "eta": eta,
+                "raw": {"tipo": tipo, "de": cells[4] if len(cells) > 4 else "", "para": cells[5] if len(cells) > 5 else ""},
+            })
+    return linhas
+
+
+def fetch_portosrio_silog(timeout: int = 30) -> list:
+    """Roda os domínios PortosRio (Rio de Janeiro, Niterói, Itaguaí)."""
+    linhas = []
+    for porta, dominio in SILOG_DOMINIOS.items():
+        try:
+            linhas.append((porta, fetch_silog_pre_pauta(dominio, timeout=timeout)))
+        except Exception:
+            continue
+    return [r for _, rows in linhas for r in rows]
+
+
 # ---------------------------------------------------------------- orchestrator
 
 def coletar_tudo(timeout: int = 30) -> dict:
@@ -320,6 +418,7 @@ def coletar_tudo(timeout: int = 30) -> dict:
         "lachmann": fetch_lachmann_schedule,
         "santos": fetch_santos_atracacoes,
         "santos_painel": fetch_santos_painel,
+        "portosrio_silog": fetch_portosrio_silog,
     }
     for nome, fn in fontes.items():
         try:

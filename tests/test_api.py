@@ -99,13 +99,13 @@ def test_port_risk_known_port():
 
 
 def test_port_risk_static_seed_for_unlived_port():
-    resp = client.get("/v1/port-risk", params={"port_id": "brrio"})
+    resp = client.get("/v1/port-risk", params={"port_id": "aedxb"})
     assert resp.status_code == 200
     body = resp.json()
-    assert body["port_id"] == "BRRIO"
+    assert body["port_id"] == "AEDXB"
     assert body["data_source"] == "static_reference_seed"
     assert body["data_source_label"]
-    assert body["congestion_score"] == 0.45
+    assert body["congestion_score"] == 0.50
 
 
 def test_port_risk_fallback_unknown_port():

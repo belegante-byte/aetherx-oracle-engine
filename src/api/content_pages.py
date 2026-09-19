@@ -2,7 +2,7 @@
 
 All pages reuse the same dark theme as the landing page and render the
 oracle signals (calculate_port_risk / calculate_port_trend). Every page
-states the data provenance explicitly: Brazilian ports (BRPNG/BRSSZ) are fed
+states the data provenance explicitly: Brazilian ports (BRPNG/BRSSZ/BRRIO) are fed
 by live line-ups; the rest serve a static reference seed.
 """
 
@@ -135,8 +135,8 @@ print(risk.estimated_daily_demurrage_usd)</code></pre></div>
 
 
 def mcp_page_html() -> str:
-    body = f"""<div class="snippet-card"><div class="card-header"><span>Data integrity</span></div><pre><code>Brazilian ports (BRPNG/BRSSZ) serve LIVE line-ups from
-APPA Paranaguá, Porto de Santos and Lachmann schedules.
+    body = f"""<div class="snippet-card"><div class="card-header"><span>Data integrity</span></div><pre><code>Brazilian ports (BRPNG/BRSSZ/BRRIO) serve LIVE line-ups from
+APPA Paranaguá, Porto de Santos, Lachmann schedules and SILOG Rio de Janeiro.
 Other ports serve data_source="static_reference_seed".
 Every response includes data_source and as_of.</code></pre></div>
 <p class="lede">Query port congestion signals, ETA delays, vessel queues and modeled demurrage exposure through an <strong>MCP-compatible AI agent</strong>.</p>

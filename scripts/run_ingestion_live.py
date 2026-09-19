@@ -23,7 +23,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import duckdb
 from dotenv import load_dotenv
 
-from src.ingestion.live_sources import coletar_tudo, resumo_por_porto, TO_STATUS
+from src.ingestion.live_sources import coletar_tudo, resumo_por_porto, TO_STATUS, SOURCE_LABELS
 from src.engine.init_prod_db import PORTS
 
 
@@ -36,6 +36,7 @@ ORACLE_DB = os.getenv("DATABASE_PATH", "data/oracle.duckdb")
 GRID = {
     "BRPNG": {"port_name": "Paranaguá", "country": "Brasil"},
     "BRSSZ": {"port_name": "Santos", "country": "Brasil"},
+    "BRRIO": {"port_name": "Rio de Janeiro", "country": "Brasil"},
 }
 
 
@@ -120,8 +121,6 @@ def _score_from_status(pid: str, resumo: dict, fonte: dict) -> dict:
         "esperados": int(esperados),
         "atracados": int(atracados),
         "programados": int(programados),
-        "data_source": "live:appa+santos+lachmann",
-        "data_source_label": "Live line-ups from APPA Paranaguá, Porto de Santos and Lachmann schedules.",
     }
 
 
@@ -183,11 +182,20 @@ def main() -> dict:
 
     # Deriva métricas por porto com dados vivos
     por_porto = {}
-    for pid in ("BRPNG", "BRSSZ"):
+    for pid, meta in GRID.items():
         resumo = resumos.get(pid)
         if not resumo or resumo.get("total", 0) == 0:
             continue
-        por_porto[pid] = _score_from_status(pid, resumo, fontes_status)
+        met = _score_from_status(pid, resumo, fontes_status)
+        fontes_usadas = sorted(
+            k[4:] for k in resumo if k.startswith("src_")
+        )
+        met["data_source"] = "live:" + "+".join(fontes_usadas)
+        nomes = [SOURCE_LABELS.get(f, f.replace("_", " ")) for f in fontes_usadas]
+        met["data_source_label"] = (
+            "Live line-up from " + " + ".join(nomes) + "."
+        )
+        por_porto[pid] = met
 
     gravar_raw(linhas)
     atualizados = aplicar_no_oracle(por_porto, resumos)

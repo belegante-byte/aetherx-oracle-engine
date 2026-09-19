@@ -12,6 +12,7 @@ from src.ingestion.live_sources import (
     fetch_appa_lineup,
     fetch_santos_atracacoes,
     fetch_lachmann_schedule,
+    fetch_silog_pre_pauta,
     resumo_por_porto,
 )
 from scripts.run_ingestion_live import _score_from_status
@@ -90,7 +91,6 @@ def test_score_from_status_deriva_fila_real():
     assert met["waiting_vessels"] == 80
     assert met["ao_largo"] == 20
     assert met["atracados"] == 20
-    assert met["data_source"].startswith("live:")
     assert met["congestion_score"] > 0.05
     assert met["eta_delay_days"] >= 2.4
 
@@ -105,6 +105,18 @@ def test_score_from_status_sem_fila():
     met = _score_from_status("BRSSZ", resumo, {"santos": {"ok": True}})
     assert met["waiting_vessels"] == 0
     assert met["congestion_score"] < 0.5
+
+
+def test_silog_riio_retorna_linhas_com_imo():
+    try:
+        linhas = fetch_silog_pre_pauta(1)
+    except Exception as e:
+        pytest.skip(f"SILOG PortosRio indisponível nesta execução: {type(e).__name__}")
+    assert linhas
+    assert all(l["port_id"] == "BRRIO" for l in linhas)
+    assert all(l["source"] == "portosrio_silog" for l in linhas)
+    assert all(l["vessel_name"] for l in linhas)
+    assert any(l["imo"] for l in linhas)
 
 
 def test_resumo_por_porto_agrupa():

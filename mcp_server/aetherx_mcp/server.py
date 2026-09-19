@@ -47,18 +47,18 @@ mcp = MCPServer(
     title="Aether-X Port Congestion Oracle",
     description=(
         "Reference port congestion signals for global trade, supply chain and "
-        "quantitative finance. Brazilian ports (BRSSZ, BRPNG) feed live line-ups; "
+        "quantitative finance. Brazilian ports (BRSSZ, BRPNG, BRRIO) feed live line-ups; "
         "the rest use a reference seed."
     ),
     instructions=(
         "Reference congestion signals for ports. Use get_port_risk for a "
         "single port, get_ports_risk to scan a portfolio of ports in parallel and "
         "get_port_trend for the 24h/48h/72h SYNTHETIC projection. Every "
-        "result includes `data_source` and `as_of`. For Brazilian ports BRSSZ/BRPNG "
-        "it is `live:appa+santos+lachmann` (real line-ups); the rest are "
+        "result includes `data_source` and `as_of`. For Brazilian ports BRSSZ/BRPNG/BRRIO "
+        "it is live (`live:appa+santos+lachmann`, `live:portosrio_silog`); the rest are "
         "`static_reference_seed` reference telemetry."
     ),
-    version="0.2.2",
+    version="0.2.3",
     website_url="https://aether-x-oracle-production.up.railway.app",
 )
 

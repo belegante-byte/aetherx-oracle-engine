@@ -8,7 +8,7 @@
 
 **Port congestion signals for developers, AI agents, logistics systems and quantitative workflows.**
 
-> **DATA INTEGRITY NOTICE**: **Brazilian ports feed LIVE operational line-ups.** Santos (BRSSZ) and Paranaguá (BRPNG) are refreshed from APPA Paranaguá, the Porto de Santos operations panel and Lachmann schedules (`data_source="live:appa+santos+lachmann"`, refreshed periodically in production). The remaining 15 ports serve a **reference seed** (`data_source="static_reference_seed"`). Every API/MCP response includes `data_source` and `as_of`. The 24/48/72h trend is a synthetic projection (`data_source="synthetic_projection"`), not a live forecast. Numbers from the seed are reference baselines, NOT real-time field data.
+> **DATA INTEGRITY NOTICE**: **Brazilian ports feed LIVE operational line-ups.** Santos (BRSSZ) and Paranaguá (BRPNG) are refreshed from APPA Paranaguá, the Porto de Santos operations panel and Lachmann schedules (`data_source="live:appa+santos+lachmann"`); Rio de Janeiro (BRRIO) from SILOG PortosRio (`data_source="live:portosrio_silog"`), refreshed periodically in production. The remaining 14 ports serve a **reference seed** (`data_source="static_reference_seed"`). Every API/MCP response includes `data_source` and `as_of`. The 24/48/72h trend is a synthetic projection (`data_source="synthetic_projection"`), not a live forecast. Numbers from the seed are reference baselines, NOT real-time field data.
 
 Aether-X exposes congestion scores, ETA delay estimates, freight volatility indices and modeled daily demurrage exposure for 17 global ports — delivered through a **REST API**, a **typed Python SDK** and a **remote MCP server** for AI agents.
 

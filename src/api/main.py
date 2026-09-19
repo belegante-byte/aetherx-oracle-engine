@@ -312,7 +312,7 @@ class PortsRiskResponse(BaseModel):
 API_DESCRIPTION = """Port congestion reference signals for global trade, supply chain and quantitative finance.
 
 **IMPORTANT · Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.
-Brazilian ports (BRSSZ, BRPNG) serve live line-ups: `data_source="live:appa+santos+lachmann"`. The remaining ports
+Brazilian ports (BRSSZ, BRPNG, BRRIO) serve live line-ups: `data_source="live:appa+santos+lachmann"` (BRSSZ/BRPNG) and `data_source="live:portosrio_silog"` (BRRIO). The remaining ports
 serve a **static reference seed**: `data_source="static_reference_seed"` means the value is a seeded baseline, not a
 live measurement. The 24/48/72h trend is a `synthetic_projection`, not a live forecast. Do not treat seed numbers as
 real-time field data.
@@ -349,7 +349,7 @@ mcp_http_app = build_http_app()
 async def lifespan(app: FastAPI):
     if os.getenv("ENABLE_LIVE_INGESTION", "0") == "1":
         import asyncio
-        from src.ingestion.live_sources import coletar_tudo
+        from src.ingestion.live_sources import coletar_tudo, SOURCE_LABELS
         from scripts.run_ingestion_live import gravar_raw, aplicar_no_oracle, resumo_por_porto, _score_from_status, GRID
         from src.engine.risk_model import invalidate_cache
 
@@ -363,7 +363,12 @@ async def lifespan(app: FastAPI):
                     for pid in GRID:
                         r = resumos.get(pid)
                         if r and r.get("total", 0) > 0:
-                            por_porto[pid] = _score_from_status(pid, r, res.get("fontes", {}))
+                            met = _score_from_status(pid, r, res.get("fontes", {}))
+                            fontes_usadas = sorted(k[4:] for k in r if k.startswith("src_"))
+                            met["data_source"] = "live:" + "+".join(fontes_usadas)
+                            nomes = [SOURCE_LABELS.get(f, f.replace("_", " ")) for f in fontes_usadas]
+                            met["data_source_label"] = "Live line-up from " + " + ".join(nomes) + "."
+                            por_porto[pid] = met
                     if por_porto:
                         gravar_raw(res.get("linhas", []))
                         aplicar_no_oracle(por_porto, resumos)
@@ -550,7 +555,7 @@ def public_ports_all():
     return {
         "as_of": rows[0]["as_of"],
         "data_source": "mixed",
-        "data_source_label": "Live line-ups for BR ports (BRSSZ/BRPNG); static reference seed elsewhere.",
+        "data_source_label": "Live line-ups for Brasil ports (BRSSZ/BRPNG/BRRIO); static reference seed elsewhere.",
         "count": len(rows),
         "results": rows,
     }
