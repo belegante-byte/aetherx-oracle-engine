@@ -112,3 +112,43 @@ Aguardando **retorno em janela distinta ≥300s** com tool_call → `repeat_tool
 ### Regra vigente
 Sem pricing, sem paywall, sem intervenção estrutural nova. Deixar a distribuição
 por intenção produzir oportunidades e o funil medir comportamento.
+
+## Decisão 2026-09-19 (tarde): zero mudanças estruturais — aguardar comportamento
+
+Três intervenções sequenciais já executadas e registradas:
+1. Produto real / dados reais (calibração, fila, demurrage)
+2. Tool Selection Engineering (tool_call 0 → 1)
+3. Distribution-by-Intent (ontologia em todas as superfícies)
+
+**Regra:** NÃO alterar o sistema agora — perderíamos a atribuição
+"qual intervenção produziu qual efeito". O experimento precisa respirar.
+
+### Estado atual (decomposto pela Control Tower)
+```
+M2M UNIQUE             11+ (mcp + discovery + rest, excl. bots)
+TRANSPORT REPEAT       14   (voltaram ao servidor)
+TOOL REPEAT             0   (nenhuma voltou para tool)
+TOOL CALL (janela)      0   (5 acumuladas = validações)
+ERROR RATE              0%
+```
+**Descoberta:** 14 máquinas demonstram retorno à infraestrutura; nenhuma
+demonstrou retorno para consumir o Oracle. Não é problema de instrumentação.
+
+### Próximo evento decisivo
+```
+TOOL CALL → tempo ≥300s → TOOL CALL   ⇒  TOOL REPEAT = 1
+```
+Quando ocorrer, examinar: mesma máquina? mesma tool? mesmo porto? novo porto?
+mesma intenção? intervalo? o sinal mudou? (mecanismo econômico do produto).
+
+### Ressalva metodológica (janela de 300s)
+Se não houver tool_repeat, NÃO concluir falha: a frequência natural da decisão
+que o Oracle suporta pode exceder 300s (ex.: consultas 08:00/12:00/16:00).
+Quando houver mais tool calls, medir a DISTRIBUIÇÃO dos intervalos, não só o
+threshold de 300s.
+
+### Posição
+- Discovery/infraestrutura: funcionando ✓
+- Primeiro consumo: demonstrado historicamente ✓
+- Consumo recorrente: ainda não demonstrado
+- Pagamento: ainda não demonstrado
