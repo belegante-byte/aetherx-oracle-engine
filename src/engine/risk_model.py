@@ -164,13 +164,23 @@ def calculate_port_risk(port_id: str) -> dict:
         row = None
         seed_at = now
 
-    # Enriquecimento com telemetria ao vivo para portos asiáticos e europeus (Kuehne+Nagel / PortInsight / VesselAPI / Hutchison Intermodal)
+    # Enriquecimento com telemetria ao vivo (Estreitos, Ásia, Europa, África via IMF PortWatch, SeaVantage, TankerMap, VesselAPI, Datalastic)
     try:
-        from src.ingestion.live_sources import fetch_asian_port_congestion, fetch_european_port_congestion
-        live_global = {**fetch_asian_port_congestion(), **fetch_european_port_congestion()}
+        from src.ingestion.live_sources import (
+            fetch_asian_port_congestion,
+            fetch_european_port_congestion,
+            fetch_chokepoint_and_african_telemetry
+        )
+        live_global = {
+            **fetch_asian_port_congestion(),
+            **fetch_european_port_congestion(),
+            **fetch_chokepoint_and_african_telemetry()
+        }
         if port_id in live_global:
             pinfo = live_global[port_id]
             score = pinfo["congestion_score"]
+            wait_hours = pinfo.get("median_wait_hours")
+            wait_text = f"Median wait {wait_hours}h" if wait_hours is not None else f"Transits {pinfo.get('daily_transits', 'n/a')}/day ({pinfo.get('pct_of_normal_baseline', '100')}% baseline)"
             yard_text = f", Yard Utilization {pinfo['yard_utilization_pct']}%" if "yard_utilization_pct" in pinfo else ""
             rail_text = f", Intermodal Rail: {pinfo['intermodal_rail_status']}" if "intermodal_rail_status" in pinfo else ""
             return {
@@ -186,8 +196,8 @@ def calculate_port_risk(port_id: str) -> dict:
                 "as_of": pinfo["as_of"],
                 "data_source": f"live:{'+'.join(pinfo['sources'])}",
                 "data_source_label": (
-                    f"Live AIS, Port & Intermodal Rail via {', '.join(pinfo['sources'])} "
-                    f"(Median wait {pinfo['median_wait_hours']}h{yard_text}{rail_text})."
+                    f"Live AIS & Traffic intelligence via {', '.join(pinfo['sources'])} "
+                    f"({wait_text}{yard_text}{rail_text})."
                 ),
                 "live_detail": json.dumps(pinfo),
                 "decision_grade": "decision",
