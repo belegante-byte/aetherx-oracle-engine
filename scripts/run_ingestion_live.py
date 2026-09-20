@@ -39,7 +39,8 @@ from src.engine.init_prod_db import PORTS
 
 load_dotenv("config/.env")
 RAW_DB = os.getenv("RAW_DATABASE_PATH", "data/processed/aether_oracle.duckdb")
-ORACLE_DB = os.getenv("DATABASE_PATH", "data/oracle.duckdb")
+_raw_oracle_db = os.getenv("DATABASE_PATH", "data/oracle.duckdb")
+ORACLE_DB = _raw_oracle_db if os.path.exists(_raw_oracle_db) else "data/oracle.duckdb"
 
 # Port metadata mapping for all ports
 PORT_META_MAP = {p["port_id"]: p for p in PORTS}

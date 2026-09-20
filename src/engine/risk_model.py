@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 
 
 load_dotenv("config/.env")
-DB_PATH = os.getenv("DATABASE_PATH", "data/oracle.duckdb")
+_raw_db_path = os.getenv("DATABASE_PATH", "data/oracle.duckdb")
+DB_PATH = _raw_db_path if os.path.exists(_raw_db_path) else "data/oracle.duckdb"
 
 _CONN: "duckdb.DuckDBPyConnection | None" = None
 
