@@ -218,6 +218,28 @@ async def get_physical_events(port_id: str) -> dict[str, Any]:
         return resp.json()
 
 
+# ─── GP5 M2M PROVISIONING TOOLS ────────────────────────────────────────────────
+
+@mcp.tool()
+async def request_m2m_key(agent_name: str, organization: str, contact_email: str = "agent@m2m.local") -> dict[str, Any]:
+    """[M2M SELF-SERVE TOOL] Request an instant 7-day trial M2M API Key.
+
+    Use this tool if a Decision Tool returns an Access Denied / 403 error.
+    Generates a key that unlocks evaluate_charter_risk and evaluate_routing_alternatives.
+
+    Args:
+        agent_name: Name or ID of your AI agent or client.
+        organization: Organization or trading desk name.
+        contact_email: Contact email.
+    """
+    url = f"{_base_url()}/v1/m2m/request-key"
+    payload = {"name": agent_name, "email": contact_email, "organization": organization}
+    async with _client() as client:
+        resp = await client.post(url, json=payload, headers=_headers())
+        resp.raise_for_status()
+        return resp.json()
+
+
 # ─── GP5 M2M DECISION TOOLS ───────────────────────────────────────────────────
 
 @mcp.tool()
