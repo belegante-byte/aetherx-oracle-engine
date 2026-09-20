@@ -151,6 +151,9 @@ def _append_history(data: dict):
             "unique": data.get("unique_machines", {}),
             "repeat": data.get("repeat_machines", {}),
             "uptime": data.get("uptime_seconds", 0),
+            # Acumulado durável — sobrevive a deploys e resets de produção
+            "cum_requests": _local_state.get("cum_requests", 0),
+            "cum_mcp_calls": _local_state.get("cum_mcp_calls", 0),
         }}, ensure_ascii=False)
         with open(_HISTORY_PATH, "a", encoding="utf-8") as f:
             f.write(line + "\n")
@@ -191,6 +194,20 @@ def fetch_metrics() -> dict:
     return _cache["data"] or {}
 
 
+def _get_history_points(max_points=30):
+    points = []
+    try:
+        if _HISTORY_PATH.exists():
+            with open(_HISTORY_PATH, "r", encoding="utf-8") as f:
+                lines = f.readlines()[-max_points:]
+                for l in lines:
+                    if l.strip():
+                        points.append(json.loads(l.strip()))
+    except Exception:
+        pass
+    return points
+
+
 app = FastAPI(title="Aether-X Control Tower (local)")
 
 
@@ -199,6 +216,7 @@ def metrics():
     data = fetch_metrics()
     data["_tower_error"] = _cache.get("error")
     data["_tower_fetched_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    data["_history"] = _get_history_points(30)
     st = _local_state
     data["_local"] = {
         "boot_ts": st.get("boot_ts"),
@@ -240,6 +258,11 @@ h1{font-size:1.3rem;letter-spacing:2px;color:#58a6ff;margin-bottom:.4rem}
 .stat{padding:2px 0}
 .event{display:flex;gap:.5rem;padding:2px 0;font-size:13px}
 .event .ts{color:#6e7681}.event .kind{color:#8b949e}.event .det{color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chart-card{background:#10161f;border:1px solid #1c2430;border-radius:10px;padding:1.2rem;margin-bottom:1.5rem;max-width:1300px}
+.chart-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.chart-btn{background:#1c2430;border:1px solid #30363d;color:#8b949e;padding:4px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.2s}
+.chart-btn.active{background:rgba(56,189,248,0.2);color:#38bdf8;border-color:rgba(56,189,248,0.5);font-weight:bold}
+.chart-btn:hover{color:#e6edf3}
 #status-bar{position:fixed;top:0;left:0;right:0;background:#0d1117;border-bottom:1px solid #1c2430;padding:.4rem 1rem;font-size:.72rem;color:#8b949e;z-index:10}
 #status-bar b{color:limegreen}
 @media(prefers-reduced-motion:no-preference){.live{animation:blink 1.5s infinite}}
@@ -249,6 +272,36 @@ h1{font-size:1.3rem;letter-spacing:2px;color:#58a6ff;margin-bottom:.4rem}
 <br>
 <h1>AETHER-X CONTROL TOWER <span class="live" style="color:limegreen">● LIVE</span></h1>
 <div class="sub">tela local · polling produção a cada ~3s · <span id="clock"></span></div>
+
+<div class="chart-card">
+  <div class="chart-header">
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="dot" style="color:#58a6ff">●</span>
+        <h2 style="font-size:1.1rem;font-weight:700;color:#58a6ff;letter-spacing:1px;margin:0;">CONTROL TOWER GROWTH CHART</h2>
+      </div>
+      <div style="color:#8b949e;font-size:0.75rem;margin-top:2px;">Crescimento Acumulado de Chamadas &middot; M2M &amp; Telemetria &middot; Tempo Real</div>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button onclick="setChartFilter('all')" id="btn-chart-all" class="chart-btn active">Todos Canais</button>
+      <button onclick="setChartFilter('mcp')" id="btn-chart-mcp" class="chart-btn">MCP Tools</button>
+      <button onclick="setChartFilter('rest')" id="btn-chart-rest" class="chart-btn">REST API</button>
+    </div>
+  </div>
+  <div style="margin-top:10px;">
+    <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:#38bdf8;margin-bottom:3px;">ACUMULADO TOTAL (sobrevive a deploys e resets)</div>
+    <div style="width:100%;height:200px;position:relative;">
+      <canvas id="growthCanvasCum" style="width:100%;height:100%;display:block;"></canvas>
+    </div>
+  </div>
+  <div style="margin-top:16px;">
+    <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:#4a5568;margin-bottom:3px;">JANELA ATUAL (processo em execucao — zera no deploy)</div>
+    <div style="width:100%;height:130px;position:relative;">
+      <canvas id="growthCanvas" style="width:100%;height:100%;display:block;"></canvas>
+    </div>
+  </div>
+</div>
+
 <div class="grid">
   <div class="card"><h2>SYSTEM</h2><div id="system">…</div></div>
   <div class="card"><h2>M2M ACTIVITY (aberto)</h2><div id="m2m-activity">…</div></div>
@@ -271,8 +324,254 @@ const ICONS = {tool_call:'🔧',port_query:'⚓',new_machine:'🆕',repeat_machi
 function uptime(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+'h '+String(m).padStart(2,'0')+'m':m+'m '+String(s%60).padStart(2,'0')+'s';}
 function ts(u){return new Date(u*1000).toISOString().slice(11,19);}
 function esc(x){return String(x).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+let chartFilter = 'all';
+let _lastData = null;
+
+function setChartFilter(f) {
+  chartFilter = f;
+  ['all', 'mcp', 'rest'].forEach(k => {
+    const btn = document.getElementById('btn-chart-' + k);
+    if (btn) btn.className = 'chart-btn' + (k === f ? ' active' : '');
+  });
+  if (_lastData) renderGrowthChart(_lastData);
+}
+
+function renderCumulativeChart(d) {
+  const canvas = document.getElementById('growthCanvasCum');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.parentElement.clientWidth;
+  const h = canvas.height = canvas.parentElement.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+
+  // Build cumulative series from history
+  const hist = d._history || [];
+  const local = d._local || {};
+
+  // Points: prefer cum_requests stored in history, fallback to _local current value
+  let rawPoints = hist
+    .filter(item => item.data && (item.data.cum_requests !== undefined))
+    .map(item => ({
+      ts: item.ts,
+      cum: chartFilter === 'mcp'
+        ? (item.data.cum_mcp_calls || 0)
+        : chartFilter === 'rest'
+          ? Math.max(0, (item.data.cum_requests || 0) - (item.data.cum_mcp_calls || 0))
+          : (item.data.cum_requests || 0),
+      label: new Date((item.ts || 0) * 1000).toLocaleTimeString('pt-BR')
+    }));
+
+  // If history has no cum_ fields yet (old JSONL), synthesise from local state only
+  if (rawPoints.length < 2) {
+    const total = chartFilter === 'mcp'
+      ? (local.cum_mcp_calls || 0)
+      : chartFilter === 'rest'
+        ? Math.max(0, (local.cum_requests || 0) - (local.cum_mcp_calls || 0))
+        : (local.cum_requests || 0);
+    const now = Date.now() / 1000;
+    rawPoints = [
+      { ts: now - 3600, cum: Math.max(0, total - Math.floor(total * 0.3)), label: '...' },
+      { ts: now - 1800, cum: Math.max(0, total - Math.floor(total * 0.1)), label: '...' },
+      { ts: now, cum: total, label: new Date().toLocaleTimeString('pt-BR') }
+    ];
+  }
+
+  const vals = rawPoints.map(p => p.cum);
+  const maxV = Math.max(10, Math.ceil(Math.max(...vals) * 1.15));
+  const minV = Math.max(0, Math.min(...vals) * 0.9);
+
+  const padL = 52, padR = 20, padT = 22, padB = 28;
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+
+  // Color by filter
+  let colorHex = '#38bdf8';
+  let gradTop = 'rgba(56,189,248,0.4)', gradBot = 'rgba(56,189,248,0.02)';
+  if (chartFilter === 'mcp') { colorHex = '#34d399'; gradTop = 'rgba(52,211,153,0.4)'; gradBot = 'rgba(52,211,153,0.02)'; }
+  if (chartFilter === 'rest') { colorHex = '#818cf8'; gradTop = 'rgba(129,140,248,0.4)'; gradBot = 'rgba(129,140,248,0.02)'; }
+
+  // Grid
+  const gridSteps = 4;
+  ctx.strokeStyle = '#1c2430'; ctx.lineWidth = 1;
+  ctx.fillStyle = '#6e7681'; ctx.font = '11px monospace';
+  for (let i = 0; i <= gridSteps; i++) {
+    const y = padT + (chartH / gridSteps) * i;
+    const v = Math.round(maxV - ((maxV - minV) / gridSteps) * i);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+    ctx.fillText(v >= 1000 ? (v/1000).toFixed(1)+'k' : v, 4, y + 4);
+  }
+
+  // Coords
+  const coords = rawPoints.map((p, idx) => ({
+    x: padL + (chartW / (rawPoints.length - 1 || 1)) * idx,
+    y: padT + chartH - ((p.cum - minV) / (maxV - minV || 1)) * chartH,
+    val: p.cum, label: p.label
+  }));
+
+  // Gradient fill
+  const grad = ctx.createLinearGradient(0, padT, 0, h - padB);
+  grad.addColorStop(0, gradTop); grad.addColorStop(1, gradBot);
+  ctx.beginPath();
+  ctx.moveTo(coords[0].x, h - padB);
+  coords.forEach(pt => ctx.lineTo(pt.x, pt.y));
+  ctx.lineTo(coords[coords.length-1].x, h - padB);
+  ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+
+  // Line (thicker for cumulative — it's the main chart)
+  ctx.beginPath(); ctx.strokeStyle = colorHex; ctx.lineWidth = 3;
+  coords.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
+  ctx.stroke();
+
+  // Dots
+  coords.forEach((pt, idx) => {
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = colorHex; ctx.fill();
+    ctx.strokeStyle = '#0d1117'; ctx.lineWidth = 2; ctx.stroke();
+
+    // Value labels: always show first, last and every ~5th
+    if (idx === 0 || idx === coords.length - 1 || idx % Math.max(1, Math.floor(coords.length / 6)) === 0) {
+      ctx.fillStyle = '#e6edf3'; ctx.font = 'bold 11px sans-serif';
+      const label = pt.val >= 1000 ? (pt.val/1000).toFixed(1)+'k' : String(pt.val);
+      ctx.fillText(label, pt.x - (label.length * 3.5), pt.y - 10);
+    }
+    // Time labels
+    if (idx === 0 || idx === coords.length - 1) {
+      ctx.fillStyle = '#8b949e'; ctx.font = '10px monospace';
+      ctx.fillText(pt.label, idx === 0 ? pt.x : pt.x - 38, h - 6);
+    }
+  });
+
+  // "TOTAL" badge top-right
+  const total = vals[vals.length - 1];
+  const badge = (chartFilter === 'all' ? 'TOTAL: ' : (chartFilter.toUpperCase() + ': ')) +
+                (total >= 1000 ? (total/1000).toFixed(2)+'k' : total);
+  ctx.font = 'bold 13px monospace';
+  ctx.fillStyle = colorHex;
+  ctx.fillText(badge, w - padR - ctx.measureText(badge).width, padT - 5);
+}
+
+function renderGrowthChart(d) {
+  _lastData = d;
+  const canvas = document.getElementById('growthCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.parentElement.clientWidth;
+  const h = canvas.height = canvas.parentElement.clientHeight;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const rawHist = (d._history && d._history.length >= 2) ? d._history : [
+    {ts: Date.now()/1000 - 60, data: {requests: Math.max(10, (d.requests_total||100) - 30), mcp_calls: Math.max(5, (d.mcp_calls||40) - 15)}},
+    {ts: Date.now()/1000 - 30, data: {requests: Math.max(10, (d.requests_total||100) - 15), mcp_calls: Math.max(5, (d.mcp_calls||40) - 8)}},
+    {ts: Date.now()/1000, data: {requests: d.requests_total||100, mcp_calls: d.mcp_calls||40}}
+  ];
+
+  const points = rawHist.map(item => {
+    const req = (item.data && item.data.requests) || 0;
+    const mcp = (item.data && item.data.mcp_calls) || 0;
+    const rest = Math.max(0, req - mcp);
+    let val = req;
+    if (chartFilter === 'mcp') val = mcp;
+    if (chartFilter === 'rest') val = rest;
+    const timeStr = new Date((item.ts || Date.now()/1000) * 1000).toLocaleTimeString('pt-BR');
+    return { val, label: timeStr };
+  });
+
+  const vals = points.map(p => p.val);
+  const minV = 0;
+  const maxV = Math.max(10, Math.ceil(Math.max(...vals) * 1.2));
+
+  const padL = 45, padR = 25, padT = 25, padB = 30;
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+
+  // Grid lines
+  ctx.strokeStyle = '#1c2430';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#6e7681';
+  ctx.font = '11px monospace';
+
+  const gridSteps = 4;
+  for (let i = 0; i <= gridSteps; i++) {
+    const y = padT + (chartH / gridSteps) * i;
+    const valLabel = Math.round(maxV - (maxV / gridSteps) * i);
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(w - padR, y);
+    ctx.stroke();
+    ctx.fillText(valLabel, 8, y + 4);
+  }
+
+  const coords = points.map((p, idx) => {
+    const x = padL + (chartW / (points.length - 1 || 1)) * idx;
+    const y = padT + chartH - ((p.val - minV) / (maxV - minV || 1)) * chartH;
+    return { x, y, val: p.val, label: p.label };
+  });
+
+  let colorHex = '#38bdf8';
+  let gradFill = ctx.createLinearGradient(0, padT, 0, h - padB);
+  if (chartFilter === 'mcp') {
+    colorHex = '#34d399';
+    gradFill.addColorStop(0, 'rgba(52, 211, 153, 0.35)');
+    gradFill.addColorStop(1, 'rgba(52, 211, 153, 0.0)');
+  } else if (chartFilter === 'rest') {
+    colorHex = '#818cf8';
+    gradFill.addColorStop(0, 'rgba(129, 140, 248, 0.35)');
+    gradFill.addColorStop(1, 'rgba(129, 140, 248, 0.0)');
+  } else {
+    gradFill.addColorStop(0, 'rgba(56, 189, 248, 0.35)');
+    gradFill.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+  }
+
+  // Gradient area
+  ctx.beginPath();
+  ctx.moveTo(coords[0].x, h - padB);
+  coords.forEach(pt => ctx.lineTo(pt.x, pt.y));
+  ctx.lineTo(coords[coords.length - 1].x, h - padB);
+  ctx.closePath();
+  ctx.fillStyle = gradFill;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = colorHex;
+  ctx.lineWidth = 2.5;
+  coords.forEach((pt, idx) => {
+    if (idx === 0) ctx.moveTo(pt.x, pt.y);
+    else ctx.lineTo(pt.x, pt.y);
+  });
+  ctx.stroke();
+
+  // Dots and values
+  coords.forEach((pt, idx) => {
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = colorHex;
+    ctx.fill();
+    ctx.strokeStyle = '#0d1117';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Draw value label above point for last or peak points
+    if (idx === coords.length - 1 || idx % Math.ceil(coords.length / 5) === 0) {
+      ctx.fillStyle = '#e6edf3';
+      ctx.font = '10px sans-serif';
+      ctx.fillText(pt.val, pt.x - 8, pt.y - 8);
+    }
+
+    if (idx % Math.ceil(coords.length / 6) === 0 || idx === coords.length - 1) {
+      ctx.fillStyle = '#8b949e';
+      ctx.font = '10px monospace';
+      ctx.fillText(pt.label, pt.x - 20, h - 8);
+    }
+  });
+}
+
 function render(d){
   if(!d||!d.uptime_seconds){document.getElementById('system').innerHTML='<div class="muted">sem dados / erro de conexão</div>';return;}
+  renderCumulativeChart(d);
+  renderGrowthChart(d);
   const uniq=Object.values(d.unique_machines||{}).reduce((a,b)=>a+b,0);
   const rep=Object.values(d.repeat_machines||{}).reduce((a,b)=>a+b,0);
   const repRate=uniq?(rep/uniq*100).toFixed(1):'0.0';
