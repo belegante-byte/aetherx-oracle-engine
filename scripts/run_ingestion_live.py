@@ -30,6 +30,7 @@ from src.ingestion.live_sources import (
     SOURCE_LABELS,
     fetch_asian_port_congestion,
     fetch_european_port_congestion,
+    fetch_americas_port_congestion,
     fetch_chokepoint_and_african_telemetry,
 )
 from src.ingestion.land_sources import fetch_rumo_operations
@@ -251,10 +252,11 @@ def main() -> dict:
         )
         por_porto[pid] = met
 
-    # 2. Coleta telemetria viva multi-região (Ásia, Europa, África & Chokepoints)
+    # 2. Coleta telemetria viva multi-região (Ásia, Europa, Américas, África & Chokepoints)
     telemetry_sources = [
         fetch_asian_port_congestion(),
         fetch_european_port_congestion(),
+        fetch_americas_port_congestion(),
         fetch_chokepoint_and_african_telemetry(),
     ]
     for source_dict in telemetry_sources:
