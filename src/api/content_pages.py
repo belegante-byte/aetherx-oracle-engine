@@ -57,6 +57,7 @@ PORT_METAS = [
     {"port_id": "PABLB", "slug": "panama-canal-balboa", "port_name": "Canal do Panamá / Balboa", "country": "Panamá"},
     {"port_id": "EGSUZ", "slug": "suez-canal-port-said", "port_name": "Canal de Suez / Port Said", "country": "Egito"},
     {"port_id": "ZACPT", "slug": "cape-town", "port_name": "Cape Town", "country": "África do Sul"},
+    {"port_id": "HORMUZ", "slug": "strait-of-hormuz", "port_name": "Estreito de Ormuz", "country": "Omã / Irã (Chokepoint)"},
     {"port_id": "MXZLO", "slug": "manzanillo", "port_name": "Manzanillo", "country": "México"},
 ]
 
