@@ -28,6 +28,12 @@ TOOL_INTENT = {
     "evaluate_charter_risk": "decision",
     "evaluate_routing_alternatives": "decision",
     "evaluate_corridor_risk": "decision",
+    # Analytics / Inference tools
+    "get_pci_index": "congestion",
+    "get_cdr_risk": "economic",
+    "predict_vessel_queue": "queue",
+    "get_irdi_index": "delay",
+    "evaluate_scdew_warning": "economic",
 }
 
 
@@ -49,8 +55,22 @@ def _run_tool(fn, tool_name: str, **kwargs):
 
     Recebe kwargs explícitos (como o MCPServer v2 chama) para extrair o porto
     consultado sem ambiguidade de assinatura.
+
+    A chamada a record_tool_call é SEMPRE feita no finally — mesmo quando o
+    contexto MCP não passou pelo MetricsMiddleware (ex: SSE/streamable HTTP).
+    Nesses casos usa um machine_id sintético derivado do nome da tool + ts.
     """
     import time
+    from src.api.metrics import get_current_machine, set_current_machine, current_machine_id
+    import hashlib
+
+    # Garante um machine_id mesmo fora do contexto HTTP normal (MCP streamable)
+    mid = get_current_machine()
+    token = None
+    if not mid:
+        # Gera ID sintético baseado no tool_name para agrupar chamadas do mesmo agente
+        synthetic = hashlib.sha256(f"mcp_tool:{tool_name}:{int(time.time()//60)}".encode()).hexdigest()[:16]
+        token = current_machine_id.set(synthetic)
 
     t0 = time.monotonic()
     ok = True
@@ -65,6 +85,11 @@ def _run_tool(fn, tool_name: str, **kwargs):
         port_id = _extract_port_id(kwargs)
         intent = TOOL_INTENT.get(tool_name)
         record_tool_call(tool_name, port_id=port_id, ok=ok, latency_ms=latency_ms, intent=intent)
+        if token is not None:
+            try:
+                current_machine_id.reset(token)
+            except Exception:
+                pass
 
 SUPPORTED_PORTS: list[dict[str, str]] = [
     {"port_id": "AEDXB", "port_name": "Dubai / Jebel Ali", "country": "EAU"},
