@@ -78,7 +78,7 @@ class RapidAPIGuard:
                 "/santos-port-congestion-api",
             }
             or path.startswith("/port-congestion-")
-            or path.startswith(("/docs", "/redoc", "/public/"))
+            or path.startswith(("/docs", "/redoc", "/public/", "/mcp", "/v1/gp5/"))
             or path == "/.well-known/ai-plugin.json"
             or bool(_re.fullmatch(r"/google[0-9a-f]{10,}\.html", path))
             or path == "/BingSiteAuth.xml"
@@ -638,7 +638,7 @@ def landing_page():
 
 @app.get("/health", include_in_schema=False)
 def health_check():
-    return {"status": "ok", "service": "aether-x-oracle", "version": "0.2.1"}
+    return {"status": "ok", "service": "aether-x-oracle", "version": "1.1.0"}
 
 
 @app.get("/health/", include_in_schema=False)
