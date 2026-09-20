@@ -360,8 +360,105 @@ def robots_txt_content() -> str:
     )
 
 
+def m2m_keys_page_html() -> str:
+    body = f"""
+    <div class="header">
+      <div class="badge">M2M PRODUCT RUNTIME · ENTERPRISE ACCESS</div>
+      <h1>GP5 Maritime — Chaves de Acesso M2M & Decision Tools</h1>
+      <p class="subtitle">
+        Obtenha uma credencial autenticada de 7 dias para habilitar o conjunto completo de ferramentas de suporte à decisão (Demurrage Risk, Cargo Routing e ChangePackets) no seu servidor MCP, agentes LLM ou algoritmos de trading.
+      </p>
+    </div>
+
+    <div class="grid grid-2" style="margin-bottom:2rem;">
+      <div class="card">
+        <h3><span class="status-dot"></span> Modo Legado / Gratuito (Observation)</h3>
+        <p style="color:#94a3b8; margin: 0.5rem 0 1rem;">Acesso público de observação sem credencial.</p>
+        <ul style="color:#cbd5e1; font-size:0.9rem; line-height:1.6; padding-left:1.2rem;">
+          <li>Fila multimodal combinada de navios + vagões Rumo</li>
+          <li>Ferramentas: <code>get_port_state</code>, <code>get_physical_events</code></li>
+          <li>Limites padrão com rastreio de telemetria</li>
+          <li>Decision Tools retornam 403 Forbidden</li>
+        </ul>
+      </div>
+
+      <div class="card" style="border-color:#38bdf8; background: rgba(56, 189, 248, 0.05);">
+        <h3 style="color:#38bdf8;"><span class="status-dot green"></span> Modo Autenticado M2M (Decision Layer)</h3>
+        <p style="color:#94a3b8; margin: 0.5rem 0 1rem;">Credencial M2M completa para Tradings e Operadores.</p>
+        <ul style="color:#cbd5e1; font-size:0.9rem; line-height:1.6; padding-left:1.2rem;">
+          <li>Tudo do Modo Observação + Suporte à Decisão em USD</li>
+          <li>Ferramentas: <code>evaluate_charter_risk</code>, <code>evaluate_routing_alternatives</code></li>
+          <li>Cálculo de sobrestadia (Demurrage) sob premissas parametrizáveis</li>
+          <li>Uso estendido e prioridade de execução</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="max-width:650px; margin: 0 auto 3rem; padding: 2rem;">
+      <h2 style="font-size:1.4rem; margin-bottom:1rem; color:#f8fafc;">Solicitar Chave M2M (7 Dias Grátis)</h2>
+      <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:1.5rem;">Preencha os dados abaixo para gerar instantaneamente a sua credencial M2M para teste empresarial.</p>
+      
+      <form id="keyForm" onsubmit="generateKey(event)">
+        <div style="margin-bottom:1rem;">
+          <label style="display:block; color:#cbd5e1; font-size:0.85rem; margin-bottom:0.3rem;">Seu Nome / Responsável Técnico *</label>
+          <input type="text" id="name" required placeholder="Ex: Rodrigo Silva" style="width:100%; padding:0.75rem; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:6px;">
+        </div>
+        <div style="margin-bottom:1rem;">
+          <label style="display:block; color:#cbd5e1; font-size:0.85rem; margin-bottom:0.3rem;">E-mail Corporativo *</label>
+          <input type="email" id="email" required placeholder="rodrigo@trading.com.br" style="width:100%; padding:0.75rem; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:6px;">
+        </div>
+        <div style="margin-bottom:1.5rem;">
+          <label style="display:block; color:#cbd5e1; font-size:0.85rem; margin-bottom:0.3rem;">Empresa / Mesa de Operação *</label>
+          <input type="text" id="organization" required placeholder="Ex: Caramuru Commodities / Trading Desk" style="width:100%; padding:0.75rem; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:6px;">
+        </div>
+
+        <button type="submit" style="width:100%; padding:0.85rem; background:#0284c7; color:#fff; border:none; font-weight:600; font-size:1rem; border-radius:6px; cursor:pointer;">
+          Gerar Minha Chave M2M Agora →
+        </button>
+      </form>
+
+      <div id="keyResult" style="display:none; margin-top:1.5rem; padding:1.2rem; background:#022c22; border:1px solid #059669; border-radius:6px;">
+        <h4 style="color:#34d399; margin:0 0 0.5rem;">Sua Chave M2M foi Gerada!</h4>
+        <p style="color:#cbd5e1; font-size:0.85rem; margin-bottom:0.8rem;">Adicione esta chave ao seu cabeçalho HTTP <code>Authorization: Bearer &lt;SUA_CHAVE&gt;</code> para utilizar as Decision Tools.</p>
+        <pre><code id="generatedKey" style="color:#6ee7b7; font-size:1.1rem; font-weight:bold;"></code></pre>
+      </div>
+    </div>
+
+    <script>
+    async function generateKey(e) {{
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const org = document.getElementById('organization').value;
+
+      try {{
+        const resp = await fetch('/v1/m2m/request-key', {{
+          method: 'POST',
+          headers: {{'Content-Type': 'application/json'}},
+          body: JSON.stringify({{name: name, email: email, organization: org}})
+        }});
+        const data = await resp.json();
+        if (data.api_key) {{
+          document.getElementById('generatedKey').innerText = data.api_key;
+          document.getElementById('keyResult').style.display = 'block';
+        }}
+      }} catch (err) {{
+        alert('Erro ao gerar chave: ' + err);
+      }}
+    }}
+    </script>
+    """
+    return _page_layout(
+        "GP5 M2M — Chaves de Acesso & Decision Tools",
+        "Obtenha credencial M2M autenticada para o GP5 Maritime Product Runtime.",
+        body,
+        "/m2m-keys"
+    )
+
+
 PAGES = [
     ("/mcp-page", mcp_page_html, "Aether-X MCP — Port Congestion Server for AI Agents"),
+    ("/m2m-keys", m2m_keys_page_html, "GP5 M2M — Chaves de Acesso & Decision Tools"),
     ("/port-congestion-api", port_congestion_api_page, "Port Congestion API — Port Risk, ETA Delay & Demurrage"),
     ("/santos-port-congestion-api", santos_port_congestion_api_page, "Santos Port Congestion API — Reference Risk & ETA"),
     ("/port-congestion-python", port_congestion_python_page, "Port Congestion API with Python — Quick Start SDK"),

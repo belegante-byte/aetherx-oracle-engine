@@ -17,7 +17,7 @@ from src.api.metrics import MetricsMiddleware, metrics_snapshot
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 import time
-from src.runtime.access import authenticate_client
+from src.runtime.access import authenticate_client, register_m2m_key
 from src.runtime.metering import record_usage
 from src.products.gp5.maritime import get_port_physical_events
 from src.products.gp5.charter_risk import evaluate_charter_risk
@@ -78,8 +78,8 @@ class RapidAPIGuard:
                 "/santos-port-congestion-api",
             }
             or path.startswith("/port-congestion-")
-            or path.startswith(("/docs", "/redoc", "/public/", "/mcp", "/v1/gp5/"))
-            or path == "/.well-known/ai-plugin.json"
+            or path.startswith(("/docs", "/redoc", "/public/", "/mcp", "/v1/gp5/", "/v1/m2m/"))
+            or path in {"/m2m-keys", "/.well-known/ai-plugin.json"}
             or bool(_re.fullmatch(r"/google[0-9a-f]{10,}\.html", path))
             or path == "/BingSiteAuth.xml"
         )
@@ -510,7 +510,7 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                     "detail": "Access denied: Decision Tools require authenticated M2M access.",
                     "access_mode": context.access_mode,
                     "required_permission": "decision.*",
-                    "hint": "Provide 'Authorization: Bearer <API_KEY>' header."
+                    "hint": "Provide 'Authorization: Bearer <API_KEY>' header. Get a 7-day M2M API Key at https://aetherx.aether-grid.io/m2m-keys"
                 }).encode("utf-8")
                 record_usage(context, product="gp5", tool=path, duration_ms=0, status_code=403)
                 from starlette.responses import Response
@@ -538,7 +538,7 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                                     "code": -32603,
                                     "message": (
                                         f"Access denied: tool '{tool_name}' requires authenticated M2M access. "
-                                        "Provide 'Authorization: Bearer <API_KEY>' header."
+                                        "Get your M2M API Key at https://aetherx.aether-grid.io/m2m-keys"
                                     ),
                                     "data": {
                                         "access_mode": context.access_mode,
@@ -676,6 +676,37 @@ def robots_txt():
 @app.get("/mcp-page", include_in_schema=False)
 def mcp_page():
     return HTMLResponse(content_pages.mcp_page_html())
+
+
+@app.get("/m2m-keys", include_in_schema=False)
+def m2m_keys_page():
+    return HTMLResponse(content_pages.m2m_keys_page_html())
+
+
+class M2MKeyRequest(BaseModel):
+    name: str
+    email: str
+    organization: str
+
+
+@app.post(
+    "/v1/m2m/request-key",
+    tags=["M2M Runtime"],
+    summary="Request a 7-day trial M2M API Key",
+    description="Generates an instant trial API key enabling Decision Tools for LLM agents and M2M clients."
+)
+def request_m2m_key(req: M2MKeyRequest):
+    try:
+        key = register_m2m_key(req.name, req.email, req.organization)
+        return {
+            "status": "success",
+            "api_key": key,
+            "access_mode": "authenticated",
+            "valid_days": 7,
+            "message": f"Key generated. Pass 'Authorization: Bearer {key}' in your M2M headers."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/port-congestion-api", include_in_schema=False)
