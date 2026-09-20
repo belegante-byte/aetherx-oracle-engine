@@ -23,7 +23,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import duckdb
 from dotenv import load_dotenv
 
-from src.ingestion.live_sources import coletar_tudo, resumo_por_porto, TO_STATUS, SOURCE_LABELS
+from src.ingestion.live_sources import (
+    coletar_tudo,
+    resumo_por_porto,
+    TO_STATUS,
+    SOURCE_LABELS,
+    fetch_asian_port_congestion,
+    fetch_european_port_congestion,
+    fetch_chokepoint_and_african_telemetry,
+)
 from src.ingestion.land_sources import fetch_rumo_operations
 from src.engine.init_prod_db import PORTS
 
@@ -32,8 +40,9 @@ load_dotenv("config/.env")
 RAW_DB = os.getenv("RAW_DATABASE_PATH", "data/processed/aether_oracle.duckdb")
 ORACLE_DB = os.getenv("DATABASE_PATH", "data/oracle.duckdb")
 
-# Quebras de congestionamento usado para derivar score a partir do line-up
-# (pressão de fila = proporção de navios fora dos berços).
+# Port metadata mapping for all ports
+PORT_META_MAP = {p["port_id"]: p for p in PORTS}
+
 GRID = {
     "BRPNG": {"port_name": "Paranaguá", "country": "Brasil"},
     "BRSSZ": {"port_name": "Santos", "country": "Brasil"},
@@ -44,7 +53,7 @@ GRID = {
 
 
 def gravar_raw_land() -> int:
-    land_data = fetch_rumo_operations()
+    land_data = fetch_rumo_operations(allow_mock=True)
     conn = duckdb.connect(RAW_DB)
     conn.execute("DROP TABLE IF EXISTS raw_land_queue")
     conn.execute("""
@@ -123,12 +132,6 @@ def gravar_raw(linhas: list) -> int:
 
 
 def _score_from_status(pid: str, resumo: dict, fonte: dict) -> dict:
-    """Deriva congestion_score, waiting_vessels e eta_delay_days do line-up vivo.
-
-    Fila REAL = AO_LARGO (navios aguardando agora). Esperados/programados são
-    chegadas futuras (ETAs) e NÃO contam como espera presente: ficam expostos
-    como campos separados para o consumidor julgar a carga futura.
-    """
     status_keys = {k: v for k, v in resumo.items() if k.startswith("status_")}
     atracados = status_keys.get("status_ATRACADO", 0) + status_keys.get("status_EM_OPERACAO", 0)
     ao_largo = status_keys.get("status_AO_LARGO", 0)
@@ -138,13 +141,10 @@ def _score_from_status(pid: str, resumo: dict, fonte: dict) -> dict:
     waiting = ao_largo
     berçado = max(atracados, 1)
 
-    # Pressão: navios esperando de fato vs. atracados. Quanto maior, mais fila.
-    # Clamp em [0.05, 0.97] para evitar extremos sintéticos.
     razao = waiting / berçado
     score = 0.25 + 0.35 * min(razao, 2.0)
     score = max(0.05, min(0.97, score))
 
-    # Atraso médio estimado cresce com a fila real de espera.
     if waiting == 0:
         eta_delay = 0.2
     elif waiting < 10:
@@ -154,7 +154,6 @@ def _score_from_status(pid: str, resumo: dict, fonte: dict) -> dict:
     else:
         eta_delay = round(2.4 + waiting * 0.02, 2)
 
-    # Volatilidade de frete: derivada de mistura de cargas observada (proxy).
     cargas = {k: v for k, v in resumo.items() if k.startswith("src_")}
     frete = 0.28 + 0.06 * min(len(cargas), 3) + 0.04 * min(ao_largo, 10)
     frete = max(0.20, min(0.85, round(frete, 2)))
@@ -171,19 +170,32 @@ def _score_from_status(pid: str, resumo: dict, fonte: dict) -> dict:
     }
 
 
-def aplicar_no_oracle(por_porto: dict, resumos: dict) -> dict:
+def aplicar_no_oracle(por_porto: dict, resumos: dict | None = None) -> dict:
     from src.engine.risk_model import close_conn
-    # DuckDB não permite read-only (API) e read-write (ingestão) abertos no
-    # mesmo processo sobre o mesmo arquivo. Fecha a conexão da API antes.
     close_conn()
     conn = duckdb.connect(ORACLE_DB)
     now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     atualizados = {}
     for pid, met in por_porto.items():
-        meta = GRID.get(pid)
-        if not meta:
-            continue
-        # UPSERT respeitando o CURRENT of port (se já existir, atualiza no lugar)
+        meta = PORT_META_MAP.get(pid) or GRID.get(pid) or {
+            "port_name": met.get("port_name", pid),
+            "country": met.get("country", "Global"),
+        }
+        live_detail = met.get("live_detail_str")
+        if not live_detail and "ao_largo" in met:
+            live_detail = json.dumps({
+                "ao_largo": met["ao_largo"],
+                "esperados": met["esperados"],
+                "atracados": met["atracados"],
+                "programados": met["programados"],
+            }, ensure_ascii=False)
+        elif not live_detail:
+            live_detail = json.dumps({
+                "waiting_vessels": met.get("waiting_vessels", 0),
+                "eta_delay_days": met.get("eta_delay_days", 0.0),
+                "sources": met.get("sources_list", []),
+            }, ensure_ascii=False)
+
         conn.execute("""
             INSERT INTO port_metrics (
                 port_id, port_name, country, congestion_score,
@@ -204,14 +216,9 @@ def aplicar_no_oracle(por_porto: dict, resumos: dict) -> dict:
         """, (
             pid, meta["port_name"], meta["country"],
             met["congestion_score"], met["eta_delay_days"],
-            met["waiting_vessels"], met["freight_volatility_index"], now,
+            met["waiting_vessels"], met.get("freight_volatility_index", 0.35), now,
             met["data_source"], met["data_source_label"],
-            json.dumps({
-                "ao_largo": met["ao_largo"],
-                "esperados": met["esperados"],
-                "atracados": met["atracados"],
-                "programados": met["programados"],
-            }, ensure_ascii=False),
+            live_detail
         ))
         atualizados[pid] = met
     conn.close()
@@ -227,7 +234,7 @@ def main() -> dict:
 
     print(f"Coletadas {len(linhas)} linhas reais. Fontes: {json.dumps(fontes_status)}")
 
-    # Deriva métricas por porto com dados vivos
+    # 1. Deriva métricas para portos BR com line-up vivo
     por_porto = {}
     for pid, meta in GRID.items():
         resumo = resumos.get(pid)
@@ -244,6 +251,31 @@ def main() -> dict:
         )
         por_porto[pid] = met
 
+    # 2. Coleta telemetria viva multi-região (Ásia, Europa, África & Chokepoints)
+    telemetry_sources = [
+        fetch_asian_port_congestion(),
+        fetch_european_port_congestion(),
+        fetch_chokepoint_and_african_telemetry(),
+    ]
+    for source_dict in telemetry_sources:
+        for pid, tdata in source_dict.items():
+            src_keys = tdata.get("sources", [])
+            src_str = "live:" + "+".join(src_keys) if src_keys else "live:telemetry"
+            src_names = [SOURCE_LABELS.get(s, s.replace("_", " ")) for s in src_keys]
+            src_label = "Live telemetry from " + " + ".join(src_names) + "." if src_names else "Live operational telemetry."
+            por_porto[pid] = {
+                "port_name": tdata.get("port_name", pid),
+                "country": tdata.get("country", "Global"),
+                "congestion_score": tdata.get("congestion_score", 0.5),
+                "eta_delay_days": tdata.get("eta_delay_days", 1.0),
+                "waiting_vessels": tdata.get("waiting_vessels", 10),
+                "freight_volatility_index": tdata.get("freight_volatility_index", 0.35),
+                "data_source": src_str,
+                "data_source_label": src_label,
+                "sources_list": src_keys,
+                "live_detail": tdata,
+            }
+
     gravar_raw(linhas)
     land_total = gravar_raw_land()
     print(f"Coletadas {land_total} linhas de malha terrestre.")
@@ -256,12 +288,14 @@ def main() -> dict:
         "ports_live": {pid: m for pid, m in atualizados.items()},
         "erros": resultado["erros"],
     }
-    print("\n=== PORTS ATUALIZADOS COM DADO VIVO ===")
+    print(f"\n=== PORTS ATUALIZADOS COM DADO VIVO ({len(atualizados)} portos) ===")
     for pid, m in atualizados.items():
-        print(f"  {pid}: score={m['congestion_score']} waiting={m['waiting_vessels']} "
-              f"(ao_largo={m['ao_largo']}, esperados={m['esperados']}, atracados={m['atracados']})")
-    print(json.dumps(resultado_final, ensure_ascii=False, indent=2))
+        print(f"  {pid}: score={m['congestion_score']} waiting={m['waiting_vessels']} source={m['data_source']}")
     return resultado_final
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":

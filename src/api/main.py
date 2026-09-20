@@ -129,9 +129,9 @@ LANDING_HTML = """<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aether-X Port Congestion Oracle</title>
-<meta name="description" content="Live port congestion signal for 19 ports: 5 Brazilian ports LIVE (4 validated against ANTAQ), 14 global ports as static reference seed. Port congestion API, vessel queue API, port delay risk API. REST API, Python SDK and MCP server.">
+<meta name="description" content="Live port congestion signal for 35 ports & global chokepoints: 18 ports LIVE with multi-region telemetry (Brasil, Asia, Europe, Africa & MENA chokepoints), 17 reference seed ports. Port congestion API, vessel queue API, port delay risk API. REST API, Python SDK and MCP server.">
 <meta property="og:title" content="Aether-X Port Congestion Oracle">
-<meta property="og:description" content="Live port congestion for 5 Brazilian ports (4 validated), 14 global ports as reference seed. Port congestion API / vessel queue API / demurrage risk signal.">
+<meta property="og:description" content="Live port congestion for 35 global ports & chokepoints (18 LIVE multi-region, 17 reference seed). Port congestion API / vessel queue API / demurrage risk signal.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://aetherx.aether-grid.io/">
 <meta name="twitter:card" content="summary">
@@ -383,7 +383,7 @@ real-time field data.
 - Python SDK: `pip install aetherx-oracle`
 - MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) — tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`
 
-**Coverage** — 19 ports. **5 LIVE (BR):** BRSSZ (conditional), BRPNG, BRRIO, BRNIT, BRITG (validated). **14 reference seed:** CNSHA, CNNGB, CNTAO, SGSIN, NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country="Global"`).
+**Coverage** — 35 ports & global chokepoints. **18 LIVE (multi-region):** BRSSZ, BRPNG, BRRIO, BRNIT, BRITG, SGSIN, CNSHA, KRPUS, JPTYO, NLRTM, DEHAM, BEANT, ITGOA, HORMUZ, PABLB, EGSUZ, ZACPT, MPTNG. **17 reference seed:** BRRGD, BRVDC, BRMAO, ARROS, ARBUE, CNTXG, CNSZX, CNTAO, CNNGB, USMSY, USHOU, USLAX, USNYC, USSEA, CAVAN, GBLGP, MXZLO. Unknown ports return a global statistical estimate (`country="Global"`).
 
 Signals are provided "AS IS" and do not constitute investment advice.
 """
@@ -393,36 +393,20 @@ mcp_http_app = build_http_app()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if os.getenv("ENABLE_LIVE_INGESTION", "0") == "1":
+    if os.getenv("ENABLE_LIVE_INGESTION", "1") == "1":
         import asyncio
-        from src.ingestion.live_sources import coletar_tudo, SOURCE_LABELS
-        from scripts.run_ingestion_live import gravar_raw, aplicar_no_oracle, resumo_por_porto, _score_from_status, GRID
+        from scripts.run_ingestion_live import main as run_ingestion
         from src.engine.risk_model import invalidate_cache
 
         async def ciclo_ingestao():
-            intervalo = int(os.getenv("LIVE_INGESTION_INTERVAL_S", "21600"))  # 6h padrão
+            intervalo = int(os.getenv("LIVE_INGESTION_INTERVAL_S", "3600"))  # 1h padrão
             while True:
                 try:
-                    res = coletar_tudo()
-                    resumos = resumo_por_porto(res.get("linhas", []))
-                    por_porto = {}
-                    for pid in GRID:
-                        r = resumos.get(pid)
-                        if r and r.get("total", 0) > 0:
-                            met = _score_from_status(pid, r, res.get("fontes", {}))
-                            fontes_usadas = sorted(k[4:] for k in r if k.startswith("src_"))
-                            met["data_source"] = "live:" + "+".join(fontes_usadas)
-                            nomes = [SOURCE_LABELS.get(f, f.replace("_", " ")) for f in fontes_usadas]
-                            met["data_source_label"] = "Live line-up from " + " + ".join(nomes) + "."
-                            por_porto[pid] = met
-                    if por_porto:
-                        gravar_raw(res.get("linhas", []))
-                        aplicar_no_oracle(por_porto, resumos)
-                        invalidate_cache()
-                        print(f"[AETHER-X INGESTION] ciclo ok: {len(res.get('linhas', []))} linhas")
+                    res = run_ingestion()
+                    invalidate_cache()
+                    print(f"[AETHER-X INGESTION] ciclo ok: {len(res.get('ports_live', {}))} portos vivos atualizados")
                     try:
-                        # Snapshot diário do oráculo (moat temporal). Fecha a conexão
-                        # read-only da API antes de abrir gravação no mesmo arquivo.
+                        # Snapshot diário do oráculo (moat temporal).
                         from scripts.snapshot_history import snapshot
                         from src.engine.risk_model import close_conn
                         close_conn()
@@ -969,10 +953,9 @@ def get_gp5_scdew(
         "Returns the current congestion signal for a port: "
         "`congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, "
         "`freight_volatility_index`, demurrage exposure and `decision_grade`. "
-        "Every response includes `data_source` and `as_of`. Coverage: 19 ports — "
-        "**5 Brazilian LIVE** (BRSSZ conditional; BRPNG, BRRIO, BRNIT, BRITG validated "
-        "against ANTAQ), **14 reference seed** (`static_reference_seed`, not live). "
-        "Unknown ports fall back "
+        "Every response includes `data_source` and `as_of`. Coverage: 35 ports & global chokepoints — "
+        "**18 LIVE multi-region ports & chokepoints** (South America, Asia, Europe, Africa & MENA), "
+        "**17 reference seed ports** (`static_reference_seed`). Unknown ports fall back "
         'to a global statistical estimate with `country="Global"`. Requests are protected '
         "by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header."
     ),

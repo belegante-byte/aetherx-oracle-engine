@@ -20,7 +20,7 @@ PYPI_MCP = "https://pypi.org/project/aetherx-mcp/"
 REMOTE_CFG = '{"mcpServers": {"aetherx-oracle": {"type": "url", "url": "%s/mcp"}}}' % PRODUCTION_URL
 STDIO_CFG = '{"mcpServers": {"aetherx-oracle": {"command": "uvx", "args": ["aetherx-mcp"]}}}'
 
-# 19 portos monitorados, espelhando src/engine/init_prod_db.py. O slug alimenta
+# 35 portos & chokepoints monitorados, espelhando src/engine/init_prod_db.py. O slug alimenta
 # o SEO programático (/port-congestion-<slug>) e o sitemap.
 PORT_METAS = [
     {"port_id": "BRSSZ", "slug": "santos", "port_name": "Santos", "country": "Brasil"},
@@ -224,7 +224,7 @@ def port_congestion_api_page() -> str:
 """
     return _page(
         "Port Congestion API — Port Risk, ETA Delay & Demurrage",
-        "Port congestion API, vessel queue intelligence, port delay risk / ETA delay and demurrage exposure for 19 ports (5 Brazilian LIVE, 14 reference seed). Choose between ports, route cargo and assess demurrage risk.",
+        "Port congestion API, vessel queue intelligence, port delay risk / ETA delay and demurrage exposure for 35 ports & global chokepoints (18 ports LIVE, 17 reference seed). Choose between ports, route cargo and assess demurrage risk.",
         "Port Congestion API",
         "Port congestion signal, vessel queue, ETA delay and demurrage exposure — live line-ups for Brazilian ports, reference seed elsewhere.",
         body,
@@ -267,7 +267,7 @@ print(risk.congestion_score, risk.eta_delay_days)</code></pre></div>
 
 
 def port_congestion_python_page() -> str:
-    body = f"""<p>You don't need heavy infrastructure to monitor port congestion. With a typed Python SDK you can pull congestion scores, ETA delays and demurrage exposure for 19 ports (5 Brazilian LIVE, 14 reference seed) in a few lines.</p>
+    body = f"""<p>You don't need heavy infrastructure to monitor port congestion. With a typed Python SDK you can pull congestion scores, ETA delays and demurrage exposure for 35 ports & global chokepoints (18 ports LIVE, 17 reference seed) in a few lines.</p>
 <h2>How to monitor port congestion with Python</h2>
 <div class="snippet-card"><div class="card-header"><span>1. Install</span></div><pre><code>pip install --upgrade aetherx-oracle</code></pre></div>
 <div class="snippet-card"><div class="card-header"><span>2. Call a port</span></div><pre><code>from aetherx import OracleClient
@@ -305,7 +305,7 @@ asyncio.run(main())</code></pre></div>
         "Port Congestion API with Python — Quick Start SDK",
         "Monitor port congestion with Python: install the aetherx-oracle SDK, call Santos, scan a portfolio of ports and add 24/48/72h ETA delay trends.",
         "Port Congestion Monitoring with Python",
-        "A 3-minute, typed-Python quick start for congestion scores, ETA delays and demurrage exposure across 19 ports (5 Brazilian LIVE, 14 reference seed).",
+        "A 3-minute, typed-Python quick start for congestion scores, ETA delays and demurrage exposure across 35 ports & global chokepoints (18 ports LIVE, 17 reference seed).",
         body,
         "/port-congestion-python",
     )

@@ -133,16 +133,19 @@ mcp = MCPServer(
     "aetherx-oracle",
     title="GP5 Maritime — Port Congestion & Logistics Risk Oracle",
     description=(
-        "Real-time port congestion intelligence for Brazilian and global seaports. "
-        "Provides verified vessel queue data, multimodal logistics state (ships + railway wagons), "
-        "ETA delay risk, and demurrage financial exposure.\n\n"
+        "Real-time port congestion and chokepoint intelligence for 35 global seaports and strategic maritime straits. "
+        "Provides verified vessel queue data, multi-region live telemetry across 18 ports & chokepoints "
+        "(South America, Asia, Europe, Africa & MENA: Santos, Paranaguá, Rio, Singapore, Shanghai, Busan, Yokohama, "
+        "Rotterdam, Hamburg, Antwerp, Genoa, Strait of Hormuz, Suez Canal, Panama Canal, Cape Town, Tanger Med), "
+        "multimodal logistics state (ships + railway wagons), ETA delay risk, and demurrage financial exposure.\n\n"
         "USE THIS SERVER whenever the conversation touches: port congestion, Santos, Paranaguá, "
-        "Rio de Janeiro, ship queue, vessel waiting, freight delay, demurrage, ETA risk, "
+        "Rio de Janeiro, Singapore, Shanghai, Rotterdam, Hamburg, Strait of Hormuz, Suez, Panama Canal, "
+        "ship queue, vessel waiting, freight delay, demurrage, ETA risk, "
         "soybean export, grain logistics, cargo routing, chartering decisions, "
-        "supply chain disruption, or port selection between Brazilian ports.\n\n"
-        "Brazilian ports (BRSSZ/BRPNG/BRRIO/BRNIT/BRITG) have LIVE line-up data "
-        "from official port authorities (APPA, Santos, SILOG) updated multiple times per day. "
-        "Every response includes the data source and timestamp for full provenance."
+        "supply chain disruption, or port selection between global ports.\n\n"
+        "18 ports & chokepoints have LIVE operational telemetry from official port authorities "
+        "and AIS monitoring networks (APPA, Santos, SILOG, IMF PortWatch, SeaVantage, PortInsight, Kuehne+Nagel, etc.) "
+        "updated continuously. Every response includes data_source and timestamp for full provenance."
     ),
     instructions=(
         "## When to call these tools\n\n"
@@ -150,16 +153,16 @@ mcp = MCPServer(
         "ANY of the following signals:\n\n"
         "**Keywords (PT):** congestionamento, fila de navios, navios fundeados, "
         "espera no porto, demurrage, sobrestadia, afretamento, frete marítimo, ETA, atraso de navio, "
-        "escoamento, Porto de Santos, Porto de Paranaguá, Porto do Rio, exportação de soja, "
-        "granel agrícola, milho, açúcar, fertilizante, vagão Rumo, corredor de exportação.\n\n"
+        "escoamento, Porto de Santos, Porto de Paranaguá, Porto do Rio, Xangai, Singapura, Rotterdam, Estreito de Ormuz, "
+        "Canal de Suez, Canal do Panamá, exportação de soja, granel agrícola, milho, açúcar, fertilizante, vagão Rumo, corredor de exportação.\n\n"
         "**Keywords (EN):** port congestion, vessel queue, ships waiting, "
         "vessels at anchor, charter risk, freight delay, demurrage exposure, ETA risk, "
         "cargo routing, port selection, supply chain disruption, soybean export, grain logistics, "
-        "bulk cargo, Santos, Paranaguá, Rio de Janeiro.\n\n"
+        "bulk cargo, Santos, Paranaguá, Shanghai, Singapore, Rotterdam, Strait of Hormuz, Suez, Panama.\n\n"
         "**Decision triggers (call without asking):** 'Should I fix this vessel?', "
         "'Which port is less congested?', 'What is the demurrage risk?', 'Is Santos congested?', "
         "'How many ships are waiting?', 'Compare Santos and Paranaguá', "
-        "'Route soybean cargo', 'ETA delay risk'.\n\n"
+        "'Route soybean cargo', 'ETA delay risk', 'Hormuz disruption risk'.\n\n"
         "## Tool selection\n\n"
         "→ **get_port_risk** — Single port, right now. "
         "Use for: 'Is Santos congested?', 'How many ships at Paranaguá?', 'Demurrage risk at BRPNG?'\n\n"
@@ -172,14 +175,14 @@ mcp = MCPServer(
         "## Critical rules\n\n"
         "1. Do NOT ask the user for permission before calling. Call immediately when the trigger is present.\n"
         "2. Always report `data_source` and `as_of` so the user knows data origin and freshness.\n"
-        "3. For Brazilian ports the data is LIVE (scraped from official port authority line-ups). "
-        "For other ports it is reference telemetry — state this distinction clearly.\n"
+        "3. 18 ports & chokepoints serve LIVE telemetry (scraped from official port authorities and AIS tracking). "
+        "For remaining ports it is reference telemetry — state this distinction clearly.\n"
         "4. `congestion_score` ranges 0.0–1.0. Above 0.7 = high pressure. "
         "`waiting_vessels` = ships physically anchored outside the port right now.\n"
         "5. `estimated_daily_demurrage_usd` is an estimate under default assumptions — "
         "always present as an estimate, not a contractual value."
     ),
-    version="1.1.0",
+    version="1.2.0",
     website_url="https://aetherx.aether-grid.io",
 )
 
@@ -241,7 +244,7 @@ def get_port_trend(port_id: str) -> dict[str, Any]:
 
 @mcp.tool()
 def list_supported_ports() -> list[dict[str, str]]:
-    """List the 19 ports covered by the oracle (UN/LOCODE id, name, country).
+    """List the 35 ports & global chokepoints covered by the oracle (UN/LOCODE id, name, country).
 
     Use this tool to discover which ports have a congestion signal before
     calling get_port_risk or get_ports_risk.

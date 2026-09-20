@@ -1,8 +1,8 @@
 # Aether-X Port Congestion Oracle
 
-> **DATA INTEGRITY NOTICE**: **Brazilian ports feed LIVE operational line-ups.** Santos (BRSSZ), Paranaguá (BRPNG) and Rio de Janeiro (BRRIO) are refreshed from APPA Paranaguá, the Porto de Santos operations panel and Lachmann schedules (`data_source="live:appa+santos+lachmann"`); Rio de Janeiro (BRRIO), Niterói (BRNIT) and Itaguaí (BRITG) come from SILOG PortosRio (`data_source="live:portosrio_silog"`), refreshed periodically in production. The remaining 14 ports serve a **reference seed** (`data_source="static_reference_seed"`). Every API/MCP response includes `data_source` and `as_of`. The 24/48/72h trend is a synthetic projection (`data_source="synthetic_projection"`), not a live forecast. Numbers from the seed are reference baselines, NOT real-time field data.
+> **DATA INTEGRITY NOTICE**: **18 ports & global chokepoints serve LIVE operational telemetry.** Brazil ports (Santos, Paranaguá, Rio, Niterói, Itaguaí), Asian hubs (Singapore, Shanghai, Busan, Tokyo/Yokohama), European hubs (Rotterdam, Hamburg, Antwerp, Genoa), African ports (Cape Town, Tanger Med), and critical straits (Hormuz, Suez Canal, Panama Canal) are refreshed continuously from 12+ live sources (`data_source="live:..."`). The remaining 17 ports serve a **reference seed** (`data_source="static_reference_seed"`). Every API/MCP response includes `data_source` and `as_of`.
 
-Congestion signals for 19 ports: **5 Brazilian ports LIVE** (4 validated: Paranaguá, Rio de Janeiro, Itaguaí, Niterói; Santos conditional — queue not publicly exposed), **14 global ports as static reference seed** (not live). Every response carries `data_source` so the consumer knows which is which. REST API, Python SDK and MCP server.
+Congestion signals for 35 ports & global chokepoints: **18 ports & chokepoints LIVE with multi-region telemetry** (South America, Asia, Europe, Africa, MENA), **17 reference seed ports**. Every response carries `data_source` so the consumer knows which is which. REST API, Python SDK and MCP server.
 
 ## When should I call Aether-X?
 
@@ -28,7 +28,7 @@ Every response includes a `signal` block with `level`, `live_observation`, `queu
 - [Example call](https://aetherx.aether-grid.io/v1/port-risk?port_id=BRSSZ): GET /v1/port-risk?port_id=BRSSZ
 - [Trend example](https://aetherx.aether-grid.io/v1/port-trend?port_id=BRSSZ): GET /v1/port-trend?port_id=BRSSZ
 - [Batch example](https://aetherx.aether-grid.io/v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM): GET /v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM
-- [Public feed (no key)](https://aetherx.aether-grid.io/public/ports): GET /public/ports — all 19 ports (BR live, others reference seed), read-only, for widgets/embeds
+- [Public feed (no key)](https://aetherx.aether-grid.io/public/ports): GET /public/ports — all 35 ports & chokepoints (18 live, 17 reference seed), read-only, for widgets/embeds
 - [Interactive docs](https://aether-x-oracle-production.up.railway.app/docs): Swagger UI
 - [RapidAPI marketplace](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle): metered plans (Free / Pro / Ultra / Mega)
 - [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)
