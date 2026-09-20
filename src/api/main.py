@@ -3,6 +3,7 @@ import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Optional
 
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +25,13 @@ from src.products.gp5.charter_risk import evaluate_charter_risk
 from src.products.gp5.routing import evaluate_routing_alternatives, evaluate_corridor_risk
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 from src.engine.verified_queue import get_verified_cargo_queue
+from src.engine.analytics import (
+    calculate_pci,
+    calculate_cdr,
+    calculate_vqpm,
+    calculate_irdi,
+    calculate_scdew,
+)
 
 PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aetherx.aether-grid.io")
 DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
@@ -876,6 +884,78 @@ def get_gp5_corridor_eval(
     try:
         res = evaluate_corridor_risk(origin_port, destination_port, commodity, vessel_capacity_tons)
         return res.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/gp5/pci",
+    tags=["GP5 High-Value Inferences"],
+    summary="Get Port Congestion Index (PCI, 0-100)",
+    description="Calculates composite Port Congestion Index (0-100) with financial impact estimates."
+)
+def get_gp5_pci(port_id: str = Query(..., example="SGSIN")):
+    try:
+        return calculate_pci(port_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/gp5/cdr",
+    tags=["GP5 High-Value Inferences"],
+    summary="Get Chokepoint Disruption Risk (CDR, 0-100)",
+    description="Calculates Chokepoint Disruption Risk index (0-100) for global straits/canals."
+)
+def get_gp5_cdr(chokepoint_id: str = Query(..., example="HORMUZ")):
+    try:
+        return calculate_cdr(chokepoint_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/gp5/vqpm",
+    tags=["GP5 High-Value Inferences"],
+    summary="Predict Vessel Queue (VQPM, t+1..t+7)",
+    description="Autoregressive vessel queue predictive model for t+1 to t+7 forecast."
+)
+def get_gp5_vqpm(
+    port_id: str = Query(..., example="CNSHA"),
+    horizon_days: int = Query(7, ge=1, le=14)
+):
+    try:
+        return calculate_vqpm(port_id, horizon_days)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/gp5/irdi",
+    tags=["GP5 High-Value Inferences"],
+    summary="Get Intermodal Rail Delay Index (IRDI, 0-100)",
+    description="Intermodal rail corridor and port hinterland rail congestion index (0-100)."
+)
+def get_gp5_irdi(identifier: str = Query(..., example="NLRTM")):
+    try:
+        return calculate_irdi(identifier)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/gp5/scdew",
+    tags=["GP5 High-Value Inferences"],
+    summary="Evaluate Supply Chain Disruption Early Warning (SCDEW, 0-100)",
+    description="Macro supply chain disruption early warning score combining PCI, CDR, VQPM, and IRDI."
+)
+def get_gp5_scdew(
+    origin_port: str = Query(..., example="BRPNG"),
+    destination_port: str = Query(..., example="CNTAO"),
+    chokepoint_id: Optional[str] = Query(None, example="HORMUZ")
+):
+    try:
+        return calculate_scdew(origin_port, destination_port, chokepoint_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

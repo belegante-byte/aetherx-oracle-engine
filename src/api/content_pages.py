@@ -57,7 +57,7 @@ PORT_METAS = [
     {"port_id": "PABLB", "slug": "panama-canal-balboa", "port_name": "Canal do Panamá / Balboa", "country": "Panamá"},
     {"port_id": "EGSUZ", "slug": "suez-canal-port-said", "port_name": "Canal de Suez / Port Said", "country": "Egito"},
     {"port_id": "ZACPT", "slug": "cape-town", "port_name": "Cape Town", "country": "África do Sul"},
-    {"port_id": "HORMUZ", "slug": "strait-of-hormuz", "port_name": "Estreito de Ormuz", "country": "Omã / Irã (Chokepoint)"},
+    {"port_id": "HORMUZ", "slug": "strait-of-hormuz", "port_name": "Strait of Hormuz", "country": "Omã / Irã (Chokepoint)"},
     {"port_id": "MXZLO", "slug": "manzanillo", "port_name": "Manzanillo", "country": "México"},
 ]
 
@@ -548,9 +548,13 @@ def demo_page_html() -> str:
         </div>
         <div class="metrics" style="margin-top:0.6rem;">
           <div class="metric"><span>Custo CFR Demurrage/ton</span><b id="resCostPerTon">$0.00 / t</b></div>
+          <div class="metric"><span>Port Congestion Index (PCI)</span><b id="resPciScore" style="color:#e6edf3;">-- / 100</b></div>
+          <div class="metric"><span>SC Early Warning (SCDEW)</span><b id="resScdewScore" style="color:#e6edf3;">-- / 100</b></div>
           <div class="metric"><span>Nível de Risco</span><b id="resRiskBadge" style="color:#3fb950;">BAIXO</b></div>
+        </div>
+        <div class="metrics" style="margin-top:0.6rem;">
           <div class="metric"><span>Status da Carga</span><b>UNMEASURED_DWT_CAPACITY_ONLY</b></div>
-          <div class="metric"><span>Proveniência</span><b>live:appa+santos+lachmann</b></div>
+          <div class="metric"><span>Proveniência Telemetria</span><b>live:appa+santos+lachmann+portinsight+straittraffic</b></div>
         </div>
       </div>
 
@@ -561,7 +565,7 @@ def demo_page_html() -> str:
     </div>
 
     <h2>Código de Exemplo no seu Agente LLM / Python</h2>
-    <div class="snippet-card"><div class="card-header"><span>Python M2M Request (evaluate_corridor_risk)</span></div><pre><code>import requests
+    <div class="snippet-card"><div class="card-header"><span>Python M2M Request (evaluate_corridor_risk & get_pci_index)</span></div><pre><code>import requests
 
 headers = {{"Authorization": "Bearer YOUR_M2M_API_KEY"}}
 payload = {{
@@ -571,8 +575,13 @@ payload = {{
     "vessel_capacity_tons": 60000
 }}
 
-response = requests.post("https://aetherx.aether-grid.io/v1/gp5/evaluate-corridor", json=payload, headers=headers)
-print(response.json())</code></pre></div>
+# Endpoint REST de Corredor Global GP5
+res = requests.post("https://aetherx.aether-grid.io/v1/gp5/evaluate-corridor", json=payload, headers=headers)
+print("Corridor Risk:", res.json())
+
+# Endpoint REST de Port Congestion Index (PCI)
+pci_res = requests.get("https://aetherx.aether-grid.io/v1/gp5/pci?port_id=BRPNG", headers=headers)
+print("PCI Score:", pci_res.json())</code></pre></div>
 
     <script>
     const TRANSIT_MATRIX = {{
@@ -604,11 +613,16 @@ print(response.json())</code></pre></div>
       const demurrageUsd = Math.round(excessDays * rate);
       const costPerTon = (demurrageUsd / dwt).toFixed(2);
 
+      const pciScore = Math.min(100, Math.round((originWait / 5.0) * 80 + 15));
+      const scdewScore = Math.min(100, Math.round(pciScore * 0.7 + (transit > 25 ? 20 : 10)));
+
       document.getElementById('resOriginWait').innerText = originWait.toFixed(1) + ' dias';
       document.getElementById('resTransit').innerText = transit + ' dias';
       document.getElementById('resTotalCycle').innerText = totalCycle + ' dias';
       document.getElementById('resDemurrageUsd').innerText = '$' + demurrageUsd.toLocaleString();
       document.getElementById('resCostPerTon').innerText = '$' + costPerTon + ' / t';
+      document.getElementById('resPciScore').innerText = pciScore + ' / 100';
+      document.getElementById('resScdewScore').innerText = scdewScore + ' / 100';
 
       const badge = document.getElementById('resRiskBadge');
       if (demurrageUsd > 60000) {{

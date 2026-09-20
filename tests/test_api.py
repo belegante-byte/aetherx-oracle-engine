@@ -51,10 +51,11 @@ def test_content_pages_are_public_and_render():
 
 
 def test_sitemap_lists_all_content_pages():
+    from src.api.content_pages import PAGES, PORT_METAS
     resp = client.get("/sitemap.xml")
     assert resp.status_code == 200
     assert "application/xml" in resp.headers["content-type"]
-    assert resp.text.count("<url>") == 24
+    assert resp.text.count("<url>") == 1 + len(PAGES) + len(PORT_METAS)
 
 
 def test_robots_txt():
@@ -277,14 +278,14 @@ def test_guard_exempts_mcp():
 
 
 def test_ports_risk_batch():
-    resp = client.get("/v1/ports-risk", params={"port_ids": "brssz,CNSHA,NLRTM"})
+    resp = client.get("/v1/ports-risk", params={"port_ids": "brssz,CNSHA,AEDXB"})
     assert resp.status_code == 200
     body = resp.json()
-    assert [r["port_id"] for r in body["results"]] == ["BRSSZ", "CNSHA", "NLRTM"]
+    assert [r["port_id"] for r in body["results"]] == ["BRSSZ", "CNSHA", "AEDXB"]
     assert body["results"][0]["estimated_daily_demurrage_usd"] > 0
-    # BRSSZ vivo; demais seguem o seed de referência.
+    # BRSSZ e CNSHA possuem fontes vivas; AEDXB segue o seed de referência.
     assert body["results"][0]["data_source"].startswith("live:")
-    assert body["results"][1]["data_source"] == "static_reference_seed"
+    assert body["results"][1]["data_source"].startswith("live:")
     assert body["results"][2]["data_source"] == "static_reference_seed"
 
 
@@ -353,12 +354,13 @@ def test_internal_metrics_returns_snapshot():
 
 
 def test_public_ports_feed():
+    from src.api.content_pages import PORT_METAS
     pub = TestClient(app)
     resp = pub.get("/public/ports")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["count"] == 19
-    assert len(body["results"]) == 19
+    assert body["count"] == len(PORT_METAS)
+    assert len(body["results"]) == len(PORT_METAS)
     first = body["results"][0]
     for key in (
         "port_id", "port_name", "country", "congestion_score",
@@ -367,7 +369,7 @@ def test_public_ports_feed():
         "data_source", "data_source_label",
     ):
         assert key in first
-    # Feed é misto: portos BR vivos + seed de referência para os demais.
+    # Feed é misto: portos vivos + seed de referência para os demais.
     data_sources = {r["data_source"] for r in body["results"]}
     assert "static_reference_seed" in data_sources
     assert any(ds.startswith("live:") for ds in data_sources)
@@ -631,6 +633,6 @@ def test_decision_grade_honest_per_port():
     data = calculate_port_risk("BRPNG")
     assert data["decision_grade"] == "decision"
     assert data["data_source"].startswith("live:")
-    ref = calculate_port_risk("CNSHA")
+    ref = calculate_port_risk("AEDXB")
     assert ref["decision_grade"] == "reference"
     assert ref["data_source"] == "static_reference_seed"

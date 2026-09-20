@@ -374,6 +374,91 @@ def evaluate_corridor_risk(
     )
 
 
+# ─── HIGH-VALUE ECONOMIC STATISTICAL INFERENCE TOOLS ─────────────────────────
+
+@mcp.tool()
+def get_pci_index(port_id: str) -> dict[str, Any]:
+    """[INFERENCE TOOL] Calculate Port Congestion Index (PCI, 0-100 composite score).
+
+    PCI = (Congestion Level × 0.4) + (Avg Delay × 0.3) + (Vessel Queue × 0.2) + (Berth Use × 0.1).
+    Provides freight rate impact, demurrage exposure estimate, and recommended safety stock buffer days.
+
+    Args:
+        port_id: UN/LOCODE e.g. "BRSSZ" (Santos), "SGSIN" (Singapore), "NLRTM" (Rotterdam).
+    """
+    from src.engine.analytics import calculate_pci
+    return _run_tool(lambda **kw: calculate_pci(str(kw["port_id"]).strip().upper()), "get_pci_index", port_id=port_id)
+
+
+@mcp.tool()
+def get_cdr_risk(chokepoint_id: str = "HORMUZ") -> dict[str, Any]:
+    """[INFERENCE TOOL] Calculate Chokepoint Disruption Risk (CDR, 0-100 risk score).
+
+    CDR = (Risk Score × 0.4) + (% of Normal × 0.3) + (7-day Avg × 0.2) + (Diversion Tracking × 0.1).
+    Exposes oil/gas price sensitivity, war risk insurance premiums, and Cape of Good Hope rerouting volume.
+
+    Args:
+        chokepoint_id: Chokepoint ID e.g. "HORMUZ", "EGSUZ" (Suez), "PABLB" (Panama).
+    """
+    from src.engine.analytics import calculate_cdr
+    return _run_tool(lambda **kw: calculate_cdr(str(kw["chokepoint_id"]).strip().upper()), "get_cdr_risk", chokepoint_id=chokepoint_id)
+
+
+@mcp.tool()
+def predict_vessel_queue(port_id: str, forecast_horizon_days: int = 1) -> dict[str, Any]:
+    """[INFERENCE TOOL] Vessel Queue Predictive Model (VQPM) for t+1 to t+7.
+
+    VQPM_{t+1} = α × VQ_t + β × PCI_t + γ × CDR_t + δ × Seasonality.
+
+    Args:
+        port_id: UN/LOCODE e.g. "BRSSZ" (Santos), "BRPNG" (Paranaguá).
+        forecast_horizon_days: Horizon in days (1 to 7, default: 1).
+    """
+    from src.engine.analytics import calculate_vqpm
+    return _run_tool(lambda **kw: calculate_vqpm(str(kw["port_id"]).strip().upper(), int(kw.get("forecast_horizon_days", 1))), "predict_vessel_queue", port_id=port_id)
+
+
+@mcp.tool()
+def get_irdi_index(port_or_corridor_id: str = "NLRTM") -> dict[str, Any]:
+    """[INFERENCE TOOL] Calculate Intermodal Rail Delay Index (IRDI, 0-100 score).
+
+    IRDI = (Avg Delay × 0.4) + (Delays % × 0.3) + (Timetables × 0.2) + (Rolling Stock × 0.1).
+
+    Args:
+        port_or_corridor_id: UN/LOCODE e.g. "NLRTM" (Rotterdam), "DEHAM" (Hamburg).
+    """
+    from src.engine.analytics import calculate_irdi
+    return _run_tool(lambda **kw: calculate_irdi(str(kw["port_or_corridor_id"]).strip().upper()), "get_irdi_index", port_id=port_or_corridor_id)
+
+
+@mcp.tool()
+def evaluate_scdew_warning(
+    origin_port: str = "BRPNG",
+    destination_port: str = "CNTAO",
+    chokepoint_id: str = "HORMUZ"
+) -> dict[str, Any]:
+    """[INFERENCE TOOL] Supply Chain Disruption Early Warning (SCDEW, 0-100 composite warning score).
+
+    SCDEW = (PCI × 0.3) + (CDR × 0.3) + (VQPM × 0.2) + (IRDI × 0.2).
+
+    Args:
+        origin_port: Export port UN/LOCODE e.g. "BRPNG", "BRSSZ".
+        destination_port: Import port UN/LOCODE e.g. "CNTAO", "NLRTM".
+        chokepoint_id: Intermediary chokepoint UN/LOCODE e.g. "HORMUZ", "EGSUZ".
+    """
+    from src.engine.analytics import calculate_scdew
+    return _run_tool(
+        lambda **kw: calculate_scdew(
+            str(kw.get("origin_port", "BRPNG")).strip().upper(),
+            str(kw.get("destination_port", "CNTAO")).strip().upper(),
+            str(kw.get("chokepoint_id", "HORMUZ")).strip().upper()
+        ),
+        "evaluate_scdew_warning",
+        port_id=origin_port
+    )
+
+
+
 def build_http_app():
     """Return the Streamable HTTP ASGI app serving the MCP endpoint at ``/mcp``."""
     return mcp.streamable_http_app(
