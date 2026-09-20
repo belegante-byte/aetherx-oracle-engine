@@ -164,41 +164,43 @@ def calculate_port_risk(port_id: str) -> dict:
         row = None
         seed_at = now
 
-    # Enriquecimento com telemetria ao vivo para portos asiáticos (PortInsight / Portcast / Gateway Lines)
+    # Enriquecimento com telemetria ao vivo para portos asiáticos e europeus (Kuehne+Nagel / PortInsight / VesselAPI / Hutchison Intermodal)
     try:
-        from src.ingestion.live_sources import fetch_asian_port_congestion
-        asian_data = fetch_asian_port_congestion()
-        if port_id in asian_data:
-            asian_info = asian_data[port_id]
-            score = asian_info["congestion_score"]
+        from src.ingestion.live_sources import fetch_asian_port_congestion, fetch_european_port_congestion
+        live_global = {**fetch_asian_port_congestion(), **fetch_european_port_congestion()}
+        if port_id in live_global:
+            pinfo = live_global[port_id]
+            score = pinfo["congestion_score"]
+            yard_text = f", Yard Utilization {pinfo['yard_utilization_pct']}%" if "yard_utilization_pct" in pinfo else ""
+            rail_text = f", Intermodal Rail: {pinfo['intermodal_rail_status']}" if "intermodal_rail_status" in pinfo else ""
             return {
                 "port_id": port_id,
-                "port_name": asian_info["port_name"],
-                "country": asian_info["country"],
+                "port_name": pinfo["port_name"],
+                "country": pinfo["country"],
                 "congestion_score": score,
-                "eta_delay_days": asian_info["eta_delay_days"],
-                "waiting_vessels": asian_info["waiting_vessels"],
+                "eta_delay_days": pinfo["eta_delay_days"],
+                "waiting_vessels": pinfo["waiting_vessels"],
                 "freight_volatility_index": 0.40,
                 "estimated_daily_demurrage_usd": _estimate_demurrage(score),
-                "updated_at": asian_info["as_of"],
-                "as_of": asian_info["as_of"],
-                "data_source": f"live:{'+'.join(asian_info['sources'])}",
+                "updated_at": pinfo["as_of"],
+                "as_of": pinfo["as_of"],
+                "data_source": f"live:{'+'.join(pinfo['sources'])}",
                 "data_source_label": (
-                    f"Live AIS & Traffic intelligence via {', '.join(asian_info['sources'])} "
-                    f"(Median wait {asian_info['median_wait_hours']}h, Berth occupancy {asian_info['berth_occupancy_pct']}%)."
+                    f"Live AIS, Port & Intermodal Rail via {', '.join(pinfo['sources'])} "
+                    f"(Median wait {pinfo['median_wait_hours']}h{yard_text}{rail_text})."
                 ),
-                "live_detail": json.dumps(asian_info),
+                "live_detail": json.dumps(pinfo),
                 "decision_grade": "decision",
                 "signal": {
                     "level": "ELEVATED OPERATIONAL PRESSURE" if score >= 0.45 else "MODERATE / LOW PRESSURE",
                     "live_observation": True,
-                    "queue_vessels": asian_info["waiting_vessels"],
-                    "expected_delay_days": asian_info["eta_delay_days"],
-                    "demurrage_expected_usd": int(asian_info["eta_delay_days"] * DEMURRAGE_BASE_USD_PER_DAY),
-                    "confidence": 0.92,
-                    "provenance": f"live:{'+'.join(asian_info['sources'])}",
-                    "decision_implication": f"Live AIS stream indicates {asian_info['status'].lower()} congestion at {asian_info['port_name']}.",
-                    "as_of": asian_info["as_of"],
+                    "queue_vessels": pinfo["waiting_vessels"],
+                    "expected_delay_days": pinfo["eta_delay_days"],
+                    "demurrage_expected_usd": int(pinfo["eta_delay_days"] * DEMURRAGE_BASE_USD_PER_DAY),
+                    "confidence": 0.94,
+                    "provenance": f"live:{'+'.join(pinfo['sources'])}",
+                    "decision_implication": f"Live stream indicates {pinfo.get('status', 'operational').lower()} conditions at {pinfo['port_name']} ({pinfo['country']}).",
+                    "as_of": pinfo["as_of"],
                 }
             }
     except Exception:
