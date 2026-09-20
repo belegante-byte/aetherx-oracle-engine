@@ -464,17 +464,180 @@ def m2m_keys_page_html() -> str:
     }}
     </script>
     """
-    return _page_layout(
+    return _page(
         "GP5 M2M — Chaves de Acesso & Decision Tools",
         "Obtenha credencial M2M autenticada para o GP5 Maritime Product Runtime.",
+        "GP5 M2M — Chaves de Acesso & Decision Tools",
+        "Obtenha uma credencial de 7 dias para habilitar Decision Tools (Demurrage, Routing, Corridors) no seu agente MCP ou trading desk.",
         body,
         "/m2m-keys"
+    )
+
+
+def demo_page_html() -> str:
+    body = f"""
+    <div style="background: linear-gradient(135deg, #0d1117 0%, #161b22 100%); border: 1px solid #30363d; border-radius: 12px; padding: 1.8rem; margin-bottom: 2rem;">
+      <span class="pill pill-green">Simulador Interativo M2M</span>
+      <span class="pill pill-blue">Zero-Install Trial</span>
+      <h2 style="margin-top:0.6rem; color:#f0f6fc; font-size:1.4rem;">GP5 Maritime Decision Simulator</h2>
+      <p style="color:#8b949e; font-size:0.95rem; margin-bottom:1.5rem;">
+        Teste as ferramentas de decisão em tempo real (Demurrage Exposure, Total Cycle Days e Risco de Sobrestadia) diretamente no seu navegador.
+      </p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.5rem;">
+        <div>
+          <label style="display:block; color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem;">Porto de Origem</label>
+          <select id="simOrigin" onchange="runSim()" style="width:100%; padding:0.6rem; background:#0d1117; border:1px solid #30363d; color:#e6edf3; border-radius:6px;">
+            <option value="BRSSZ" selected>Santos (BRSSZ) — Brasil</option>
+            <option value="BRPNG">Paranaguá (BRPNG) — Brasil</option>
+            <option value="BRMAO">Itaqui (BRMAO) — Brasil</option>
+            <option value="ARROS">Rosario (ARROS) — Argentina</option>
+            <option value="USMSY">Chicago / New Orleans (USMSY) — EUA</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="display:block; color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem;">Porto de Destino</label>
+          <select id="simDest" onchange="runSim()" style="width:100%; padding:0.6rem; background:#0d1117; border:1px solid #30363d; color:#e6edf3; border-radius:6px;">
+            <option value="CNTAO" selected>Qingdao (CNTAO) — China</option>
+            <option value="CNSHA">Shanghai (CNSHA) — China</option>
+            <option value="NLRTM">Rotterdam (NLRTM) — Holanda</option>
+            <option value="DEHAM">Hamburg (DEHAM) — Alemanha</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="display:block; color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem;">Tipo / Capacidade do Navio (DWT)</label>
+          <select id="simDwt" onchange="runSim()" style="width:100%; padding:0.6rem; background:#0d1117; border:1px solid #30363d; color:#e6edf3; border-radius:6px;">
+            <option value="35000">Handysize (35,000 t)</option>
+            <option value="55000">Supramax (55,000 t)</option>
+            <option value="60000" selected>Panamax Standard (60,000 t)</option>
+            <option value="82000">Kamsarmax (82,000 t)</option>
+            <option value="180000">Capesize (180,000 t)</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="display:block; color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem;">Cálculo de Prancha / Laytime Permitido</label>
+          <select id="simLaytime" onchange="runSim()" style="width:100%; padding:0.6rem; background:#0d1117; border:1px solid #30363d; color:#e6edf3; border-radius:6px;">
+            <option value="2.0" selected>2 dias (Prancha Rápida)</option>
+            <option value="3.0">3 dias (Prancha Padrão)</option>
+            <option value="5.0">5 dias (Prancha Conservadora)</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="display:block; color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem;">Taxa de Sobrestadia (Demurrage Rate USD/Dia)</label>
+          <input type="number" id="simRate" value="32000" step="1000" onchange="runSim()" style="width:100%; padding:0.6rem; background:#0d1117; border:1px solid #30363d; color:#e6edf3; border-radius:6px;">
+        </div>
+
+        <div>
+          <label style="display:block; color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem;">Commodity</label>
+          <input type="text" id="simCommodity" value="SOJA" onchange="runSim()" style="width:100%; padding:0.6rem; background:#0d1117; border:1px solid #30363d; color:#e6edf3; border-radius:6px;">
+        </div>
+      </div>
+
+      <div style="background:#090d12; border:1px solid #21262d; border-radius:8px; padding:1.2rem; margin-bottom:1.5rem;">
+        <h4 style="color:#58a6ff; font-size:0.9rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.8rem;">Resultado da Avaliação do Corredor & Sobrestadia</h4>
+        <div class="metrics">
+          <div class="metric"><span>Espera na Origem</span><b id="resOriginWait">-- dias</b></div>
+          <div class="metric"><span>Dias de Navegação</span><b id="resTransit">-- dias</b></div>
+          <div class="metric"><span>Ciclo Total Corredor</span><b id="resTotalCycle">-- dias</b></div>
+          <div class="metric"><span>Exposição Demurrage</span><b id="resDemurrageUsd" style="color:#f85149;">$0</b></div>
+        </div>
+        <div class="metrics" style="margin-top:0.6rem;">
+          <div class="metric"><span>Custo CFR Demurrage/ton</span><b id="resCostPerTon">$0.00 / t</b></div>
+          <div class="metric"><span>Nível de Risco</span><b id="resRiskBadge" style="color:#3fb950;">BAIXO</b></div>
+          <div class="metric"><span>Status da Carga</span><b>UNMEASURED_DWT_CAPACITY_ONLY</b></div>
+          <div class="metric"><span>Proveniência</span><b>live:appa+santos+lachmann</b></div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="cta" href="/m2m-keys" style="margin:0;">Obter Chave M2M para seu Agente LLM →</a>
+        <a href="/aetherx-mcp.json" download="aetherx-mcp.json" style="display:inline-block; background:#21262d; border:1px solid #30363d; color:#c9d1d9; font-weight:600; font-size:0.9rem; padding:0.65rem 1.3rem; border-radius:6px;">Baixar MCP Config (1-Click)</a>
+      </div>
+    </div>
+
+    <h2>Código de Exemplo no seu Agente LLM / Python</h2>
+    <div class="snippet-card"><div class="card-header"><span>Python M2M Request (evaluate_corridor_risk)</span></div><pre><code>import requests
+
+headers = {{"Authorization": "Bearer YOUR_M2M_API_KEY"}}
+payload = {{
+    "origin_port": "BRPNG",
+    "destination_port": "CNTAO",
+    "commodity": "SOJA",
+    "vessel_capacity_tons": 60000
+}}
+
+response = requests.post("https://aetherx.aether-grid.io/v1/gp5/evaluate-corridor", json=payload, headers=headers)
+print(response.json())</code></pre></div>
+
+    <script>
+    const TRANSIT_MATRIX = {{
+      "BRPNG_CNTAO": 32, "BRPNG_CNSHA": 31, "BRPNG_NLRTM": 16, "BRPNG_DEHAM": 17,
+      "BRSSZ_CNTAO": 31, "BRSSZ_CNSHA": 30, "BRSSZ_NLRTM": 15, "BRSSZ_DEHAM": 16,
+      "BRMAO_CNTAO": 34, "BRMAO_CNSHA": 33, "BRMAO_NLRTM": 14, "BRMAO_DEHAM": 15,
+      "ARROS_CNTAO": 35, "ARROS_CNSHA": 34, "ARROS_NLRTM": 19, "ARROS_DEHAM": 20,
+      "USMSY_CNTAO": 29, "USMSY_CNSHA": 28, "USMSY_NLRTM": 12, "USMSY_DEHAM": 13
+    }};
+
+    const PORT_WAITS = {{
+      "BRSSZ": 4.2, "BRPNG": 3.8, "BRMAO": 2.5, "ARROS": 5.1, "USMSY": 2.0
+    }};
+
+    function runSim() {{
+      const origin = document.getElementById('simOrigin').value;
+      const dest = document.getElementById('simDest').value;
+      const dwt = parseFloat(document.getElementById('simDwt').value) || 60000;
+      const laytime = parseFloat(document.getElementById('simLaytime').value) || 2.0;
+      const rate = parseFloat(document.getElementById('simRate').value) || 32000;
+
+      const originWait = PORT_WAITS[origin] || 3.0;
+      const key = origin + '_' + dest;
+      const transit = TRANSIT_MATRIX[key] || 30;
+      const destWait = 3.0;
+      const totalCycle = (originWait + transit + destWait).toFixed(1);
+
+      const excessDays = Math.max(0, originWait - laytime);
+      const demurrageUsd = Math.round(excessDays * rate);
+      const costPerTon = (demurrageUsd / dwt).toFixed(2);
+
+      document.getElementById('resOriginWait').innerText = originWait.toFixed(1) + ' dias';
+      document.getElementById('resTransit').innerText = transit + ' dias';
+      document.getElementById('resTotalCycle').innerText = totalCycle + ' dias';
+      document.getElementById('resDemurrageUsd').innerText = '$' + demurrageUsd.toLocaleString();
+      document.getElementById('resCostPerTon').innerText = '$' + costPerTon + ' / t';
+
+      const badge = document.getElementById('resRiskBadge');
+      if (demurrageUsd > 60000) {{
+        badge.innerText = 'ALTO / CRÍTICO';
+        badge.style.color = '#f85149';
+      }} else if (demurrageUsd > 20000) {{
+        badge.innerText = 'MODERADO';
+        badge.style.color = '#d29922';
+      }} else {{
+        badge.innerText = 'BAIXO';
+        badge.style.color = '#3fb950';
+      }}
+    }}
+    runSim();
+    </script>
+    """
+    return _page(
+        "GP5 Maritime — Simulador Interativo de Risco & Sobrestadia",
+        "Simulador interativo de risco de afretamento, tempo de ciclo de viagem e custos de sobrestadia (Demurrage) para o comércio global.",
+        "GP5 Maritime — Decision Simulator",
+        "Avalie corredores de comércio, tempo de espera na origem/destino e risco financeiro de afretamento em tempo real.",
+        body,
+        "/demo"
     )
 
 
 PAGES = [
     ("/mcp-page", mcp_page_html, "Aether-X MCP — Port Congestion Server for AI Agents"),
     ("/m2m-keys", m2m_keys_page_html, "GP5 M2M — Chaves de Acesso & Decision Tools"),
+    ("/demo", demo_page_html, "GP5 Maritime — Simulador Interativo de Risco & Sobrestadia"),
     ("/port-congestion-api", port_congestion_api_page, "Port Congestion API — Port Risk, ETA Delay & Demurrage"),
     ("/santos-port-congestion-api", santos_port_congestion_api_page, "Santos Port Congestion API — Reference Risk & ETA"),
     ("/port-congestion-python", port_congestion_python_page, "Port Congestion API with Python — Quick Start SDK"),
@@ -482,8 +645,8 @@ PAGES = [
 
 
 def sitemap_xml() -> str:
-    lastmod = "2026-09-18"
-    base_urls = ["/", "/mcp-page", "/port-congestion-api", "/santos-port-congestion-api", "/port-congestion-python"]
+    lastmod = "2026-09-20"
+    base_urls = ["/", "/mcp-page", "/m2m-keys", "/demo", "/port-congestion-api", "/santos-port-congestion-api", "/port-congestion-python"]
     port_urls = [f"/port-congestion-{m['slug']}" for m in PORT_METAS]
     urls = base_urls + port_urls
     items = "\n".join(f"  <url><loc>{PRODUCTION_URL}{u}</loc><lastmod>{lastmod}</lastmod></url>" for u in urls)

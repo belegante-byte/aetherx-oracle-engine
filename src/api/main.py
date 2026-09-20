@@ -79,7 +79,7 @@ class RapidAPIGuard:
             }
             or path.startswith("/port-congestion-")
             or path.startswith(("/docs", "/redoc", "/public/", "/mcp", "/v1/gp5/", "/v1/m2m/"))
-            or path in {"/m2m-keys", "/.well-known/ai-plugin.json"}
+            or path in {"/m2m-keys", "/demo", "/aetherx-mcp.json", "/.well-known/ai-plugin.json"}
             or bool(_re.fullmatch(r"/google[0-9a-f]{10,}\.html", path))
             or path == "/BingSiteAuth.xml"
         )
@@ -683,6 +683,29 @@ def mcp_page():
 @app.get("/m2m-keys", include_in_schema=False)
 def m2m_keys_page():
     return HTMLResponse(content_pages.m2m_keys_page_html())
+
+
+@app.get("/demo", include_in_schema=False)
+def demo_page():
+    return HTMLResponse(content_pages.demo_page_html())
+
+
+@app.get("/aetherx-mcp.json", include_in_schema=False)
+def get_mcp_config_json():
+    config = {
+        "mcpServers": {
+            "aetherx-oracle": {
+                "command": "uvx",
+                "args": ["aetherx-mcp"]
+            },
+            "aetherx-oracle-remote": {
+                "type": "url",
+                "url": f"{PRODUCTION_URL}/mcp"
+            }
+        }
+    }
+    return JSONResponse(content=config, media_type="application/json")
+
 
 
 class M2MKeyRequest(BaseModel):

@@ -12,3 +12,13 @@ data/metrics_state.json
 data/tower_history.jsonl
 data/tower_local_state.json
 data/gp5_docs/connectors/
+*.dmg
+*.zip
+BKP_GP5_PC/
+GP5_*/
+*.png
+physical_events.json
+scratch/
+AETHER-X*.md
+
+
