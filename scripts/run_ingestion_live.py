@@ -24,6 +24,7 @@ import duckdb
 from dotenv import load_dotenv
 
 from src.ingestion.live_sources import coletar_tudo, resumo_por_porto, TO_STATUS, SOURCE_LABELS
+from src.ingestion.land_sources import fetch_rumo_operations
 from src.engine.init_prod_db import PORTS
 
 
@@ -40,6 +41,45 @@ GRID = {
     "BRNIT": {"port_name": "Niterói", "country": "Brasil"},
     "BRITG": {"port_name": "Itaguaí", "country": "Brasil"},
 }
+
+
+def gravar_raw_land() -> int:
+    land_data = fetch_rumo_operations()
+    conn = duckdb.connect(RAW_DB)
+    conn.execute("DROP TABLE IF EXISTS raw_land_queue")
+    conn.execute("""
+        CREATE TABLE raw_land_queue (
+            train_id VARCHAR,
+            port_id VARCHAR,
+            terminal VARCHAR,
+            commodity VARCHAR,
+            wagons INTEGER,
+            status VARCHAR,
+            source VARCHAR,
+            ingested_at TIMESTAMP
+        )
+    """)
+    
+    data = []
+    for r in land_data:
+        data.append((
+            r.get("train_id"),
+            r.get("port_id"),
+            r.get("terminal"),
+            r.get("commodity"),
+            r.get("wagons", 0),
+            r.get("status"),
+            r.get("source"),
+            r.get("ingested_at"),
+        ))
+        
+    if data:
+        conn.executemany(
+            "INSERT INTO raw_land_queue VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data
+        )
+    total = conn.execute("SELECT COUNT(*) FROM raw_land_queue").fetchone()[0]
+    conn.close()
+    return total
 
 
 def gravar_raw(linhas: list) -> int:
@@ -73,9 +113,10 @@ def gravar_raw(linhas: list) -> int:
             r.get("dwt", 0.0),
             r.get("ingested_at"),
         ))
-    conn.executemany(
-        "INSERT INTO raw_port_lineup VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data
-    )
+    if data:
+        conn.executemany(
+            "INSERT INTO raw_port_lineup VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data
+        )
     total = conn.execute("SELECT COUNT(*) FROM raw_port_lineup").fetchone()[0]
     conn.close()
     return total
@@ -204,6 +245,8 @@ def main() -> dict:
         por_porto[pid] = met
 
     gravar_raw(linhas)
+    land_total = gravar_raw_land()
+    print(f"Coletadas {land_total} linhas de malha terrestre.")
     atualizados = aplicar_no_oracle(por_porto, resumos)
 
     resultado_final = {

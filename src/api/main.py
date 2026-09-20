@@ -14,7 +14,16 @@ from src.api.mcp_app import mcp as mcp_server
 from src.api import content_pages
 from src.api.content_pages import PORT_METAS, _SLUG_MAP
 from src.api.metrics import MetricsMiddleware, metrics_snapshot
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+import time
+from src.runtime.access import authenticate_client
+from src.runtime.metering import record_usage
+from src.products.gp5.maritime import get_port_physical_events
+from src.products.gp5.charter_risk import evaluate_charter_risk
+from src.products.gp5.routing import evaluate_routing_alternatives
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
+from src.engine.verified_queue import get_verified_cargo_queue
 
 PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aetherx.aether-grid.io")
 DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
@@ -69,7 +78,7 @@ class RapidAPIGuard:
                 "/santos-port-congestion-api",
             }
             or path.startswith("/port-congestion-")
-            or path.startswith(("/docs", "/redoc", "/mcp", "/public/"))
+            or path.startswith(("/docs", "/redoc", "/public/"))
             or path == "/.well-known/ai-plugin.json"
             or bool(_re.fullmatch(r"/google[0-9a-f]{10,}\.html", path))
             or path == "/BingSiteAuth.xml"
@@ -324,6 +333,20 @@ class PortsRiskResponse(BaseModel):
     results: list[PortRiskResponse]
 
 
+class VerifiedQueueResponse(BaseModel):
+    port_id: str
+    signal: str
+    pressure_level: str
+    waiting_vessels: int
+    cargo_distribution: dict
+    total_waiting_dwt: float
+    land_operations: dict | None = None
+    total_wagons_waiting: int = 0
+    evidence: str
+    sources: list[str] = []
+    as_of: str | None = None
+
+
 API_DESCRIPTION = """Port congestion reference signals for global trade, supply chain and quantitative finance.
 
 **IMPORTANT · Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.
@@ -445,6 +468,111 @@ app = FastAPI(
     ],
 )
 
+class M2MGatewayMiddleware(BaseHTTPMiddleware):
+    """M2M Product Runtime gateway.
+
+    Responsabilidades:
+      - Autenticar o cliente (authenticate_client)
+      - Classificar access_mode (legacy | authenticated)
+      - Criar ClientContext com permissões corretas
+      - Aplicar boundary de permissão nas Decision Tool routes (REST + MCP)
+      - Registrar UsageEvent (telemetria)
+
+    Não contém regras de GP5, commodities ou domínio de negócio.
+    """
+
+    # Rotas REST que requerem decision.*
+    DECISION_ROUTES: tuple[str, ...] = (
+        "/v1/gp5/charter-risk",
+        "/v1/gp5/routing-eval",
+        "/v1/gp5/port-exposure",
+    )
+
+    # Tools MCP que requerem decision.*
+    DECISION_MCP_TOOLS: frozenset[str] = frozenset({
+        "evaluate_charter_risk",
+        "evaluate_routing_alternatives",
+        "compare_port_exposure",
+    })
+
+    async def dispatch(self, request: Request, call_next):
+        t0 = time.monotonic()
+        auth_header = request.headers.get("authorization")
+        context = authenticate_client(auth_header, product="gp5")
+        request.state.client_context = context
+
+        path = request.url.path
+
+        # ── 1. Boundary: Decision REST routes ─────────────────────────────────
+        if any(path.startswith(route) for route in self.DECISION_ROUTES):
+            if not context.has_permission("decision.*"):
+                body = json.dumps({
+                    "detail": "Access denied: Decision Tools require authenticated M2M access.",
+                    "access_mode": context.access_mode,
+                    "required_permission": "decision.*",
+                    "hint": "Provide 'Authorization: Bearer <API_KEY>' header."
+                }).encode("utf-8")
+                record_usage(context, product="gp5", tool=path, duration_ms=0, status_code=403)
+                from starlette.responses import Response
+                return Response(content=body, status_code=403, media_type="application/json")
+
+        # ── 2. Boundary: Decision MCP tools ───────────────────────────────────
+        # O protocolo MCP usa POST /mcp com um body JSON-RPC.
+        # Inspecionamos o campo "method" e "params.name" para identificar tool calls.
+        if path.startswith("/mcp") and request.method == "POST":
+            try:
+                raw_body = await request.body()
+                if raw_body:
+                    rpc = json.loads(raw_body)
+                    tool_name = None
+                    # JSON-RPC: {"method": "tools/call", "params": {"name": "evaluate_charter_risk", ...}}
+                    if rpc.get("method") == "tools/call":
+                        tool_name = (rpc.get("params") or {}).get("name")
+
+                    if tool_name and tool_name in self.DECISION_MCP_TOOLS:
+                        if not context.has_permission("decision.*"):
+                            body = json.dumps({
+                                "jsonrpc": "2.0",
+                                "id": rpc.get("id"),
+                                "error": {
+                                    "code": -32603,
+                                    "message": (
+                                        f"Access denied: tool '{tool_name}' requires authenticated M2M access. "
+                                        "Provide 'Authorization: Bearer <API_KEY>' header."
+                                    ),
+                                    "data": {
+                                        "access_mode": context.access_mode,
+                                        "required_permission": "decision.*",
+                                    }
+                                }
+                            }).encode("utf-8")
+                            record_usage(context, product="gp5", tool=tool_name, duration_ms=0, status_code=403)
+                            from starlette.responses import Response
+                            return Response(content=body, status_code=200, media_type="application/json")
+
+                    # Reconstrói o request com o body já lido (necessário pois body é stream)
+                    async def receive():
+                        return {"type": "http.request", "body": raw_body, "more_body": False}
+                    request = Request(request.scope, receive=receive)
+            except Exception:
+                pass  # Falha silenciosa: deixa passar, o servidor MCP emitirá o erro correto
+
+        response = await call_next(request)
+
+        duration_ms = int((time.monotonic() - t0) * 1000)
+        record_usage(
+            context=context,
+            product="gp5",
+            tool=path,
+            duration_ms=duration_ms,
+            status_code=response.status_code
+        )
+        return response
+
+
+
+
+app.add_middleware(M2MGatewayMiddleware)
 app.add_middleware(MetricsMiddleware)
 
 app.add_middleware(RapidAPIGuard)
@@ -600,6 +728,81 @@ def control_tower():
 @app.get("/.well-known/ai-plugin.json", include_in_schema=False)
 def ai_plugin_manifest():
     return JSONResponse(json.loads(AI_PLUGIN_PATH.read_text(encoding="utf-8")))
+
+
+@app.get(
+    "/v1/verified-queue",
+    response_model=VerifiedQueueResponse,
+    tags=["Port Risk"],
+    summary="Get verified cargo queue signal for a single port",
+    description=(
+        "Returns the physical queue wait logic strictly based on observed anchored vessels. "
+        "Unlike `port-risk`, this endpoint returns INSUFFICIENT_OBSERVATION if the port is not monitored live."
+    ),
+    response_description="Verified observation of port congestion by cargo."
+)
+def get_verified_queue(
+    port_id: str = Query(
+        ...,
+        description="UN/LOCODE of the port, e.g. BRPNG (Paranaguá).",
+        examples=["BRPNG"],
+    )
+):
+    try:
+        return get_verified_cargo_queue(port_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/gp5/physical-events",
+    tags=["GP5 Maritime"],
+    summary="Get temporal physical events for a port (change-packet.v1)",
+    description="Returns normalized physical state transitions for vessels and land operations."
+)
+def get_gp5_physical_events(port_id: str = Query(..., example="BRPNG")):
+    try:
+        packet = get_port_physical_events(port_id)
+        return packet.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/gp5/charter-risk",
+    tags=["GP5 Maritime"],
+    summary="Evaluate charter risk and demurrage exposure under explicit assumptions (decision-result.v1)",
+    description="Calculates exposure basis (USD), assumptions, uncertainties, and physical basis."
+)
+def get_gp5_charter_risk(
+    port_id: str = Query(..., example="BRPNG"),
+    commodity: str = Query("SOJA", example="SOJA"),
+    demurrage_rate_usd_day: float = Query(32000.0),
+    expected_laytime_days: float = Query(2.0)
+):
+    try:
+        res = evaluate_charter_risk(port_id, commodity, demurrage_rate_usd_day, expected_laytime_days)
+        return res.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/gp5/routing-eval",
+    tags=["GP5 Maritime"],
+    summary="Evaluate comparative logistics conditions between two ports (decision-result.v1)",
+    description="Comparative condition analysis between Port A and Port B."
+)
+def get_gp5_routing_eval(
+    port_a: str = Query(..., example="BRPNG"),
+    port_b: str = Query(..., example="BRSSZ"),
+    commodity: str = Query("SOJA", example="SOJA")
+):
+    try:
+        res = evaluate_routing_alternatives(port_a, port_b, commodity)
+        return res.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get(

@@ -45,22 +45,44 @@ SUPPORTED_PORTS: list[dict[str, str]] = [
 ]
 
 mcp = MCPServer(
-    "aetherx-oracle",
-    title="Aether-X Port Congestion Oracle",
+    "gp5-maritime",
+    title="GP5 Maritime — M2M Physical Operations Intelligence",
     description=(
-        "Reference port congestion signals for global trade, supply chain and "
-        "quantitative finance. Brazilian ports (BRSSZ, BRPNG, BRRIO) feed live line-ups; "
-        "the rest use a reference seed."
+        "GP5 Maritime is a Machine-to-Machine (M2M) product that delivers verified "
+        "physical operational intelligence for seaports and multimodal logistics corridors. "
+        "It combines real-time vessel line-up data (AIS, port authority scraping) with "
+        "land-side railway queue observations (Rumo Logística) to produce two categories of tools:\n\n"
+        "OBSERVATION TOOLS (available to all clients):\n"
+        "  get_port_state — Current multimodal physical state of a port (vessels + wagons)\n"
+        "  get_physical_events — Temporal ChangePacket (physical-event.v1) with source provenance\n\n"
+        "DECISION TOOLS (premium access):\n"
+        "  evaluate_charter_risk — Demurrage exposure in USD under explicit stated assumptions\n"
+        "  evaluate_routing_alternatives — Comparative condition analysis between two ports\n\n"
+        "Data sources: APPA Paranaguá, Porto de Santos, SILOG PortosRio, Rumo Logística, ShipInfo AIS.\n"
+        "All responses carry schema_version, evidence provenance, and explicit uncertainty declarations."
     ),
     instructions=(
-        "Reference congestion signals for ports. Use get_port_risk for a "
-        "single port, get_ports_risk to scan a portfolio of ports in parallel and "
-        "get_port_trend for the 24h/48h/72h SYNTHETIC projection. Every "
-        "result includes `data_source` and `as_of`. For Brazilian ports BRSSZ/BRPNG/BRRIO "
-        "it is live (`live:appa+santos+lachmann`, `live:portosrio_silog`); the rest are "
-        "`static_reference_seed` reference telemetry."
+        "You are connected to the GP5 Maritime M2M Product Runtime. "
+        "This product operates in two layers:\n\n"
+        "OBSERVATION LAYER:\n"
+        "Call get_port_state or get_physical_events FIRST when you need to understand the "
+        "current physical condition of a port. These tools return verified observations with "
+        "explicit source provenance (e.g. 'appa', 'rumo_logistica'). "
+        "Treat their output as Ground Truth about the physical world.\n\n"
+        "DECISION LAYER:\n"
+        "Call evaluate_charter_risk when a user is evaluating whether to sign a charter party, "
+        "fix a vessel to a port, or quantify demurrage exposure. "
+        "Call evaluate_routing_alternatives when a user is choosing between two ports for cargo routing. "
+        "These tools build on top of the Observation Layer and return DecisionResult (decision-result.v1) "
+        "with explicit assumptions, physical basis, and uncertainty declarations.\n\n"
+        "CRITICAL RULES:\n"
+        "1. Always report the 'sources' field to the user — it identifies the real-world data origin.\n"
+        "2. Always surface the 'uncertainties' list when presenting a DecisionResult — do not omit it.\n"
+        "3. Never claim a 'recommendation' from evaluate_routing_alternatives — it returns comparative "
+        "evidence, not a prescriptive routing mandate.\n"
+        "4. For ports without live coverage, return INSUFFICIENT_OBSERVATION and say so explicitly."
     ),
-    version="0.2.4",
+    version="1.0.0",
     website_url="https://aetherx.aether-grid.io",
 )
 
@@ -91,6 +113,26 @@ async def _fetch(port_id: str) -> dict[str, Any]:
         )
         resp.raise_for_status()
         return resp.json()
+
+
+async def _fetch_verified_queue(port_id: str) -> dict[str, Any]:
+    url = f"{_base_url()}/v1/verified-queue"
+    async with _client() as client:
+        resp = await client.get(
+            url, params={"port_id": port_id}, headers=_headers()
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+@mcp.tool()
+async def get_verified_queue(port_id: str) -> dict[str, Any]:
+    """Return the verified multimodal physical queue for a port, combining sea-side vessels and land-side logistics (trains/wagons). Only works for live ports. Returns INSUFFICIENT_OBSERVATION for others.
+
+    Args:
+        port_id: UN/LOCODE of the port, e.g. "BRPNG" (Paranaguá) or "BRSSZ" (Santos).
+    """
+    return await _fetch_verified_queue(port_id.strip().upper())
 
 
 @mcp.tool()
@@ -138,6 +180,113 @@ async def get_port_trend(port_id: str) -> dict[str, Any]:
 def list_supported_ports() -> list[dict[str, str]]:
     """List the 19 ports in the oracle (id, name, country)."""
     return SUPPORTED_PORTS
+
+
+# ─── GP5 M2M OBSERVATION TOOLS ────────────────────────────────────────────────
+
+@mcp.tool()
+async def get_port_state(port_id: str) -> dict[str, Any]:
+    """[OBSERVATION TOOL] Return the current verified multimodal physical state of a port.
+
+    Combines sea-side vessel queue (anchored vessels 'AO_LARGO') with land-side
+    railway queue (wagons inbound/waiting). Returns sources for full provenance.
+
+    Args:
+        port_id: UN/LOCODE e.g. "BRPNG" (Paranaguá), "BRSSZ" (Santos).
+    """
+    url = f"{_base_url()}/v1/verified-queue"
+    async with _client() as client:
+        resp = await client.get(url, params={"port_id": port_id.strip().upper()}, headers=_headers())
+        resp.raise_for_status()
+        return resp.json()
+
+
+@mcp.tool()
+async def get_physical_events(port_id: str) -> dict[str, Any]:
+    """[OBSERVATION TOOL] Return temporal physical events for a port as a ChangePacket (physical-event.v1).
+
+    Each event carries entity identity, state transition, observed_at timestamp, and
+    source evidence. Use this tool to understand WHAT changed and WHEN.
+
+    Args:
+        port_id: UN/LOCODE e.g. "BRPNG" (Paranaguá), "BRSSZ" (Santos).
+    """
+    url = f"{_base_url()}/v1/gp5/physical-events"
+    async with _client() as client:
+        resp = await client.get(url, params={"port_id": port_id.strip().upper()}, headers=_headers())
+        resp.raise_for_status()
+        return resp.json()
+
+
+# ─── GP5 M2M DECISION TOOLS ───────────────────────────────────────────────────
+
+@mcp.tool()
+async def evaluate_charter_risk(
+    port_id: str,
+    commodity: str,
+    demurrage_rate_usd_day: float = 32000.0,
+    expected_laytime_days: float = 2.0
+) -> dict[str, Any]:
+    """[DECISION TOOL] Evaluate charter risk and demurrage financial exposure under explicit assumptions.
+
+    Returns a DecisionResult (decision-result.v1) with:
+    - exposure.value: estimated exposure in USD
+    - exposure.basis: calculation rationale
+    - assumptions: all stated premises (demurrage rate, laytime)
+    - physical_basis: list of verified physical observations supporting the estimate
+    - uncertainties: explicit list of what is NOT known (charter party, actual laytime, cargo quantity)
+
+    IMPORTANT: Always surface the 'uncertainties' list to the user. This tool produces an
+    *estimate under stated assumptions*, not a contractual value.
+
+    Args:
+        port_id: UN/LOCODE e.g. "BRPNG" (Paranaguá).
+        commodity: Commodity type e.g. "SOJA", "MILHO", "CONTEINERES".
+        demurrage_rate_usd_day: Demurrage rate in USD/day (default: 32000).
+        expected_laytime_days: Agreed laytime in days (default: 2.0).
+    """
+    url = f"{_base_url()}/v1/gp5/charter-risk"
+    params = {
+        "port_id": port_id.strip().upper(),
+        "commodity": commodity.strip().upper(),
+        "demurrage_rate_usd_day": demurrage_rate_usd_day,
+        "expected_laytime_days": expected_laytime_days
+    }
+    async with _client() as client:
+        resp = await client.get(url, params=params, headers=_headers())
+        resp.raise_for_status()
+        return resp.json()
+
+
+@mcp.tool()
+async def evaluate_routing_alternatives(port_a: str, port_b: str, commodity: str) -> dict[str, Any]:
+    """[DECISION TOOL] Evaluate and compare physical logistics conditions between two ports.
+
+    Returns a DecisionResult (decision-result.v1) with:
+    - comparison.delta_delay_days: estimated delay difference
+    - comparison.lower_delay_port: port with lower observed congestion
+    - exposure: per-port financial exposure estimates
+    - physical_basis: verified physical observations for each port
+    - uncertainties: explicit limitations of this comparison
+
+    IMPORTANT: This tool returns COMPARATIVE EVIDENCE, not a routing mandate.
+    Do not tell the user to divert cargo based solely on this output.
+
+    Args:
+        port_a: First port UN/LOCODE e.g. "BRPNG".
+        port_b: Second port UN/LOCODE e.g. "BRSSZ".
+        commodity: Commodity type e.g. "SOJA".
+    """
+    url = f"{_base_url()}/v1/gp5/routing-eval"
+    params = {
+        "port_a": port_a.strip().upper(),
+        "port_b": port_b.strip().upper(),
+        "commodity": commodity.strip().upper()
+    }
+    async with _client() as client:
+        resp = await client.get(url, params=params, headers=_headers())
+        resp.raise_for_status()
+        return resp.json()
 
 
 def main() -> None:

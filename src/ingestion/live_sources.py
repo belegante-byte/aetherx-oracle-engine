@@ -499,7 +499,7 @@ def fetch_portosrio_silog(timeout: int = 30) -> list:
 
 SHIPINFO_BASE = "https://shipinfo.net/topos/api/v1"
 SHIPINFO_AGENT = "aetherx-oracle"
-SHIPINFO_ENABLED = os.getenv("SHIPINFO_ENABLED", "").strip().lower() in {"1", "true", "yes"}
+SHIPINFO_ENABLED = os.getenv("SHIPINFO_ENABLED", "1").strip().lower() in {"1", "true", "yes"}
 SHIPINFO_MAX_PORTS_PER_RUN = int(os.getenv("SHIPINFO_MAX_PORTS_PER_RUN", "4"))
 SHIPINFO_PORT_MAP_PATH = Path(__file__).resolve().parents[2] / "data" / "shipinfo_port_map.json"
 

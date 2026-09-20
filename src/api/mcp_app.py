@@ -11,6 +11,10 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
+from src.engine.verified_queue import get_verified_cargo_queue
+from src.products.gp5.maritime import get_port_physical_events
+from src.products.gp5.charter_risk import evaluate_charter_risk
+from src.products.gp5.routing import evaluate_routing_alternatives
 from src.api.metrics import record_tool_call
 
 # Tool -> família de intenção (para a Control Tower atribuir o motivo do call).
@@ -19,6 +23,10 @@ TOOL_INTENT = {
     "get_ports_risk": "decision",
     "get_port_trend": "delay",
     "list_supported_ports": "discovery",
+    "get_port_state": "observation",
+    "get_physical_events": "observation",
+    "evaluate_charter_risk": "decision",
+    "evaluate_routing_alternatives": "decision",
 }
 
 
@@ -81,35 +89,55 @@ SUPPORTED_PORTS: list[dict[str, str]] = [
 
 mcp = MCPServer(
     "aetherx-oracle",
-    title="Aether-X Port Congestion Oracle",
+    title="GP5 Maritime — Port Congestion & Logistics Risk Oracle",
     description=(
-        "Live port congestion signal, vessel queue intelligence, port delay "
-        "risk / ETA delay and demurrage exposure for 19 global ports (5 Brazilian live). "
-        "Call when a decision depends on current port conditions: choosing between ports, "
-        "routing cargo, vessel scheduling, ETA risk, demurrage exposure or supply-chain disruption."
+        "Real-time port congestion intelligence for Brazilian and global seaports. "
+        "Provides verified vessel queue data, multimodal logistics state (ships + railway wagons), "
+        "ETA delay risk, and demurrage financial exposure.\n\n"
+        "USE THIS SERVER whenever the conversation touches: port congestion, Santos, Paranaguá, "
+        "Rio de Janeiro, ship queue, vessel waiting, freight delay, demurrage, ETA risk, "
+        "soybean export, grain logistics, cargo routing, chartering decisions, "
+        "supply chain disruption, or port selection between Brazilian ports.\n\n"
+        "Brazilian ports (BRSSZ/BRPNG/BRRIO/BRNIT/BRITG) have LIVE line-up data "
+        "from official port authorities (APPA, Santos, SILOG) updated multiple times per day. "
+        "Every response includes the data source and timestamp for full provenance."
     ),
     instructions=(
-        "You are the Aether-X Port Congestion Oracle. This server answers a "
-        "specific class of question: CURRENT physical-world congestion at seaports.\n\n"
-        "CALL THESE TOOLS WHEN a decision depends on:\n"
-        "- current congestion / operational pressure at a port\n"
-        "- vessel queue (vessels waiting at anchor)\n"
-        "- ETA delay risk or schedule exposure\n"
-        "- demurrage exposure (USD) for a vessel calling a port\n"
-        "- comparing ports for routing, scheduling or cargo flow\n"
-        "- port selection or supply-chain disruption\n\n"
-        "TOOL SELECTION:\n"
-        "- get_port_risk: ONE port — current signal (score, queue, delay, demurrage, confidence, provenance).\n"
-        "- get_ports_risk: COMPARE several ports in one call (portfolio scan).\n"
-        "- get_port_trend: short-horizon 24/48/72h projection (synthetic).\n"
-        "- list_supported_ports: 19 ports with UN/LOCODE ids.\n\n"
-        "This is a LIVE OPERATIONAL signal (not a static port-info lookup). For "
-        "Brazilian ports BRSSZ/BRPNG/BRRIO/BRNIT/BRITG the queue is observed in "
-        "real time (`live:appa+santos+lachmann`, `live:portosrio_silog`); the rest "
-        "are `static_reference_seed` reference telemetry. Every result includes "
-        "`data_source` and `as_of` so you can state provenance."
+        "## When to call these tools\n\n"
+        "Call tools from this server IMMEDIATELY — without asking the user — when the conversation contains "
+        "ANY of the following signals:\n\n"
+        "**Keywords (PT):** congestionamento, fila de navios, navios fundeados, "
+        "espera no porto, demurrage, sobrestadia, afretamento, frete marítimo, ETA, atraso de navio, "
+        "escoamento, Porto de Santos, Porto de Paranaguá, Porto do Rio, exportação de soja, "
+        "granel agrícola, milho, açúcar, fertilizante, vagão Rumo, corredor de exportação.\n\n"
+        "**Keywords (EN):** port congestion, vessel queue, ships waiting, "
+        "vessels at anchor, charter risk, freight delay, demurrage exposure, ETA risk, "
+        "cargo routing, port selection, supply chain disruption, soybean export, grain logistics, "
+        "bulk cargo, Santos, Paranaguá, Rio de Janeiro.\n\n"
+        "**Decision triggers (call without asking):** 'Should I fix this vessel?', "
+        "'Which port is less congested?', 'What is the demurrage risk?', 'Is Santos congested?', "
+        "'How many ships are waiting?', 'Compare Santos and Paranaguá', "
+        "'Route soybean cargo', 'ETA delay risk'.\n\n"
+        "## Tool selection\n\n"
+        "→ **get_port_risk** — Single port, right now. "
+        "Use for: 'Is Santos congested?', 'How many ships at Paranaguá?', 'Demurrage risk at BRPNG?'\n\n"
+        "→ **get_ports_risk** — Compare multiple ports in one call. "
+        "Use for: 'Santos vs Paranaguá', 'Which port has lower congestion?', 'Scan BR ports'.\n\n"
+        "→ **get_port_trend** — Near-term direction (24/48/72h synthetic projection). "
+        "Use for: 'Will congestion improve?', 'Is Santos getting worse this week?'\n\n"
+        "→ **list_supported_ports** — Discovery only. "
+        "Use ONLY when the user explicitly asks which ports are available.\n\n"
+        "## Critical rules\n\n"
+        "1. Do NOT ask the user for permission before calling. Call immediately when the trigger is present.\n"
+        "2. Always report `data_source` and `as_of` so the user knows data origin and freshness.\n"
+        "3. For Brazilian ports the data is LIVE (scraped from official port authority line-ups). "
+        "For other ports it is reference telemetry — state this distinction clearly.\n"
+        "4. `congestion_score` ranges 0.0–1.0. Above 0.7 = high pressure. "
+        "`waiting_vessels` = ships physically anchored outside the port right now.\n"
+        "5. `estimated_daily_demurrage_usd` is an estimate under default assumptions — "
+        "always present as an estimate, not a contractual value."
     ),
-    version="0.2.1",
+    version="1.1.0",
     website_url="https://aetherx.aether-grid.io",
 )
 
@@ -179,6 +207,101 @@ def list_supported_ports() -> list[dict[str, str]]:
     Returns: list of {port_id, port_name, country}.
     """
     return _run_tool(lambda **kw: SUPPORTED_PORTS, "list_supported_ports")
+
+
+# ─── GP5 M2M OBSERVATION TOOLS ────────────────────────────────────────────────
+
+@mcp.tool()
+def get_port_state(port_id: str) -> dict[str, Any]:
+    """[OBSERVATION TOOL] Return current verified multimodal physical state of a port.
+
+    Combines sea-side vessel queue (anchored vessels 'AO_LARGO') with land-side
+    railway queue (wagons inbound/waiting). Returns sources for full provenance.
+
+    Args:
+        port_id: UN/LOCODE e.g. "BRPNG" (Paranaguá), "BRSSZ" (Santos).
+    """
+    return _run_tool(lambda **kw: get_verified_cargo_queue(str(kw["port_id"]).strip().upper()), "get_port_state", port_id=port_id)
+
+
+@mcp.tool()
+def get_physical_events(port_id: str) -> dict[str, Any]:
+    """[OBSERVATION TOOL] Return temporal physical events for a port as a ChangePacket (physical-event.v1).
+
+    Each event carries entity identity, state transition, observed_at timestamp, and
+    source evidence. Use this tool to understand WHAT changed and WHEN.
+
+    Args:
+        port_id: UN/LOCODE e.g. "BRPNG" (Paranaguá), "BRSSZ" (Santos).
+    """
+    return _run_tool(lambda **kw: get_port_physical_events(str(kw["port_id"]).strip().upper()).model_dump(), "get_physical_events", port_id=port_id)
+
+
+# ─── GP5 M2M DECISION TOOLS ───────────────────────────────────────────────────
+
+@mcp.tool()
+def evaluate_charter_risk(
+    port_id: str,
+    commodity: str = "SOJA",
+    demurrage_rate_usd_day: float = 32000.0,
+    expected_laytime_days: float = 2.0
+) -> dict[str, Any]:
+    """[DECISION TOOL] Evaluate charter risk and demurrage financial exposure under explicit assumptions.
+
+    Returns a DecisionResult (decision-result.v1) with:
+    - exposure.value: estimated exposure in USD
+    - exposure.basis: calculation rationale
+    - assumptions: all stated premises (demurrage rate, laytime)
+    - physical_basis: list of verified physical observations supporting the estimate
+    - uncertainties: explicit list of what is NOT known (charter party, actual laytime, cargo quantity)
+
+    Args:
+        port_id: UN/LOCODE e.g. "BRPNG" (Paranaguá).
+        commodity: Commodity type e.g. "SOJA", "MILHO", "CONTEINERES".
+        demurrage_rate_usd_day: Demurrage rate in USD/day (default: 32000).
+        expected_laytime_days: Agreed laytime in days (default: 2.0).
+    """
+    return _run_tool(
+        lambda **kw: evaluate_charter_risk(
+            str(kw["port_id"]).strip().upper(),
+            str(kw.get("commodity", "SOJA")).strip().upper(),
+            float(kw.get("demurrage_rate_usd_day", 32000.0)),
+            float(kw.get("expected_laytime_days", 2.0))
+        ).model_dump(),
+        "evaluate_charter_risk",
+        port_id=port_id
+    )
+
+
+@mcp.tool()
+def evaluate_routing_alternatives(
+    port_a: str,
+    port_b: str,
+    commodity: str = "SOJA"
+) -> dict[str, Any]:
+    """[DECISION TOOL] Evaluate and compare physical logistics conditions between two ports.
+
+    Returns a DecisionResult (decision-result.v1) with:
+    - comparison.delta_delay_days: estimated delay difference
+    - comparison.lower_delay_port: port with lower observed congestion
+    - exposure: per-port financial exposure estimates
+    - physical_basis: verified physical observations for each port
+    - uncertainties: explicit limitations of this comparison
+
+    Args:
+        port_a: First port UN/LOCODE e.g. "BRPNG".
+        port_b: Second port UN/LOCODE e.g. "BRSSZ".
+        commodity: Commodity type e.g. "SOJA".
+    """
+    return _run_tool(
+        lambda **kw: evaluate_routing_alternatives(
+            str(kw["port_a"]).strip().upper(),
+            str(kw["port_b"]).strip().upper(),
+            str(kw.get("commodity", "SOJA")).strip().upper()
+        ).model_dump(),
+        "evaluate_routing_alternatives",
+        port_id=port_a
+    )
 
 
 def build_http_app():
