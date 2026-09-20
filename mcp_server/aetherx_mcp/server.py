@@ -311,6 +311,36 @@ async def evaluate_routing_alternatives(port_a: str, port_b: str, commodity: str
         return resp.json()
 
 
+@mcp.tool()
+async def evaluate_corridor_risk(
+    origin_port: str,
+    destination_port: str,
+    commodity: str = "SOJA",
+    vessel_capacity_tons: float = 60000.0
+) -> dict[str, Any]:
+    """[DECISION TOOL] Evaluate full global trade corridor risk (e.g. Chicago/Brazil -> China/Europe).
+
+    Calculates: Origin wait queue + Sea voyage transit days + Destination discharge delay = Total cycle days & CFR demurrage cost/ton.
+
+    Args:
+        origin_port: Export port UN/LOCODE e.g. "BRPNG" (Paranaguá), "BRSSZ" (Santos).
+        destination_port: Import port UN/LOCODE e.g. "CNTAO" (Qingdao), "CNNGB" (Ningbo), "NLRTM" (Rotterdam).
+        commodity: Commodity type e.g. "SOJA", "MILHO".
+        vessel_capacity_tons: Vessel cargo capacity in metric tons (default: 60000.0).
+    """
+    url = f"{_base_url()}/v1/gp5/corridor-risk"
+    params = {
+        "origin_port": origin_port.strip().upper(),
+        "destination_port": destination_port.strip().upper(),
+        "commodity": commodity.strip().upper(),
+        "vessel_capacity_tons": vessel_capacity_tons
+    }
+    async with _client() as client:
+        resp = await client.get(url, params=params, headers=_headers())
+        resp.raise_for_status()
+        return resp.json()
+
+
 def main() -> None:
     mcp.run()
 

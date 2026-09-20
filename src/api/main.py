@@ -21,7 +21,7 @@ from src.runtime.access import authenticate_client, register_m2m_key
 from src.runtime.metering import record_usage
 from src.products.gp5.maritime import get_port_physical_events
 from src.products.gp5.charter_risk import evaluate_charter_risk
-from src.products.gp5.routing import evaluate_routing_alternatives
+from src.products.gp5.routing import evaluate_routing_alternatives, evaluate_corridor_risk
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 from src.engine.verified_queue import get_verified_cargo_queue
 
@@ -485,6 +485,7 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
     DECISION_ROUTES: tuple[str, ...] = (
         "/v1/gp5/charter-risk",
         "/v1/gp5/routing-eval",
+        "/v1/gp5/corridor-risk",
         "/v1/gp5/port-exposure",
     )
 
@@ -492,6 +493,7 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
     DECISION_MCP_TOOLS: frozenset[str] = frozenset({
         "evaluate_charter_risk",
         "evaluate_routing_alternatives",
+        "evaluate_corridor_risk",
         "compare_port_exposure",
     })
 
@@ -831,6 +833,25 @@ def get_gp5_routing_eval(
 ):
     try:
         res = evaluate_routing_alternatives(port_a, port_b, commodity)
+        return res.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/gp5/corridor-risk",
+    tags=["GP5 Maritime"],
+    summary="Evaluate full global trade corridor risk from Origin to Destination (decision-result.v1)",
+    description="Full trade corridor analysis (e.g. Paranaguá BRPNG -> Qingdao CNTAO). Cites sea transit, origin queue and CFR cost per ton."
+)
+def get_gp5_corridor_eval(
+    origin_port: str = Query(..., example="BRPNG"),
+    destination_port: str = Query(..., example="CNTAO"),
+    commodity: str = Query("SOJA", example="SOJA"),
+    vessel_capacity_tons: float = Query(60000.0)
+):
+    try:
+        res = evaluate_corridor_risk(origin_port, destination_port, commodity, vessel_capacity_tons)
         return res.model_dump()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

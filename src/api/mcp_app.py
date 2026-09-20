@@ -14,7 +14,7 @@ from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 from src.engine.verified_queue import get_verified_cargo_queue
 from src.products.gp5.maritime import get_port_physical_events
 from src.products.gp5.charter_risk import evaluate_charter_risk
-from src.products.gp5.routing import evaluate_routing_alternatives
+from src.products.gp5.routing import evaluate_routing_alternatives, evaluate_corridor_risk
 from src.api.metrics import record_tool_call
 
 # Tool -> família de intenção (para a Control Tower atribuir o motivo do call).
@@ -27,6 +27,7 @@ TOOL_INTENT = {
     "get_physical_events": "observation",
     "evaluate_charter_risk": "decision",
     "evaluate_routing_alternatives": "decision",
+    "evaluate_corridor_risk": "decision",
 }
 
 
@@ -325,6 +326,35 @@ def evaluate_routing_alternatives(
         ).model_dump(),
         "evaluate_routing_alternatives",
         port_id=port_a
+    )
+
+
+@mcp.tool()
+def evaluate_corridor_risk(
+    origin_port: str,
+    destination_port: str,
+    commodity: str = "SOJA",
+    vessel_capacity_tons: float = 60000.0
+) -> dict[str, Any]:
+    """[DECISION TOOL] Evaluate full global trade corridor risk (e.g. Chicago/Brazil -> China/Europe).
+
+    Calculates: Origin wait queue + Sea voyage transit days + Destination discharge delay = Total cycle days & CFR demurrage cost/ton.
+
+    Args:
+        origin_port: Export port UN/LOCODE e.g. "BRPNG" (Paranaguá), "BRSSZ" (Santos).
+        destination_port: Import port UN/LOCODE e.g. "CNTAO" (Qingdao), "CNNGB" (Ningbo), "NLRTM" (Rotterdam).
+        commodity: Commodity type e.g. "SOJA", "MILHO".
+        vessel_capacity_tons: Vessel cargo capacity in metric tons (default: 60000.0).
+    """
+    return _run_tool(
+        lambda **kw: evaluate_corridor_risk(
+            str(kw["origin_port"]).strip().upper(),
+            str(kw["destination_port"]).strip().upper(),
+            str(kw.get("commodity", "SOJA")).strip().upper(),
+            float(kw.get("vessel_capacity_tons", 60000.0))
+        ).model_dump(),
+        "evaluate_corridor_risk",
+        port_id=origin_port
     )
 
 
