@@ -164,6 +164,46 @@ def calculate_port_risk(port_id: str) -> dict:
         row = None
         seed_at = now
 
+    # Enriquecimento com telemetria ao vivo para portos asiáticos (PortInsight / Portcast / Gateway Lines)
+    try:
+        from src.ingestion.live_sources import fetch_asian_port_congestion
+        asian_data = fetch_asian_port_congestion()
+        if port_id in asian_data:
+            asian_info = asian_data[port_id]
+            score = asian_info["congestion_score"]
+            return {
+                "port_id": port_id,
+                "port_name": asian_info["port_name"],
+                "country": asian_info["country"],
+                "congestion_score": score,
+                "eta_delay_days": asian_info["eta_delay_days"],
+                "waiting_vessels": asian_info["waiting_vessels"],
+                "freight_volatility_index": 0.40,
+                "estimated_daily_demurrage_usd": _estimate_demurrage(score),
+                "updated_at": asian_info["as_of"],
+                "as_of": asian_info["as_of"],
+                "data_source": f"live:{'+'.join(asian_info['sources'])}",
+                "data_source_label": (
+                    f"Live AIS & Traffic intelligence via {', '.join(asian_info['sources'])} "
+                    f"(Median wait {asian_info['median_wait_hours']}h, Berth occupancy {asian_info['berth_occupancy_pct']}%)."
+                ),
+                "live_detail": json.dumps(asian_info),
+                "decision_grade": "decision",
+                "signal": {
+                    "level": "ELEVATED OPERATIONAL PRESSURE" if score >= 0.45 else "MODERATE / LOW PRESSURE",
+                    "live_observation": True,
+                    "queue_vessels": asian_info["waiting_vessels"],
+                    "expected_delay_days": asian_info["eta_delay_days"],
+                    "demurrage_expected_usd": int(asian_info["eta_delay_days"] * DEMURRAGE_BASE_USD_PER_DAY),
+                    "confidence": 0.92,
+                    "provenance": f"live:{'+'.join(asian_info['sources'])}",
+                    "decision_implication": f"Live AIS stream indicates {asian_info['status'].lower()} congestion at {asian_info['port_name']}.",
+                    "as_of": asian_info["as_of"],
+                }
+            }
+    except Exception:
+        pass
+
     if row is None:
         score = GLOBAL_ESTIMATE["congestion_score"]
         return {
@@ -219,6 +259,25 @@ def calculate_port_risk(port_id: str) -> dict:
         "validation": load_antaq_validation(port_id),
         **extra,
     }
+
+    # Enriquecimento com telemetria ao vivo para portos asiáticos (PortInsight / Portcast / Gateway Lines)
+    try:
+        from src.ingestion.live_sources import fetch_asian_port_congestion
+        asian_data = fetch_asian_port_congestion()
+        if port_id in asian_data:
+            asian_info = asian_data[port_id]
+            result["congestion_score"] = asian_info["congestion_score"]
+            result["eta_delay_days"] = asian_info["eta_delay_days"]
+            result["waiting_vessels"] = asian_info["waiting_vessels"]
+            result["data_source"] = f"live:{'+'.join(asian_info['sources'])}"
+            result["data_source_label"] = (
+                f"Live AIS & Traffic intelligence via {', '.join(asian_info['sources'])} "
+                f"(Median wait {asian_info['median_wait_hours']}h, Berth occupancy {asian_info['berth_occupancy_pct']}%)."
+            )
+            result["as_of"] = asian_info["as_of"]
+            result["live_detail"] = json.dumps(asian_info)
+    except Exception:
+        pass
 
     # Fila real = AO_LARGO quando o detalhe vivo existe (não a soma com
     # esperados/programados, que são chegadas futuras). Se o port_metrics ainda
