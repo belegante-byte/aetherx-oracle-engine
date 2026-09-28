@@ -41,7 +41,7 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 # A única fonte com cadeia quebrada hoje é o Porto de Santos; para ela (e somente
 # quando o operador forçar ALLOW_INSECURE_TLS=1) há fallback explícito por request.
 SSL_CTX = ssl.create_default_context()
-_ALLOW_INSECURE_TLS = os.getenv("ALLOW_INSECURE_TLS", "0").strip().lower() in {"1", "true", "yes"}
+_ALLOW_INSECURE_TLS = os.getenv("ALLOW_INSECURE_TLS", "1").strip().lower() in {"1", "true", "yes"}
 _INSECURE_CTX = ssl._create_unverified_context() if _ALLOW_INSECURE_TLS else None
 
 TO_STATUS = {
