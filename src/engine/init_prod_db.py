@@ -113,6 +113,33 @@ def seed_port_metrics(force: bool = False):
     """
     conn = duckdb.connect(DB_PATH)
 
+
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS port_metrics_history(
+            captured_at TIMESTAMP,
+            port_id VARCHAR, 
+            port_name VARCHAR, 
+            country VARCHAR, 
+            congestion_score DOUBLE, 
+            eta_delay_days DOUBLE, 
+            waiting_vessels INTEGER, 
+            freight_volatility_index DOUBLE, 
+            estimated_daily_demurrage_usd INTEGER, 
+            data_source VARCHAR, 
+            as_of VARCHAR
+        )
+    ''')
+    
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS m2m_keys(
+            client_id VARCHAR PRIMARY KEY,
+            owner_name VARCHAR,
+            plan VARCHAR,
+            is_active BOOLEAN,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS tax_rules (
             state_code VARCHAR,
