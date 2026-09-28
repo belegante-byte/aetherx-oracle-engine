@@ -3,7 +3,8 @@ import stripe
 import logging
 from fastapi import APIRouter, Request, Header, HTTPException
 from fastapi.responses import RedirectResponse
-from src.engine.init_prod_db import get_connection
+import duckdb
+import os
 import secrets
 
 router = APIRouter(tags=["Monetization"])
@@ -73,7 +74,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
             
             # Salva no cofre DuckDB persistente!
             try:
-                conn = get_connection()
+                conn = duckdb.connect(os.getenv('DATABASE_PATH', 'data/oracle.duckdb'))
                 conn.execute(
                     "INSERT INTO m2m_keys (client_id, owner_name, plan, is_active) VALUES (?, ?, ?, ?)",
                     [key_token, f"Stripe Customer: {email}", "GP5_ENTERPRISE", True]

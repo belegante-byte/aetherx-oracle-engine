@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI
-from src.api.monetization import router as monetization_router, Query, HTTPException
+from fastapi import Query, HTTPException
+from src.api.monetization import router as monetization_router
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ConfigDict
