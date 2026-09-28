@@ -255,26 +255,25 @@ def test_guard_exempts_verification_files():
     assert public.get("/openapi.rapidapi.json").status_code == 200
 
 
-def test_guard_exempts_mcp():
-    with TestClient(app) as c:
-        resp = c.post(
-            "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2025-06-18",
-                    "capabilities": {},
-                    "clientInfo": {"name": "test", "version": "1"},
-                },
+def test_guard_exempts_mcp(mcp_client):
+    resp = mcp_client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {},
+                "clientInfo": {"name": "test", "version": "1"},
             },
-            headers={
-                "Accept": "application/json, text/event-stream",
-                "Content-Type": "application/json",
-            },
-        )
-        assert resp.status_code == 200
+        },
+        headers={
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json",
+        },
+    )
+    assert resp.status_code == 200
 
 
 def test_ports_risk_batch():

@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict
 
 from src.api.mcp_app import build_http_app
 from src.api.mcp_app import mcp as mcp_server
+from src.api import mcp_quota
 from src.api.rate_limit import PublicRateLimitMiddleware
 from src.api import content_pages
 from src.api.content_pages import PORT_METAS, _SLUG_MAP
@@ -499,14 +500,6 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
         "/v1/gp5/port-exposure",
     )
 
-    # Tools MCP que requerem decision.*
-    DECISION_MCP_TOOLS: frozenset[str] = frozenset({
-        "evaluate_charter_risk",
-        "evaluate_routing_alternatives",
-        "evaluate_corridor_risk",
-        "compare_port_exposure",
-    })
-
     async def dispatch(self, request: Request, call_next):
         t0 = time.monotonic()
         auth_header = request.headers.get("authorization")
@@ -532,7 +525,7 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                 from starlette.responses import Response
                 return Response(content=body, status_code=403, media_type="application/json")
 
-        # ── 2. Boundary: Decision MCP tools ───────────────────────────────────
+        # ── 2. Boundary: Decision MCP tools + quota de observation ──────────
         # O protocolo MCP usa POST /mcp com um body JSON-RPC.
         # Inspecionamos o campo "method" e "params.name" para identificar tool calls.
         if path.startswith("/mcp") and request.method == "POST":
@@ -545,16 +538,20 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                     if rpc.get("method") == "tools/call":
                         tool_name = (rpc.get("params") or {}).get("name")
 
-                    if tool_name and tool_name in self.DECISION_MCP_TOOLS:
+                    from src.api.mcp_app import DECISION_TOOLS, FREE_UNLIMITED_TOOLS
+                    from src.api.mcp_quota import consume_observation_quota
+
+                    if tool_name and tool_name in DECISION_TOOLS:
                         if not context.has_permission("decision.*"):
                             body = json.dumps({
                                 "jsonrpc": "2.0",
                                 "id": rpc.get("id"),
                                 "error": {
-                                    "code": -32603,
+                                    "code": -32003,
                                     "message": (
-                                        f"Access denied: tool '{tool_name}' requires authenticated M2M access. "
-                                        "Get your M2M API Key at https://aetherx.aether-grid.io/m2m-keys"
+                                        f"Access denied: tool '{tool_name}' requires authenticated M2M access "
+                                        "(Decision Tool). Call the 'request_m2m_key' tool to self-serve a "
+                                        "free 7-day trial key, then send 'Authorization: Bearer <key>'."
                                     ),
                                     "data": {
                                         "access_mode": context.access_mode,
@@ -566,10 +563,44 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                             from starlette.responses import Response
                             return Response(content=body, status_code=200, media_type="application/json")
 
+                    # Observation/quota: tools de dados gratuitas por IP (autenticados
+                    # e proxy secret ignoram a quota; discovery/provisioning livres).
+                    allowed_quota = 0
+                    if tool_name and tool_name not in FREE_UNLIMITED_TOOLS:
+                        is_authed = context.access_mode == "authenticated"
+                        is_admin = (
+                            request.headers.get("x-rapidapi-proxy-secret", "")
+                            == os.getenv("RAPIDAPI_PROXY_SECRET", "")
+                        )
+                        if not (is_authed or is_admin):
+                            fwd = request.headers.get("x-forwarded-for", "")
+                            ip = fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
+                            allowed, remaining = consume_observation_quota(ip)
+                            if not allowed:
+                                body = json.dumps({
+                                    "jsonrpc": "2.0",
+                                    "id": rpc.get("id"),
+                                    "error": {
+                                        "code": -32004,
+                                        "message": (
+                                            "Daily observation quota exceeded "
+                                            f"({mcp_quota.OBSERVATION_QUOTA_PER_DAY} calls/IP/day). "
+                                            "Authenticate with an M2M key (free 7-day trial via "
+                                            "'request_m2m_key') to remove the limit."
+                                        ),
+                                    }
+                                }).encode("utf-8")
+                                record_usage(context, product="gp5", tool=tool_name, duration_ms=0, status_code=429)
+                                from starlette.responses import Response
+                                return Response(content=body, status_code=200, media_type="application/json")
+                            allowed_quota = remaining
+
                     # Reconstrói o request com o body já lido (necessário pois body é stream)
                     async def receive():
                         return {"type": "http.request", "body": raw_body, "more_body": False}
                     request = Request(request.scope, receive=receive)
+                    if allowed_quota:
+                        request.state.quota_left = allowed_quota
             except Exception:
                 pass  # Falha silenciosa: deixa passar, o servidor MCP emitirá o erro correto
 
@@ -583,6 +614,11 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
             duration_ms=duration_ms,
             status_code=response.status_code
         )
+        if getattr(request.state, "quota_left", None) is not None:
+            try:
+                response.headers["X-Observation-Quota-Left"] = str(request.state.quota_left)
+            except Exception:
+                pass
         try:
             current_client_id.reset(token)
         except Exception:

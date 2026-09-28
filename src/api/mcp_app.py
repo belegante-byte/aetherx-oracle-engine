@@ -42,6 +42,21 @@ TOOL_INTENT = {
 }
 
 
+# Ferramentas de decisão exigem credencial M2M válida (Bearer). As demais tools
+# de dados são observação gratuita com quota diária por IP (ver M2MGatewayMiddleware
+# em main.py e src/api/mcp_quota.py). Discovery/provisioning nunca são bloqueadas.
+DECISION_TOOLS = {
+    "evaluate_charter_risk",
+    "evaluate_routing_alternatives",
+    "evaluate_corridor_risk",
+}
+FREE_UNLIMITED_TOOLS = {
+    "list_supported_ports",
+    "request_m2m_key",
+    "ping",
+}
+
+
 def _extract_port_id(args: dict) -> str | None:
     """Extrai port_id (ou ids) dos argumentos da tool para a Control Tower."""
     if not isinstance(args, dict):
@@ -196,7 +211,14 @@ mcp = MCPServer(
         "4. `congestion_score` ranges 0.0–1.0. Above 0.7 = high pressure. "
         "`waiting_vessels` = ships physically anchored outside the port right now.\n"
         "5. `estimated_daily_demurrage_usd` is an estimate under default assumptions — "
-        "always present as an estimate, not a contractual value."
+        "always present as an estimate, not a contractual value.\n\n"
+        "## Access & quota\n\n"
+        "1. Observation tools (get_port_risk, get_ports_risk, get_port_trend, get_port_state, "
+        "get_physical_events, get_pci_index, get_cdr_risk, predict_vessel_queue, get_irdi_index, "
+        "evaluate_scdew_warning) are free with a daily per-IP quota.\n"
+        "2. Decision tools (evaluate_charter_risk, evaluate_routing_alternatives, "
+        "evaluate_corridor_risk) require an M2M key: call `request_m2m_key` to self-serve a free "
+        "7-day trial key, then authenticate M2M requests with 'Authorization: Bearer <key>'."
     ),
     version="1.2.0",
     website_url="https://aetherx.aether-grid.io",
