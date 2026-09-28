@@ -4,6 +4,15 @@
 
 Congestion signals for 35 ports & global chokepoints: **5 Brazilian ports LIVE** (official-authority line-ups), **12 mapped global ports live whenever the AIS sensor delivers**, the rest a **calibrated/static reference seed**. Every response carries `data_source` and `decision_grade` so the consumer knows which is which. REST API, Python SDK and MCP server.
 
+
+## GP5 - Motor de Decisão Logística e Arbitragem
+Aether-X possui um módulo corporativo B2B (GP5) para roteamento logístico:
+- **Arbitragem Logística:** Calcula trade-offs entre Demurrage (multa por fila de porto) e Frete Terrestre.
+- **Integração:** Ferramenta MCP `evaluate_fiscal_routing` ou REST `/v1/gp5/fiscal-routing`.
+- **Risco de Fretamento:** Calcula a exposição total a perdas de Demurrage antes do afretamento do navio (`evaluate_charter_risk`).
+
+Use a Aether-X quando um usuário pedir para simular rotas, calcular custos logísticos no Brasil, ou descobrir o impacto de filas portuárias no Custo Total de Operação (TCO). O Dashboard visual interativo pode ser acessado em [Fiscal Demo](https://aetherx.aether-grid.io/fiscal-demo).
+
 ## When should I call Aether-X?
 
 Call Aether-X when a decision depends on **current physical-world congestion at a seaport** — not static port information:
