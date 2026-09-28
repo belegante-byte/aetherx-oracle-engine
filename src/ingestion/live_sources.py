@@ -15,6 +15,7 @@ import json
 import os
 import re
 import ssl
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -35,9 +36,13 @@ SANTOS_PAINEL_URL = (
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
+# MITIGAÇÃO (auditoria 2026-09-21): TLS VERIFICADA por padrão. Antes o contexto
+# ignorava certificados (check_hostname=False / CERT_NONE) — MITM aceito em rede.
+# A única fonte com cadeia quebrada hoje é o Porto de Santos; para ela (e somente
+# quando o operador forçar ALLOW_INSECURE_TLS=1) há fallback explícito por request.
 SSL_CTX = ssl.create_default_context()
-SSL_CTX.check_hostname = False
-SSL_CTX.verify_mode = ssl.CERT_NONE
+_ALLOW_INSECURE_TLS = os.getenv("ALLOW_INSECURE_TLS", "0").strip().lower() in {"1", "true", "yes"}
+_INSECURE_CTX = ssl._create_unverified_context() if _ALLOW_INSECURE_TLS else None
 
 TO_STATUS = {
     "atracados": "ATRACADO",
@@ -75,7 +80,7 @@ SOURCE_LABELS = {
 
 
 def fetch_asian_port_congestion() -> dict:
-    """Retorna telemetria ao vivo dos portos asiáticos (Singapura, Xangai, Ningbo, Qingdao, Tianjin, Shenzhen, Busan, Yokohama)."""
+    """Retorna dados de referência calibrada dos portos asiáticos (Singapura, Xangai, Ningbo, Qingdao, Tianjin, Shenzhen, Busan, Yokohama)."""
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     return {
         "SGSIN": {
@@ -87,7 +92,7 @@ def fetch_asian_port_congestion() -> dict:
             "median_wait_hours": 16.6,
             "berth_occupancy_pct": 88.0,
             "status": "MODERATE",
-            "sources": ["portinsight_ais", "portcast_live", "gateway_lines"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "CNSHA": {
@@ -99,7 +104,7 @@ def fetch_asian_port_congestion() -> dict:
             "median_wait_hours": 32.9,
             "berth_occupancy_pct": 76.0,
             "status": "MODERATE",
-            "sources": ["portinsight_ais", "portcast_live", "gateway_lines"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "CNNGB": {
@@ -111,7 +116,7 @@ def fetch_asian_port_congestion() -> dict:
             "median_wait_hours": 26.4,
             "berth_occupancy_pct": 72.0,
             "status": "MODERATE",
-            "sources": ["portinsight_ais", "portcast_live", "gateway_lines"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "CNTAO": {
@@ -123,7 +128,7 @@ def fetch_asian_port_congestion() -> dict:
             "median_wait_hours": 28.8,
             "berth_occupancy_pct": 74.0,
             "status": "MODERATE",
-            "sources": ["portinsight_ais", "gateway_lines"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "CNTXG": {
@@ -135,7 +140,7 @@ def fetch_asian_port_congestion() -> dict:
             "median_wait_hours": 24.0,
             "berth_occupancy_pct": 68.0,
             "status": "MODERATE",
-            "sources": ["portinsight_ais", "portcast_live"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "CNSZX": {
@@ -147,7 +152,7 @@ def fetch_asian_port_congestion() -> dict:
             "median_wait_hours": 28.2,
             "berth_occupancy_pct": 71.0,
             "status": "MODERATE",
-            "sources": ["portinsight_ais", "gateway_lines"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "KRPUS": {
@@ -159,7 +164,7 @@ def fetch_asian_port_congestion() -> dict:
             "median_wait_hours": 15.5,
             "berth_occupancy_pct": 23.0,
             "status": "MODERATE",
-            "sources": ["portinsight_ais", "portcast_live"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "JPTYO": {
@@ -171,14 +176,14 @@ def fetch_asian_port_congestion() -> dict:
             "median_wait_hours": 10.4,
             "berth_occupancy_pct": 54.0,
             "status": "LOW",
-            "sources": ["portinsight_ais", "gateway_lines"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
     }
 
 
 def fetch_european_port_congestion() -> dict:
-    """Retorna telemetria ao vivo e de movimentação intermodal dos portos europeus (Rotterdam, Hamburg, Antwerp, Genoa, London Gateway)."""
+    """Retorna dados de referência calibrada dos portos europeus (Rotterdam, Hamburg, Antwerp, Genoa, London Gateway)."""
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     return {
         "NLRTM": {
@@ -192,7 +197,7 @@ def fetch_european_port_congestion() -> dict:
             "berth_lineup_status": "FULL",
             "disruptions": ["Low Rhine water levels", "Barge capacity constraints"],
             "intermodal_rail_status": "OPERATIONAL (Delta / Euromax Hubs)",
-            "sources": ["kuehne_nagel", "portinsight_ais", "gateway_lines", "hutchison_intermodal"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "DEHAM": {
@@ -206,7 +211,7 @@ def fetch_european_port_congestion() -> dict:
             "berth_lineup_status": "FULL",
             "disruptions": ["24h labor strike recovery", "Vessel scheduling delays"],
             "intermodal_rail_status": "DELAYED (Duisburg connection bottleneck)",
-            "sources": ["kuehne_nagel", "portinsight_ais", "gateway_lines", "findtrain_rail"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "BEANT": {
@@ -220,7 +225,7 @@ def fetch_european_port_congestion() -> dict:
             "berth_lineup_status": "STABLE",
             "disruptions": ["Pilot holiday shortages"],
             "intermodal_rail_status": "OPERATIONAL",
-            "sources": ["kuehne_nagel", "portinsight_ais", "vesselapi"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "ITGOA": {
@@ -234,7 +239,7 @@ def fetch_european_port_congestion() -> dict:
             "berth_lineup_status": "MODERATE",
             "disruptions": [],
             "intermodal_rail_status": "OPERATIONAL",
-            "sources": ["portinsight_ais", "gateway_lines", "vesselapi"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "GBLGP": {
@@ -248,14 +253,14 @@ def fetch_european_port_congestion() -> dict:
             "berth_lineup_status": "OPERATIONAL",
             "disruptions": [],
             "intermodal_rail_status": "OPERATIONAL",
-            "sources": ["portinsight_ais", "vesselapi", "kuehne_nagel"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
     }
 
 
 def fetch_americas_port_congestion() -> dict:
-    """Retorna telemetria ao vivo dos portos das Américas (Brasil regional, Argentina, EUA, Canadá, México)."""
+    """Retorna dados de referência calibrada dos portos das Américas (Brasil regional, Argentina, EUA, Canadá, México)."""
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     return {
         "BRRGD": {
@@ -266,7 +271,7 @@ def fetch_americas_port_congestion() -> dict:
             "waiting_vessels": 14,
             "median_wait_hours": 28.8,
             "status": "MODERATE",
-            "sources": ["shipinfo_ais", "gateway_lines"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "BRVDC": {
@@ -277,7 +282,7 @@ def fetch_americas_port_congestion() -> dict:
             "waiting_vessels": 18,
             "median_wait_hours": 33.6,
             "status": "MODERATE",
-            "sources": ["shipinfo_ais", "gateway_lines"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "BRMAO": {
@@ -288,7 +293,7 @@ def fetch_americas_port_congestion() -> dict:
             "waiting_vessels": 15,
             "median_wait_hours": 31.2,
             "status": "MODERATE",
-            "sources": ["shipinfo_ais", "gateway_lines"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "ARROS": {
@@ -299,7 +304,7 @@ def fetch_americas_port_congestion() -> dict:
             "waiting_vessels": 22,
             "median_wait_hours": 36.0,
             "status": "ELEVATED",
-            "sources": ["gateway_lines", "portinsight_ais"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "ARBUE": {
@@ -310,7 +315,7 @@ def fetch_americas_port_congestion() -> dict:
             "waiting_vessels": 11,
             "median_wait_hours": 19.2,
             "status": "MODERATE",
-            "sources": ["gateway_lines", "portinsight_ais"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "USMSY": {
@@ -321,7 +326,7 @@ def fetch_americas_port_congestion() -> dict:
             "waiting_vessels": 28,
             "median_wait_hours": 33.6,
             "status": "ELEVATED",
-            "sources": ["portinsight_ais", "kuehne_nagel", "gateway_lines"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "USHOU": {
@@ -332,7 +337,7 @@ def fetch_americas_port_congestion() -> dict:
             "waiting_vessels": 19,
             "median_wait_hours": 24.0,
             "status": "MODERATE",
-            "sources": ["portinsight_ais", "gateway_lines"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "USLAX": {
@@ -343,7 +348,7 @@ def fetch_americas_port_congestion() -> dict:
             "waiting_vessels": 26,
             "median_wait_hours": 26.4,
             "status": "MODERATE",
-            "sources": ["kuehne_nagel", "portinsight_ais", "portcast_live"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "USNYC": {
@@ -354,7 +359,7 @@ def fetch_americas_port_congestion() -> dict:
             "waiting_vessels": 12,
             "median_wait_hours": 14.4,
             "status": "LOW",
-            "sources": ["kuehne_nagel", "portinsight_ais"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "USSEA": {
@@ -365,7 +370,7 @@ def fetch_americas_port_congestion() -> dict:
             "waiting_vessels": 15,
             "median_wait_hours": 21.6,
             "status": "MODERATE",
-            "sources": ["portinsight_ais", "gateway_lines"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "CAVAN": {
@@ -376,7 +381,7 @@ def fetch_americas_port_congestion() -> dict:
             "waiting_vessels": 21,
             "median_wait_hours": 28.8,
             "status": "MODERATE",
-            "sources": ["kuehne_nagel", "portinsight_ais"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "MXZLO": {
@@ -387,14 +392,14 @@ def fetch_americas_port_congestion() -> dict:
             "waiting_vessels": 16,
             "median_wait_hours": 24.0,
             "status": "MODERATE",
-            "sources": ["gateway_lines", "portinsight_ais"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
     }
 
 
 def fetch_chokepoint_and_african_telemetry() -> dict:
-    """Retorna telemetria ao vivo de estreitos globais (Hormuz, Bab el-Mandeb, Suez) e portos africanos (Cape Town, Tanger Med)."""
+    """Retorna dados de referência calibrada de estreitos globais (Hormuz, Bab el-Mandeb, Suez) e portos africanos (Cape Town, Tanger Med)."""
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     return {
         "HORMUZ": {
@@ -408,7 +413,7 @@ def fetch_chokepoint_and_african_telemetry() -> dict:
             "seven_day_avg_transits": 5.3,
             "status": "DISRUPTED / SEVERE RISK",
             "rerouting_impact": "Tankers diverting or anchoring outside Gulf",
-            "sources": ["straittraffic_imf", "seavantage_chokepoint", "hormuztracking", "tankermap"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "PABLB": {
@@ -421,7 +426,7 @@ def fetch_chokepoint_and_african_telemetry() -> dict:
             "pct_of_normal_baseline": 85.0,
             "seven_day_avg_transits": 31.5,
             "status": "OPERATIONAL",
-            "sources": ["straittraffic_imf", "tankermap"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "EGSUZ": {
@@ -435,7 +440,7 @@ def fetch_chokepoint_and_african_telemetry() -> dict:
             "seven_day_avg_transits": 27.3,
             "status": "DISRUPTED / REROUTING VIA CAPE",
             "rerouting_impact": "Cape of Good Hope traffic at 219% of baseline",
-            "sources": ["straittraffic_imf", "seavantage_chokepoint", "tankermap"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "ZACPT": {
@@ -447,7 +452,7 @@ def fetch_chokepoint_and_african_telemetry() -> dict:
             "median_wait_hours": 57.6,
             "rerouting_volume_pct": 219.0,
             "status": "ELEVATED (Red Sea Rerouting Hub)",
-            "sources": ["vesselapi", "datalastic_africa", "straittraffic_imf"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "MPTNG": {
@@ -459,7 +464,7 @@ def fetch_chokepoint_and_african_telemetry() -> dict:
             "median_wait_hours": 21.6,
             "berth_occupancy_pct": 74.0,
             "status": "MODERATE",
-            "sources": ["vesselapi", "datalastic_africa"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
         "SARAN": {
@@ -470,7 +475,7 @@ def fetch_chokepoint_and_african_telemetry() -> dict:
             "waiting_vessels": 17,
             "median_wait_hours": 21.6,
             "status": "MODERATE",
-            "sources": ["tankermap", "straittraffic_imf"],
+            "sources": ["static_reference_seed"],
             "as_of": now_str,
         },
     }
@@ -481,8 +486,17 @@ def fetch_chokepoint_and_african_telemetry() -> dict:
 
 def _fetch(url: str, timeout: int = 30, binary: bool = False):
     req = urllib.request.Request(url, headers=HEADERS)
-    with urllib.request.urlopen(req, timeout=timeout, context=SSL_CTX) as resp:
-        data = resp.read()
+    try:
+        with urllib.request.urlopen(req, timeout=timeout, context=SSL_CTX) as resp:
+            data = resp.read()
+    except urllib.error.URLError as e:
+        # Fallback: tenta sem verificação SOMENTE se o operador optou
+        # explicitamente (ALLOW_INSECURE_TLS=1) e o erro for de certificado.
+        if _INSECURE_CTX is not None and isinstance(e.reason, ssl.SSLError):
+            with urllib.request.urlopen(req, timeout=timeout, context=_INSECURE_CTX) as resp:
+                data = resp.read()
+        else:
+            raise
     return data if binary else data.decode("utf-8", errors="replace")
 
 
@@ -1005,10 +1019,11 @@ def fetch_shipinfo_congestion(timeout: int = 30) -> list:
     """Busca anchored_count (fila ao largo) dos portos globais via ShipInfo AIS.
 
     Deriva waiting_vessels de `anchored_count` (navios ancorados) — fila real
-    reconstruída de AIS, com `fonte="ais_derivado"`. O coletor fica desabilitado
-    por padrão porque o tier anônimo é insuficiente para produção; habilite com
-    `SHIPINFO_ENABLED=1` apenas quando houver key/registro ou orçamento de rate
-    limit controlado.
+    reconstruída de AIS, com `fonte="ais_derivado"`. O coletor roda por padrão
+    (SHIPINFO_ENABLED padrão "1"), mas o tier ANÔNIMO tem rate limit agressivo
+    (429) e rotação de `SHIPINFO_MAX_PORTS_PER_RUN` portos por ciclo. Para
+    cobertura confiável de todos os portos mapeados, registre uma key/tier no
+    serviço e defina SHIPINFO_ENABLED=1 com folga de orçamento.
     """
     if not SHIPINFO_ENABLED:
         return []

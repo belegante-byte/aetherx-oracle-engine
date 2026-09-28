@@ -11,6 +11,8 @@ data/acumula_diario.log
 data/metrics_state.json
 data/tower_history.jsonl
 data/tower_local_state.json
+data/m2m_keys.json
+data/m2m_keys_meta.json
 data/gp5_docs/connectors/
 *.dmg
 *.zip

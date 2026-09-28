@@ -60,13 +60,19 @@ PORTS = [
 ]
 
 
-def seed_port_metrics():
-    """Recria a tabela port_metrics e semeia o oráculo global com 19 portos estratégicos."""
+def seed_port_metrics(force: bool = False):
+    """Garante schema e semeia o oráculo sem destruir observações vivas.
+
+    MITIGAÇÃO (auditoria 2026-09-21): a versão anterior executava
+    `DROP TABLE IF EXISTS port_metrics` a cada boot — qualquer deploy Railway
+    (startCommand roda `init_prod_db`) apagava filas live/calibradas atualizadas
+    pela ingestão horária. Agora: CREATE IF NOT EXISTS + seed de portos ausentes
+    (ON CONFLICT DO NOTHING). `--force` só recalcula o seed estático sob demanda.
+    """
     conn = duckdb.connect(DB_PATH)
 
-    conn.execute("DROP TABLE IF EXISTS port_metrics")
     conn.execute("""
-        CREATE TABLE port_metrics (
+        CREATE TABLE IF NOT EXISTS port_metrics (
             port_id VARCHAR PRIMARY KEY,
             port_name VARCHAR,
             country VARCHAR,
@@ -81,6 +87,10 @@ def seed_port_metrics():
         )
     """)
 
+    if force:
+        # Reset explícito (operador): volta ao seed estático puro.
+        conn.execute("DELETE FROM port_metrics")
+
     updated_at = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     conn.executemany(
         """
@@ -89,6 +99,7 @@ def seed_port_metrics():
             eta_delay_days, waiting_vessels, freight_volatility_index, updated_at,
             data_source, data_source_label, live_detail
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (port_id) DO NOTHING
         """,
         [
             (
@@ -104,17 +115,24 @@ def seed_port_metrics():
     )
 
     count = conn.execute("SELECT COUNT(*) FROM port_metrics").fetchone()[0]
+    vivos = conn.execute(
+        "SELECT COUNT(*) FROM port_metrics WHERE data_source LIKE 'live:%'"
+    ).fetchone()[0]
     sample = conn.execute(
         "SELECT port_id, port_name FROM port_metrics ORDER BY port_id LIMIT 3"
     ).fetchall()
     conn.close()
 
-    print(f"[AETHER-X PROD INIT] Oráculo semeado com sucesso em: {DB_PATH}")
-    print(f"[AETHER-X PROD INIT] Total de portos na tabela port_metrics: {count}")
+    print(f"[AETHER-X PROD INIT] Oráculo garantido em: {DB_PATH}")
+    print(f"[AETHER-X PROD INIT] Total de portos: {count} | sources live preservadas: {vivos}")
     print(f"[AETHER-X PROD INIT] Amostra: {sample}")
 
 
 if __name__ == "__main__":
-    print("[AETHER-X PROD INIT] Inicializando e semeando o banco DuckDB para produção...")
-    seed_port_metrics()
-    print("[AETHER-X PROD INIT] Banco semeado com sucesso!")
+    import argparse
+    parser = argparse.ArgumentParser(description="Garante o schema do oráculo sem apagar dados vivos.")
+    parser.add_argument("--force", action="store_true", help="Reseta para o seed estático (drop de observações).")
+    args = parser.parse_args()
+    print("[AETHER-X PROD INIT] Garantindo o banco DuckDB para produção (idempotente)...")
+    seed_port_metrics(force=args.force)
+    print("[AETHER-X PROD INIT] Banco pronto.")
