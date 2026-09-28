@@ -114,6 +114,38 @@ def seed_port_metrics(force: bool = False):
     conn = duckdb.connect(DB_PATH)
 
     conn.execute("""
+        CREATE TABLE IF NOT EXISTS tax_rules (
+            state_code VARCHAR,
+            commodity VARCHAR,
+            icms_rate_pct DOUBLE,
+            exemption_note VARCHAR,
+            PRIMARY KEY (state_code, commodity)
+        )
+    """)
+
+    conn.executemany(
+        """
+        INSERT INTO tax_rules (state_code, commodity, icms_rate_pct, exemption_note)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT (state_code, commodity) DO UPDATE SET
+            icms_rate_pct = EXCLUDED.icms_rate_pct,
+            exemption_note = EXCLUDED.exemption_note
+        """,
+        [
+            ("SP", "SOJA", 18.0, None),
+            ("SP", "FERTILIZANTES", 18.0, None),
+            ("PR", "SOJA", 12.0, None),
+            ("PR", "FERTILIZANTES", 0.0, "Isento - Convênio ICMS 100/97"),
+            ("MA", "SOJA", 12.0, None),
+            ("MA", "FERTILIZANTES", 12.0, None),
+            ("RJ", "SOJA", 20.0, None),
+            ("RJ", "FERTILIZANTES", 20.0, None),
+            ("RS", "SOJA", 17.0, None),
+            ("RS", "FERTILIZANTES", 17.0, None)
+        ]
+    )
+
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS port_metrics (
             port_id VARCHAR PRIMARY KEY,
             port_name VARCHAR,

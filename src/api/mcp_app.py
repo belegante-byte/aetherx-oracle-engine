@@ -14,6 +14,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 from src.engine.verified_queue import get_verified_cargo_queue
 from src.products.gp5.maritime import get_port_physical_events
+from src.products.gp5.fiscal import evaluate_fiscal_routing as _eval_fiscal_routing
 from src.products.gp5.charter_risk import evaluate_charter_risk as _compute_charter_risk
 from src.products.gp5.routing import (
     evaluate_routing_alternatives as _compute_routing_alternatives,
@@ -346,6 +347,25 @@ def request_m2m_key(agent_name: str, organization: str, contact_email: str = "ag
 
 
 # ─── GP5 M2M DECISION TOOLS ───────────────────────────────────────────────────
+
+
+@mcp.tool()
+def evaluate_fiscal_routing(
+    intended_port_id: str,
+    commodity: str = "FERTILIZANTES",
+    cargo_value_usd: float = 10000000.0
+) -> dict[str, Any]:
+    """[DECISION TOOL] Evaluate fiscal and logistical arbitrage across alternative ports.
+
+    Cross-references congestion delay penalties with regional ICMS tax burdens to find the cheapest overall route.
+    Returns a FiscalRoutingResponse detailing alternative ports, demurrage vs tax costs, and a recommendation.
+
+    Args:
+        intended_port_id: UN/LOCODE of the intended destination port (e.g. BRSSZ).
+        commodity: Cargo type to lookup tax rules for (e.g. FERTILIZANTES, SOJA).
+        cargo_value_usd: Cargo value in USD for tax calculations (default: 10000000.0).
+    """
+    return _run_tool(_eval_fiscal_routing, "evaluate_fiscal_routing", intended_port_id=intended_port_id, commodity=commodity, cargo_value_usd=cargo_value_usd).model_dump()
 
 @mcp.tool()
 def evaluate_charter_risk(

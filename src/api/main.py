@@ -23,6 +23,7 @@ import time
 from src.runtime.access import authenticate_client, register_m2m_key
 from src.runtime.metering import record_usage
 from src.products.gp5.maritime import get_port_physical_events
+from src.products.gp5.fiscal import evaluate_fiscal_routing
 from src.products.gp5.charter_risk import evaluate_charter_risk
 from src.products.gp5.routing import evaluate_routing_alternatives, evaluate_corridor_risk
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
@@ -952,6 +953,24 @@ def get_gp5_corridor_eval(
     summary="Get Port Congestion Index (PCI, 0-100)",
     description="Calculates composite Port Congestion Index (0-100) with financial impact estimates."
 )
+
+
+@app.get(
+    "/v1/gp5/fiscal-routing",
+    tags=["GP5 Fiscal"],
+    summary="Evaluate fiscal and logistical arbitrage across alternative ports",
+    description="Cross-references congestion delay penalties with regional ICMS tax burdens to find the cheapest overall route."
+)
+def get_gp5_fiscal_routing(
+    intended_port_id: str = Query(..., example="BRSSZ"),
+    commodity: str = Query(..., example="FERTILIZANTES"),
+    cargo_value_usd: float = Query(10000000.0)
+):
+    try:
+        return evaluate_fiscal_routing(intended_port_id, commodity, cargo_value_usd).model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 def get_gp5_pci(port_id: str = Query(..., example="SGSIN")):
     try:
         return calculate_pci(port_id)
