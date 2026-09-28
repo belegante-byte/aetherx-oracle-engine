@@ -20,7 +20,7 @@ from src.products.gp5.routing import (
     evaluate_corridor_risk as _compute_corridor_risk,
 )
 from src.runtime.access import register_m2m_key
-from src.api.metrics import record_tool_call
+from src.api.metrics import record_tool_call, record_gate_event
 
 # Tool -> família de intenção (para a Control Tower atribuir o motivo do call).
 TOOL_INTENT = {
@@ -220,7 +220,7 @@ mcp = MCPServer(
         "evaluate_corridor_risk) require an M2M key: call `request_m2m_key` to self-serve a free "
         "7-day trial key, then authenticate M2M requests with 'Authorization: Bearer <key>'."
     ),
-    version="1.2.0",
+    version="1.3.0",
     website_url="https://aetherx.aether-grid.io",
 )
 
@@ -335,6 +335,7 @@ def request_m2m_key(agent_name: str, organization: str, contact_email: str = "ag
         contact_email: Contact email.
     """
     key = register_m2m_key(agent_name, contact_email, organization)
+    record_gate_event("trial_key_issued")
     return {
         "status": "success",
         "api_key": key,
@@ -541,6 +542,8 @@ def _mcp_allowed_hosts() -> list[str]:
     """
     default = [
         "aetherx.aether-grid.io",
+        "aether-x-oracle-production.up.railway.app",
+        "aether-x-oracle-production.up.railway.app:*",
         "localhost", "localhost:*",
         "127.0.0.1", "127.0.0.1:*",
         "testserver",

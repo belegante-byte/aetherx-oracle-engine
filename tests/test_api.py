@@ -654,3 +654,33 @@ def test_decision_grade_honest_per_port():
     ref = calculate_port_risk("AEDXB")
     assert ref["decision_grade"] == "reference"
     assert ref["data_source"] == "static_reference_seed"
+
+
+def test_metrics_data_quality_schema_and_antifake():
+    s = metrics_snapshot()
+    matrix = s["data_quality"]
+    assert isinstance(matrix, list)
+    by_id = {q["port_id"]: q for q in matrix}
+    # Schema padronizado (P3): grade + label + source + queue_observable + paired
+    for row in matrix:
+        for field in ("port_id", "live", "grade", "label", "source", "queue_observable", "paired"):
+            assert field in row, f"{row.get('port_id')} sem {field}"
+        assert (row["live"] is True) == (row["grade"] in ("VALIDATED", "CONDITIONAL"))
+    # BR ports reais tem live:true; globais calibrados/estáticos NUNCA são live
+    for pid in ("BRSSZ", "BRPNG", "BRRIO", "BRNIT", "BRITG"):
+        assert by_id[pid]["live"] is True
+    for pid in ("NLRTM", "CNSHA", "SGSIN", "AEDXB", "USHOU"):
+        assert by_id[pid]["live"] is False, f"{pid} não pode fingir live"
+        assert by_id[pid]["grade"] == "REFERENCE"
+        assert by_id[pid]["label"] == "reference_seed"
+
+
+def test_metrics_app_version_exposed():
+    s = metrics_snapshot()
+    assert s.get("app_version")
+
+
+def test_metrics_gates_block_present():
+    s = metrics_snapshot()
+    for field in ("decision_denied", "quota_exceeded", "trial_keys_issued"):
+        assert field in s["gates"]

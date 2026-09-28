@@ -16,6 +16,9 @@ import time
 
 logger = logging.getLogger("aetherx.metrics")
 
+# Versão da aplicação exposta no /internal/metrics (diagnóstico de rollout).
+APP_VERSION = os.getenv("AETHERX_APP_VERSION", "1.3.0")
+
 # Rotas que não interessam ao KPI (liveness, docs, assets).
 _SKIP_PREFIXES = ("/health", "/docs", "/redoc", "/static", "/tzdata/")
 
@@ -84,6 +87,15 @@ _paid_plans = {}      # {plan_name: int}  chamadas por tier pago (PRO/ULTRA/MEGA
 _paid_users = set()   # set[str]          X-RapidAPI-User distintos em plano pago
 
 PAID_PLANS = ("PRO", "ULTRA", "MEGA", "CUSTOM")
+
+# ---- Gate de acesso MCP (diagnóstico do funil de conversão) ----
+# Quantificam onde o funil "vaza" e alimentam a Control Tower:
+#   decision_denied  → máquinas anônimas que tentaram Decision Tools sem credencial
+#   quota_exceeded   → máquinas anônimas que estouraram a quota diária de observação
+#   trial_keys_issued→ trios self-service emitidos (chamadas autênticas de interesse)
+_decision_denials = 0
+_quota_denials = 0
+_trial_keys_issued = 0
 
 # ---- Consumidores reais: máquinas que EXECUTARAM pelo menos uma tool ----
 # Distingue "consumo real do Oracle" de "handshake/liveness de crawlers".
@@ -314,6 +326,24 @@ def record_error() -> None:
         _errors_total += 1
 
 
+def record_gate_event(kind: str) -> None:
+    """Registra eventos do gate de acesso MCP (diagnóstico do funil).
+
+    kind ∈ {"decision_denied", "quota_denied", "trial_key_issued"}.
+    """
+    global _decision_denials, _quota_denials, _trial_keys_issued
+    if kind not in ("decision_denied", "quota_denied", "trial_key_issued"):
+        return
+    with _lock:
+        if kind == "decision_denied":
+            _decision_denials += 1
+        elif kind == "quota_denied":
+            _quota_denials += 1
+        else:
+            _trial_keys_issued += 1
+        _recent_events.appendleft({"ts": int(time.time()), "kind": "gate", "detail": kind})
+
+
 def record_machine_event(kind: str, detail: str) -> None:
     """Registra um evento de máquina (novo/retorno) na linha do tempo."""
     if kind not in ("new_machine", "repeat_machine"):
@@ -461,6 +491,7 @@ def metrics_snapshot() -> dict:
         err_rate = (_errors_total / total_req) if total_req else 0.0
         return {
             "uptime_seconds": int(time.time() - _t0),
+            "app_version": APP_VERSION,
             "total": dict(_counts),
             "bot_calls": _counts.get("bot", 0),
             "unique_machines": uniq,
@@ -481,6 +512,12 @@ def metrics_snapshot() -> dict:
             "paid_plans": dict(_paid_plans),
             "paid_users": sorted(_paid_users),
             "paid_user_count": len(_paid_users),
+            # Gate de acesso MCP: onde o funil vaza + trial keys emitidos
+            "gates": {
+                "decision_denied": _decision_denials,
+                "quota_exceeded": _quota_denials,
+                "trial_keys_issued": _trial_keys_issued,
+            },
             # Consumo real: máquinas que executaram tools (não liveness)
             "mcp_consumer_count": len(_mcp_consumer_ips),
             "mcp_consumers": {
@@ -556,11 +593,22 @@ def _quality_matrix_snapshot() -> list[dict]:
             has_pair = pid in paired
             if live and queue_observable and has_pair:
                 grade = "VALIDATED"
+                label = "validated_live"
             elif live:
                 grade = "CONDITIONAL"
+                label = "live_observation"
             else:
                 grade = "REFERENCE"
-            out.append({"port_id": pid, "live": live, "grade": grade})
+                label = "reference_seed"
+            out.append({
+                "port_id": pid,
+                "live": live,
+                "grade": grade,
+                "label": label,
+                "source": ds or "none",
+                "queue_observable": queue_observable,
+                "paired": has_pair,
+            })
         try:
             conn.close()
         except Exception:
@@ -586,6 +634,9 @@ def _persist_now() -> None:
                 "errors_total": _errors_total,
                 "paid_plans": dict(_paid_plans),
                 "paid_users": sorted(_paid_users),
+                "decision_denials": _decision_denials,
+                "quota_denials": _quota_denials,
+                "trial_keys_issued": _trial_keys_issued,
                 "events": list(_recent_events),
                 "mcp_consumers": dict(_mcp_consumers),
                 "mcp_consumer_ips": sorted(_mcp_consumer_ips),
@@ -632,6 +683,9 @@ def _load_state() -> None:
             _errors_total = state.get("errors_total", _errors_total)
             _paid_plans.update(state.get("paid_plans", {}))
             _paid_users.update(state.get("paid_users", []))
+            _decision_denials = state.get("decision_denials", _decision_denials)
+            _quota_denials = state.get("quota_denials", _quota_denials)
+            _trial_keys_issued = state.get("trial_keys_issued", _trial_keys_issued)
             _mcp_consumers.update(state.get("mcp_consumers", {}))
             _mcp_consumer_ips.update(state.get("mcp_consumer_ips", []))
             for k, v in state.get("machine_stages", {}).items():

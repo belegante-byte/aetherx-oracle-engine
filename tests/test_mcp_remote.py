@@ -12,6 +12,7 @@ o session manager do transporte MCP só roda uma vez por instância).
 import json
 
 from src.api import mcp_quota
+from src.api.metrics import metrics_snapshot
 from src.runtime import access as access_mod
 
 
@@ -77,21 +78,35 @@ def test_quota_helper_tracks_remaining(monkeypatch):
 # ───────────────────────── interação HTTP (full app) ─────────────────────────
 
 def test_decision_anon_denied_with_trial_hint(mcp_client):
+    before = metrics_snapshot()["gates"]["decision_denied"]
     r = _call(mcp_client, "evaluate_charter_risk", {"port_id": "BRPNG"},
               {"X-Forwarded-For": "1.2.3.4"})
     assert r.status_code == 200
     body = json.loads(r.content)
     assert body["error"]["code"] == -32003
     assert "request_m2m_key" in body["error"]["message"]
+    assert metrics_snapshot()["gates"]["decision_denied"] == before + 1
 
 
 def test_observation_quota_exceeded(mcp_client, monkeypatch):
     monkeypatch.setattr(mcp_quota, "OBSERVATION_QUOTA_PER_DAY", 0)
+    before = metrics_snapshot()["gates"]["quota_exceeded"]
     r = _call(mcp_client, "get_port_risk", {"port_id": "BRSSZ"},
               {"X-Forwarded-For": "1.2.3.5"})
     assert r.status_code == 200
     body = json.loads(r.content)
     assert body["error"]["code"] == -32004
+    assert metrics_snapshot()["gates"]["quota_exceeded"] == before + 1
+
+
+def test_trial_key_self_serve(mcp_client):
+    before = metrics_snapshot()["gates"]["trial_keys_issued"]
+    sid = _open_session(mcp_client)
+    r = _call(mcp_client, "request_m2m_key",
+              {"agent_name": "t", "organization": "acme"}, session=sid)
+    assert r.status_code == 200
+    assert "api_key" in r.text and "gp5_trial_" in r.text
+    assert metrics_snapshot()["gates"]["trial_keys_issued"] == before + 1
 
 
 def test_observation_anon_allowed_and_header_present(mcp_client):

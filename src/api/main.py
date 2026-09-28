@@ -16,7 +16,7 @@ from src.api import mcp_quota
 from src.api.rate_limit import PublicRateLimitMiddleware
 from src.api import content_pages
 from src.api.content_pages import PORT_METAS, _SLUG_MAP
-from src.api.metrics import MetricsMiddleware, metrics_snapshot
+from src.api.metrics import MetricsMiddleware, metrics_snapshot, record_gate_event
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 import time
@@ -264,6 +264,14 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
     <a class="link-card" href="/port-congestion-tanger-med">Tanger Med (MPTNG)</a>
     <a class="link-card" href="/port-congestion-london-gateway">London Gateway (GBLGP)</a>
     <a class="link-card" href="/port-congestion-manzanillo">Manzanillo (MXZLO)</a>
+  </div>
+
+  <p class="section-title" style="margin-top:2rem">Access &amp; Pricing</p>
+  <div class="links-grid">
+    <a class="link-card" href="/mcp-page"><strong>Free · Observation</strong><br><span style="color:#8b949e">REST + MCP data tools with a daily free quota. $0.00, no credit card.</span></a>
+    <a class="link-card" href="/m2m-keys"><strong>M2M · Decision tools</strong><br><span style="color:#8b949e">Free 7-day trial key unlocks demurrage / routing / corridor risk. Self-serve.</span></a>
+    <a class="link-card" href="/demo"><strong>Interactive simulator</strong><br><span style="color:#8b949e">Try demurrage, total cycle days and SCDEW risk in the browser.</span></a>
+    <a class="link-card" href="https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle"><strong>RapidAPI · Pay-as-you-go</strong><br><span style="color:#8b949e">Scaled production access, SLA and business terms.</span></a>
   </div>
 
   <div class="footer">
@@ -560,6 +568,7 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                                 }
                             }).encode("utf-8")
                             record_usage(context, product="gp5", tool=tool_name, duration_ms=0, status_code=403)
+                            record_gate_event("decision_denied")
                             from starlette.responses import Response
                             return Response(content=body, status_code=200, media_type="application/json")
 
@@ -591,6 +600,7 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                                     }
                                 }).encode("utf-8")
                                 record_usage(context, product="gp5", tool=tool_name, duration_ms=0, status_code=429)
+                                record_gate_event("quota_denied")
                                 from starlette.responses import Response
                                 return Response(content=body, status_code=200, media_type="application/json")
                             allowed_quota = remaining
