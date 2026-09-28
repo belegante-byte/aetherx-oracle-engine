@@ -44,9 +44,11 @@ def _mock_transport() -> httpx.MockTransport:
     return httpx.MockTransport(handler)
 
 
-def test_list_supported_ports_returns_nineteen() -> None:
+def test_list_supported_ports_returns_current_coverage() -> None:
     ports = server.list_supported_ports()
-    assert len(ports) == 19
+    # Cobertura atual do servidor de referência: 35 portos & chokepoints.
+    # (NÃO reverter para 19 — a expansão para 35 é intencional.)
+    assert len(ports) == 35
     assert any(p["port_id"] == "BRSSZ" for p in ports)
     assert any(p["port_id"] == "BRPNG" for p in ports)
     assert any(p["port_id"] == "BRITG" for p in ports)

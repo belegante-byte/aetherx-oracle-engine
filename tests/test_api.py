@@ -283,10 +283,15 @@ def test_ports_risk_batch():
     body = resp.json()
     assert [r["port_id"] for r in body["results"]] == ["BRSSZ", "CNSHA", "AEDXB"]
     assert body["results"][0]["estimated_daily_demurrage_usd"] > 0
-    # BRSSZ e CNSHA possuem fontes vivas; AEDXB segue o seed de referência.
+    # INTEGRIDADE: BRSSZ tem observação real (santos/santos_painel). CNSHA vive
+    # em dicionário de referência calibrada (NÃO é telemetria viva) e AEDXB usa
+    # o seed estático — ambos rótulos honestos, sem fingir "live".
     assert body["results"][0]["data_source"].startswith("live:")
-    assert body["results"][1]["data_source"].startswith("live:")
+    assert body["results"][0]["signal"]["live_observation"] is True
+    assert body["results"][1]["data_source"] == "calibrated_reference_seed"
+    assert body["results"][1]["signal"]["live_observation"] is False
     assert body["results"][2]["data_source"] == "static_reference_seed"
+    assert body["results"][2]["signal"]["live_observation"] is False
 
 
 def test_ports_risk_batch_limit():
@@ -413,15 +418,29 @@ def test_record_tool_call_populates_tower():
 
 
 def test_record_tool_call_tracks_error():
+    from src.api.metrics import _tool_errors
     with _lock:
         _tools.clear()
         _ports.clear()
         _recent_events.clear()
+        _tool_errors.clear()
     before_errors = metrics_snapshot()["mcp_errors"]
-    record_tool_call("get_port_trend", port_id="BRSSZ", ok=False, latency_ms=3)
+    record_tool_call(
+        "get_port_trend", port_id="BRSSZ", ok=False, latency_ms=3,
+        error=KeyError("porto nao encontrado"), client_id="acme-m2m",
+    )
     s = metrics_snapshot()
     assert s["mcp_errors"] == before_errors + 1
     assert s["top_tools"][0][0] == "get_port_trend"
+    # Mitigação: erro é ATRIBUÍVEL (tool/porto/tipo + client_id mascarado)
+    assert s["tool_errors"], "tool_errors deve expor a causa"
+    first = s["tool_errors"][0]
+    assert first["tool"] == "get_port_trend"
+    assert first["port"] == "BRSSZ"
+    assert first["error_type"] == "KeyError"
+    assert first["client_id"] == "acme-m2m"
+    kinds = [e["kind"] for e in s["recent_events"]]
+    assert "tool_error" in kinds
 
 
 def test_record_rapidapi_call_tracks_paid_plan():

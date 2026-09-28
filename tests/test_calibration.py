@@ -52,11 +52,14 @@ def test_only_queuey_port_emits_score(tmp_path):
             list(par.values()),
         )
         # BRPNG com fila observada -> score emitido
-        r = calibrate("BRPNG")
+        # (injeção de conn espelha o fluxo de produção: risk_model injeta a
+        # conexão; conexão própria só lê o DB, sem reabrir outro modo no mesmo
+        # arquivo — DuckDB proíbe misturar acesso na mesma sessão)
+        r = calibrate("BRPNG", conn=conn)
         assert r["congestion_score"] is not None
         assert r["historical_expected_wait_h"] > 0
         # BRRIO sem fila -> só referência, sem score (princípio de semântica)
-        r2 = calibrate("BRRIO")
+        r2 = calibrate("BRRIO", conn=conn)
         assert r2["congestion_score"] is None
         assert r2["historical_expected_wait_h"] > 0
     finally:
@@ -82,7 +85,7 @@ def test_confidence_cresce_com_pares(tmp_path):
             """,
             list(par.values()),
         )
-        r = calibrate("BRPNG")
+        r = calibrate("BRPNG", conn=conn)
         assert r["paired_windows"] == 1
         assert r["confidence"] > 0.3  # par registered => base recency bonus
     finally:
