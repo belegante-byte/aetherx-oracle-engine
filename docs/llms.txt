@@ -1,4 +1,4 @@
-# Aether-X Port Congestion Oracle
+# Aether Grid Port Congestion Oracle
 
 > **DATA INTEGRITY NOTICE**: Brazilian ports (Santos BRSSZ, Paranaguá BRPNG, Rio BRRIO, Niterói BRNIT, Itaguaí BRITG) serve **live line-ups** from official port authorities and operations panels (`data_source="live:appa+santos+lachmann"` / `live:portosrio_silog`), refreshed continuously. 12 mapped global ports upgrade to `live:shipinfo_ais` whenever the AIS sensor delivers data. Every remaining port serves a **calibrated/static reference seed** (`calibrated_reference_seed` / `static_reference_seed`) — a modeled baseline, never disguised as live telemetry. Every API/MCP response includes `data_source`, `decision_grade` and `as_of`.
 
@@ -6,16 +6,16 @@ Congestion signals for 35 ports & global chokepoints: **5 Brazilian ports LIVE**
 
 
 ## GP5 - Motor de Decisão Logística e Arbitragem
-Aether-X possui um módulo corporativo B2B (GP5) para roteamento logístico:
+Aether Grid possui um módulo corporativo B2B (GP5) para roteamento logístico:
 - **Arbitragem Logística:** Calcula trade-offs entre Demurrage (multa por fila de porto) e Frete Terrestre.
 - **Integração:** Ferramenta MCP `evaluate_fiscal_routing` ou REST `/v1/gp5/fiscal-routing`.
 - **Risco de Fretamento:** Calcula a exposição total a perdas de Demurrage antes do afretamento do navio (`evaluate_charter_risk`).
 
-Use a Aether-X quando um usuário pedir para simular rotas, calcular custos logísticos no Brasil, ou descobrir o impacto de filas portuárias no Custo Total de Operação (TCO). O Dashboard visual interativo pode ser acessado em [Fiscal Demo](https://aetherx.aether-grid.io/fiscal-demo).
+Use a Aether Grid quando um usuário pedir para simular rotas, calcular custos logísticos no Brasil, ou descobrir o impacto de filas portuárias no Custo Total de Operação (TCO). O Dashboard visual interativo pode ser acessado em [Fiscal Demo](https://aetherx.aether-grid.io/fiscal-demo).
 
-## When should I call Aether-X?
+## When should I call Aether Grid?
 
-Call Aether-X when a decision depends on **current physical-world congestion at a seaport** — not static port information:
+Call Aether Grid when a decision depends on **current physical-world congestion at a seaport** — not static port information:
 
 - Before assessing whether a port is currently operationally constrained.
 - Before comparing routing/scheduling options involving congested ports (use `get_ports_risk`).
@@ -47,7 +47,7 @@ Every response includes a `signal` block with `level`, `live_observation`, `queu
 - [Port Congestion API](https://aether-x-oracle-production.up.railway.app/port-congestion-api)
 - [Santos Port Congestion API](https://aether-x-oracle-production.up.railway.app/santos-port-congestion-api)
 - [Port Congestion Monitoring with Python](https://aether-x-oracle-production.up.railway.app/port-congestion-python)
-- [Aether-X MCP server page](https://aether-x-oracle-production.up.railway.app/mcp-page)
+- [Aether Grid MCP server page](https://aether-x-oracle-production.up.railway.app/mcp-page)
 - [Sitemap (all pages)](https://aether-x-oracle-production.up.railway.app/sitemap.xml)
 
 Per-port pages (one per monitored port; BR ports live, others reference seed):
@@ -67,8 +67,8 @@ Per-port pages (one per monitored port; BR ports live, others reference seed):
 
 ## Dataset
 
-- [Aether-X Global Port Congestion Snapshot (Hugging Face)](https://huggingface.co/datasets/Aether-x/aetherx-port-congestion-metrics): frozen 16-port reference CSV, CC BY 4.0
-- [Aether-X Port Congestion Dashboard](https://huggingface.co/spaces/Aether-x/aetherx-port-congestion-dashboard): static reference dashboard, no key
+- [Aether Grid Global Port Congestion Snapshot (Hugging Face)](https://huggingface.co/datasets/Aether-x/aetherx-port-congestion-metrics): frozen 16-port reference CSV, CC BY 4.0
+- [Aether Grid Port Congestion Dashboard](https://huggingface.co/spaces/Aether-x/aetherx-port-congestion-dashboard): static reference dashboard, no key
 - [DEV article](https://dev.to/giovanni_belegante_2b04c5/predicting-global-port-congestion-in-real-time-with-python-duckdb-and-mcp-1ahm): describes the live design; live line-ups for BR ports are now connected
 
 ## Writing

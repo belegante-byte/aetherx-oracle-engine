@@ -1,4 +1,4 @@
-"""Landing content pages: Aether-X MCP demo page, SEO intent pages and sitemap.
+"""Landing content pages: Aether Grid MCP demo page, SEO intent pages and sitemap.
 
 All pages reuse the same dark theme as the landing page and render the
 oracle signals (calculate_port_risk / calculate_port_trend). Every page
@@ -124,11 +124,11 @@ def _page(title: str, meta_description: str, h1: str, lede: str, body: str, cano
 </head>
 <body>
 <div class="container">
-<div class="breadcrumb"><a href="/">Aether-X Port Congestion Oracle</a> /</div>
+<div class="breadcrumb"><a href="/">Aether Grid Port Congestion Oracle</a> /</div>
 <h1>{h1}</h1>
 <p class="lede muted">{lede}</p>
 {body}
-<div class="footer">Aether-X Port Congestion Oracle &middot; Free tier $0.00 &middot; <a href="{RAPIDAPI_URL}">RapidAPI</a> &middot; <a href="{PYPI_SDK}">PyPI SDK</a> &middot; <a href="{PYPI_MCP}">MCP server</a> &middot; MCP Registry: {REGISTRY_URL}</div>
+<div class="footer">Aether Grid Port Congestion Oracle &middot; Free tier $0.00 &middot; <a href="{RAPIDAPI_URL}">RapidAPI</a> &middot; <a href="{PYPI_SDK}">PyPI SDK</a> &middot; <a href="{PYPI_MCP}">MCP server</a> &middot; MCP Registry: {REGISTRY_URL}</div>
 </div>
 </body>
 </html>"""
@@ -199,9 +199,9 @@ Every response includes data_source and as_of.</code></pre></div>
 <a class="cta" href="{RAPIDAPI_URL}">Get a free API key</a>
 """
     return _page(
-        "Aether-X MCP — Port Congestion Server for AI Agents",
+        "Aether Grid MCP — Port Congestion Server for AI Agents",
         "MCP server for live Brazilian port line-ups and reference global port congestion signals. Tools: get_port_risk, get_ports_risk, get_port_trend. Remote endpoint and PyPI install.",
-        "Aether-X MCP: Port Congestion for AI Agents",
+        "Aether Grid MCP: Port Congestion for AI Agents",
         "Connect any MCP-compatible agent to congestion signals for Brazilian ports (live line-ups) and reference signals for global ports.",
         body,
         "/mcp-page",
@@ -254,7 +254,7 @@ from aetherx import OracleClient
 client = OracleClient(api_key="YOUR_RAPIDAPI_KEY")
 risk = client.get_port_risk("BRSSZ")
 print(risk.congestion_score, risk.eta_delay_days)</code></pre></div>
-<p>Add the 24/48/72h trend with <code>client.get_port_trend("BRSSZ")</code>, or monitor several Brazilian ports at once with <code>client.get_ports_risk(["BRSSZ", "BRRIO"])</code>. AI agents can consume the same data via the <a href="/mcp-page">Aether-X MCP server</a>.</p>
+<p>Add the 24/48/72h trend with <code>client.get_port_trend("BRSSZ")</code>, or monitor several Brazilian ports at once with <code>client.get_ports_risk(["BRSSZ", "BRRIO"])</code>. AI agents can consume the same data via the <a href="/mcp-page">Aether Grid MCP server</a>.</p>
 <a class="cta" href="{RAPIDAPI_URL}">Get a free API key for Santos data</a>
 """
     return _page(
@@ -357,7 +357,7 @@ from aetherx import OracleClient
 client = OracleClient(api_key="YOUR_RAPIDAPI_KEY")
 risk = client.get_port_risk("{port_id}")
 print(risk.congestion_score, risk.eta_delay_days)</code></pre></div>
-<p>Add the 24/48/72h trend with <code>client.get_port_trend("{port_id}")</code>, or monitor several ports at once with <code>client.get_ports_risk(["{port_id}", "CNSHA"])</code>. AI agents can consume the same data via the <a href="/mcp-page">Aether-X MCP server</a>.</p>
+<p>Add the 24/48/72h trend with <code>client.get_port_trend("{port_id}")</code>, or monitor several ports at once with <code>client.get_ports_risk(["{port_id}", "CNSHA"])</code>. AI agents can consume the same data via the <a href="/mcp-page">Aether Grid MCP server</a>.</p>
 <a class="cta" href="{RAPIDAPI_URL}">Get a free API key</a>
 """
     return _page(
@@ -651,7 +651,7 @@ print("PCI Score:", pci_res.json())</code></pre></div>
 
 
 PAGES = [
-    ("/mcp-page", mcp_page_html, "Aether-X MCP — Port Congestion Server for AI Agents"),
+    ("/mcp-page", mcp_page_html, "Aether Grid MCP — Port Congestion Server for AI Agents"),
     ("/m2m-keys", m2m_keys_page_html, "GP5 M2M — Chaves de Acesso & Decision Tools"),
     ("/demo", demo_page_html, "GP5 Maritime — Simulador Interativo de Risco & Sobrestadia"),
     ("/port-congestion-api", port_congestion_api_page, "Port Congestion API — Port Risk, ETA Delay & Demurrage"),
@@ -702,7 +702,7 @@ def fiscal_demo_page(intended_port: str = "BRSSZ", commodity: str = "FERTILIZANT
 
     body = f"""
     <div style="max-width: 1200px; margin: 0 auto; font-family: monospace;">
-        <h2 style="color: #60a5fa;">Aether-X: Motor de Arbitragem Logístico-Tributária</h2>
+        <h2 style="color: #60a5fa;">Aether Grid: Motor de Arbitragem Logístico-Tributária</h2>
         <p style="color: #9ca3af; font-size: 1.1rem; line-height: 1.6;">
             Esta ferramenta simula o custo total de importação/exportação cruzando o <strong>Congestionamento do Porto (Mar)</strong>, 
             a <strong>Alíquota de ICMS (Imposto)</strong> e o <strong>Frete Terrestre (Terra)</strong>.
@@ -740,13 +740,13 @@ def fiscal_demo_page(intended_port: str = "BRSSZ", commodity: str = "FERTILIZANT
             </table>
         </div>
         
-        <p style="text-align: center; color: #6b7280; margin-top: 50px;">Aether-X Oracle &copy; 2026. Powered by DuckDB & FastAPI.</p>
+        <p style="text-align: center; color: #6b7280; margin-top: 50px;">Aether Grid Oracle &copy; 2026. Powered by DuckDB & FastAPI.</p>
     </div>
     """
     return _page(
-        title="Fiscal Arbitrage | Aether-X",
+        title="Fiscal Arbitrage | Aether Grid",
         meta_description="O motor de roteamento B2B logístico-tributário definitivo.",
-        h1="Aether-X Oracle: Fiscal Routing",
+        h1="Aether Grid Oracle: Fiscal Routing",
         lede="Descubra para onde enviar seu navio para pagar menos impostos e zero demurrage.",
         body=body,
         canonical_suffix="/fiscal-demo"
@@ -813,7 +813,7 @@ def arbitrage_seo_page(slug: str) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title} | Aether-X Oracle</title>
+<title>{title} | Aether Grid Oracle</title>
 <meta name="description" content="{desc}">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="{PRODUCTION_URL}/arbitragem-logistica/{slug}" />
@@ -858,7 +858,7 @@ h2 {{ color: #8b949e; margin-top: 2rem; }}
         <div class="data-row" style="font-weight:bold; color:#58a6ff;"><span>Custo Total Estimado (TCO)</span><span>US$ {opt2.total_cost_usd:,.2f}</span></div>
     </div>
 
-    <h2>Metodologia (Aether-X Oracle)</h2>
+    <h2>Metodologia (Aether Grid Oracle)</h2>
     <p>O cálculo de TCO (Custo Total de Operação) acima foi gerado autonomamente cruzando matrizes de frete rodoviário e ferroviário, isenções de Convênio ICMS 100/97 aplicadas ao estado de destino, e telemetria de congestionamento de navios ao vivo (live line-ups).</p>
     
     <div class="cta">
@@ -868,7 +868,7 @@ h2 {{ color: #8b949e; margin-top: 2rem; }}
     </div>
 
     <div class="disclaimer">
-        As informações representam um cenário simulado de 60.000 MT baseado em condições observadas em tempo real. Valores apresentados como referência de mercado. Motor GP5 Aether-X.
+        As informações representam um cenário simulado de 60.000 MT baseado em condições observadas em tempo real. Valores apresentados como referência de mercado. Motor GP5 Aether Grid.
     </div>
 </div>
 </body>

@@ -50,7 +50,7 @@ def generate_pitch(target_company: str, commodity: str, cargo_value_usd: float, 
 {res.recommendation_summary}
 
 ## 2. Metodologia e Premissas ("Sniper Honesto")
-Este relatório foi gerado através do motor **Aether-X Oracle**. Não utilizamos "achismos" nem dados defasados. As premissas matemáticas abertas para a sua validação são:
+Este relatório foi gerado através do motor **Aether Grid Oracle**. Não utilizamos "achismos" nem dados defasados. As premissas matemáticas abertas para a sua validação são:
 - **Telemetria Física:** Baseada nas filas de navios em tempo real de hoje, lidas via integrações primárias (ex: APPA, PortosRio, SILOG) e modelagem de congestionamento.
 - **Multa de Fila (Demurrage):** Estimativa derivada de índices reais de pressão operacional (estimada dinamicamente entre US$ 32.000 a 45.000/dia por navio panamax).
 - **Tributação (ICMS - Regra de Destino/DIFAL):** O modelo atribui a alíquota baseada no **Estado Destinatário da Carga** (`{inland_uf.upper()}`), aplicando o Convênio 100/97 ou isenções vigentes no destino, neutralizando assimetrias de origem portuária.
@@ -77,7 +77,7 @@ Este relatório foi gerado através do motor **Aether-X Oracle**. Não utilizamo
 - **Custo Total de Operação (TCO): US$ {best_opt.total_cost_usd:,.2f}**
 
 ---
-*Gerado autonomamente pelo Motor Aether-X GP5 (Gateway/API) em frações de segundo.*
+*Gerado autonomamente pelo Motor Aether Grid GP5 (Gateway/API) em frações de segundo.*
 """
 
     out_file = f"pitch_{target_company.lower().replace(' ', '_')}.md"

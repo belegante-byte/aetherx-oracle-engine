@@ -1,9 +1,9 @@
 {
     "schema_version": "v1",
-    "name_for_human": "Aether-X Port Congestion Oracle",
-    "name_for_model": "aetherx_oracle",
-    "description_for_human": "Aether-X Oracle: Motor GP5 de Arbitragem Log\u00edstica, Tribut\u00e1ria e Risco de Congestionamento para Portos do Brasil e do Mundo.",
-    "description_for_model": "Aether-X \u00e9 uma plataforma de intelig\u00eancia de supply chain e log\u00edstica. Ela fornece risco de congestionamento, demurrage, e arbitragem tribut\u00e1ria. Use /v1/port-risk para congestionamento portu\u00e1rio. Use as ferramentas de decis\u00e3o GP5 (ex: /v1/gp5/fiscal-routing, /v1/gp5/routing-eval, /v1/gp5/charter-risk) para simular o Custo Total de Opera\u00e7\u00e3o (TCO) englobando Fila do Porto (Demurrage) vs Frete Terrestre (Inland) vs Impostos (ICMS no destino). Portos como Santos (BRSSZ), Paranagu\u00e1 (BRPNG), Itaqui (BRMAO) usam integra\u00e7\u00f5es reais (live). A API fornece dados cruciais para Traders de Commodities e Diretores de Supply Chain otimizarem rotas e preverem custos ocultos.",
+    "name_for_human": "Aether Grid Port Congestion Oracle",
+    "name_for_model": "aether_grid_oracle",
+    "description_for_human": "Aether Grid Oracle: Motor GP5 de Arbitragem Log\u00edstica, Tribut\u00e1ria e Risco de Congestionamento para Portos do Brasil e do Mundo.",
+    "description_for_model": "Aether Grid \u00e9 uma plataforma de intelig\u00eancia de supply chain e log\u00edstica. Ela fornece risco de congestionamento, demurrage, e arbitragem tribut\u00e1ria. Use /v1/port-risk para congestionamento portu\u00e1rio. Use as ferramentas de decis\u00e3o GP5 (ex: /v1/gp5/fiscal-routing, /v1/gp5/routing-eval, /v1/gp5/charter-risk) para simular o Custo Total de Opera\u00e7\u00e3o (TCO) englobando Fila do Porto (Demurrage) vs Frete Terrestre (Inland) vs Impostos (ICMS no destino). Portos como Santos (BRSSZ), Paranagu\u00e1 (BRPNG), Itaqui (BRMAO) usam integra\u00e7\u00f5es reais (live). A API fornece dados cruciais para Traders de Commodities e Diretores de Supply Chain otimizarem rotas e preverem custos ocultos.",
     "auth": {
         "type": "none"
     },

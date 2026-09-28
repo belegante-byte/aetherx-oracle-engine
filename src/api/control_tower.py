@@ -1,4 +1,4 @@
-"""Aether-X Control Tower: painel operacional interno.
+"""Aether Grid Control Tower: painel operacional interno.
 
 Renderiza em uma única tela o estado vivo do sistema: runtime, uso M2M,
 top tools, top ports, discovery health, data quality e eventos recentes.
@@ -290,7 +290,7 @@ def control_tower_html(snapshot: dict) -> str:
     return f"""<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Aether-X Control Tower</title>
+<title>Aether Grid Control Tower</title>
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
 body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,monospace;background:#0a0e14;color:#e6edf3;padding:2rem;font-size:14px}}
@@ -313,7 +313,7 @@ h1{{font-size:1.4rem;letter-spacing:2px;color:#58a6ff;margin-bottom:1.5rem}}
 .red{{color:#f85149}}
 .stat{{padding:2px 0}}
 </style></head><body>
-<h1>AETHER-X CONTROL TOWER</h1>
+<h1>AETHER GRID CONTROL TOWER</h1>
 <div class="grid">
   <div class="card">
     <h2>SYSTEM</h2>
