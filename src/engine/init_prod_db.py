@@ -60,6 +60,48 @@ PORTS = [
 ]
 
 
+# Fontes "live" FABRICADAS da era 35/35 live (commit 397064b) — nunca foram
+# feeds integrados. Qualquer linha rotulada com elas é referência estática
+# vendida como telemetria viva: normalize para calibrated_reference_seed.
+LEGACY_FAKE_LIVE = (
+    "portinsight_ais", "portcast_live", "gateway_lines", "kuehne_nagel",
+    "vesselapi", "hutchison_intermodal", "findtrain_rail", "straittraffic_imf",
+    "seavantage_chokepoint", "hormuztracking", "tankermap", "datalastic_africa",
+)
+
+
+def _normalize_legacy_fake_live(conn) -> int:
+    """Idempotente: reescreve labels live fabricados p/ referência calibrada.
+
+    Os valores (score/fila) das linhas afetadas SÃO os do seed de referência;
+    só o rótulo era mentira. Preserva observações realmente vivas
+    (appa, santos, lachmann, portosrio_silog, shipinfo_ais).
+    """
+    cond = " OR ".join(f"data_source LIKE '%{s}%'" for s in LEGACY_FAKE_LIVE)
+    fake = conn.execute(
+        "SELECT COUNT(*) FROM port_metrics WHERE data_source LIKE 'live:%' AND (" + cond + ")"
+    ).fetchone()[0]
+    if not fake:
+        return 0
+    conn.execute(
+        "UPDATE port_metrics "
+        "SET data_source = 'calibrated_reference_seed', "
+        "data_source_label = 'Calibrated reference seed (static model baseline, NOT live telemetry).', "
+        "live_detail = NULL "
+        "WHERE data_source LIKE 'live:%' AND (" + cond + ")"
+    )
+    hist = conn.execute(
+        "SELECT COUNT(*) FROM information_schema.tables "
+        "WHERE table_name = 'port_metrics_history'"
+    ).fetchone()[0]
+    if hist:
+        conn.execute(
+            "UPDATE port_metrics_history SET data_source = 'calibrated_reference_seed' "
+            "WHERE data_source LIKE 'live:%' AND (" + cond + ")"
+        )
+    return fake
+
+
 def seed_port_metrics(force: bool = False):
     """Garante schema e semeia o oráculo sem destruir observações vivas.
 
@@ -114,6 +156,10 @@ def seed_port_metrics(force: bool = False):
         ]
     )
 
+    # Auditoria antifake: linhas 'live' fabricadas (era 35/35 live) viram
+    # referência calibrada honesta — idempotente, roda a cada boot.
+    normalizadas = _normalize_legacy_fake_live(conn)
+
     count = conn.execute("SELECT COUNT(*) FROM port_metrics").fetchone()[0]
     vivos = conn.execute(
         "SELECT COUNT(*) FROM port_metrics WHERE data_source LIKE 'live:%'"
@@ -125,6 +171,8 @@ def seed_port_metrics(force: bool = False):
 
     print(f"[AETHER-X PROD INIT] Oráculo garantido em: {DB_PATH}")
     print(f"[AETHER-X PROD INIT] Total de portos: {count} | sources live preservadas: {vivos}")
+    if normalizadas:
+        print(f"[AETHER-X PROD INIT] Fakes-live normalizados p/ conferência: {normalizadas}")
     print(f"[AETHER-X PROD INIT] Amostra: {sample}")
 
 

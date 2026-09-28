@@ -181,7 +181,11 @@ def calculate_port_risk(port_id: str) -> dict:
             **fetch_european_port_congestion(),
             **fetch_chokepoint_and_african_telemetry()
         }
-        if port_id in live_global:
+        # Precedência de dados reais: se o port_metrics carrega uma observação
+        # viva (live:*) no DuckDB, serve ELA — o dicionário estático de
+        # referência NUNCA pode encobrir telemetria real do sensor.
+        _db_is_live = bool(row and (row[8] or "").startswith("live:"))
+        if port_id in live_global and not _db_is_live:
             pinfo = live_global[port_id]
             score = pinfo["congestion_score"]
             wait_hours = pinfo.get("median_wait_hours")
@@ -322,7 +326,8 @@ def calculate_port_risk(port_id: str) -> dict:
     try:
         from src.ingestion.live_sources import fetch_asian_port_congestion
         asian_data = fetch_asian_port_congestion()
-        if port_id in asian_data:
+        db_live = (data_source or "").startswith("live:")
+        if port_id in asian_data and not db_live:
             asian_info = asian_data[port_id]
             mid_wait = asian_info.get('median_wait_hours')
             berth = asian_info.get('berth_occupancy_pct')

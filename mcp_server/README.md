@@ -51,7 +51,7 @@ uvx aetherx-mcp
 | `get_port_risk` | `port_id` (UN/LOCODE) | Congestion score, ETA delay, waiting vessels, freight volatility, daily demurrage estimate |
 | `get_ports_risk` | `port_ids` (list) | Same, for a whole portfolio, fetched in parallel |
 | `get_port_trend` | `port_id` (UN/LOCODE) | 24h / 48h / 72h congestion projection + trend label (acelerando / estável / descongestionando) |
-| `list_supported_ports` | — | The 19 ports (id, name, country) |
+| `list_supported_ports` | — | The 35 ports & chokepoints (id, name, country) |
 
 Every response is a typed payload:
 

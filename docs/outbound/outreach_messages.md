@@ -48,7 +48,7 @@ Hi {Person},
 
 {PersHook}
 
-We built GP5 Maritime — a predictive M2M physical queue intelligence engine covering 19 ports (Santos, Paranaguá, Shanghai, Rotterdam, LA). It fuses live sea-side vessel queues with land-side railway wagon queueing (Rumo Logistics).
+We built GP5 Maritime — a predictive M2M physical queue intelligence engine covering 35 ports & global chokepoints (5 Brazilian ports with live official-authority line-ups: Santos, Paranaguá, Rio, Niterói, Itaguaí), plus rail-wagon delay inference for the Rumo export corridor.
 
 It provides Decision Tools (evaluating daily demurrage financial exposure in USD and comparative port routing alternatives) as raw ChangePackets (physical-event.v1) or MCP agent tools.
 

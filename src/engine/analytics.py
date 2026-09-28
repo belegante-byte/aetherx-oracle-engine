@@ -93,24 +93,31 @@ def calculate_cdr(chokepoint_id: str) -> Dict[str, Any]:
     """
     chokepoint_id = chokepoint_id.upper().strip()
     telemetry = fetch_chokepoint_and_african_telemetry()
-    cp_info = telemetry.get(chokepoint_id, {
-        "port_name": chokepoint_id,
-        "congestion_score": 0.5,
-        "pct_of_normal_baseline": 80.0,
-        "daily_transits": 25,
-        "seven_day_avg_transits": 26.0,
-        "status": "OPERATIONAL",
-        "sources": ["straittraffic_imf"],
-        "as_of": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    })
+    cp_info = telemetry.get(chokepoint_id)
+    if cp_info is None:
+        # Chokepoint não mapeado: estimativa GLOBAL explícita, SEM inventar
+        # fonte nem telemetria. Nenhum ID desconhecido recebe sources fabricados.
+        cp_info = {
+            "port_name": f"Unmapped chokepoint '{chokepoint_id}'",
+            "congestion_score": 0.5,
+            "pct_of_normal_baseline": 80.0,
+            "daily_transits": None,
+            "seven_day_avg_transits": None,
+            "status": "UNMAPPED",
+            "sources": ["static_reference_seed"],
+            "unmapped": True,
+            "as_of": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        }
     
     risk_score = cp_info.get("congestion_score", 0.5) * 100.0
     pct_normal = cp_info.get("pct_of_normal_baseline", 80.0)
     # Inverte % of normal para compor o risco (menor tráfego = maior disrupção)
     norm_disruption = min(100.0, max(0.0, (100.0 - pct_normal)))
-    
+
     avg_transits = cp_info.get("seven_day_avg_transits", 25.0)
-    norm_avg = min(100.0, max(0.0, (30.0 - avg_transits) * 3.33))
+    # Sem telemetria (chokepoint não mapeado) → sem componente de transitos:
+    # não se inventa volume de tráfego para um ID desconhecido.
+    norm_avg = 0.0 if avg_transits is None else min(100.0, max(0.0, (30.0 - avg_transits) * 3.33))
     
     diversion_tracking_score = 90.0 if "DISRUPTED" in cp_info.get("status", "") else 15.0
     

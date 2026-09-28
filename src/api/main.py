@@ -133,9 +133,9 @@ LANDING_HTML = """<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aether-X Port Congestion Oracle</title>
-<meta name="description" content="Live port congestion signal for 35 ports & global chokepoints: 18 ports LIVE with multi-region telemetry (Brasil, Asia, Europe, Africa & MENA chokepoints), 17 reference seed ports. Port congestion API, vessel queue API, port delay risk API. REST API, Python SDK and MCP server.">
+<meta name="description" content="Port congestion signal for 35 ports & global chokepoints: 5 Brazilian ports with live official-authority line-ups, 12 global ports live when the AIS sensor delivers, the rest calibrated/static reference seed. Port congestion API, vessel queue API, port delay risk API. REST API, Python SDK and MCP server.">
 <meta property="og:title" content="Aether-X Port Congestion Oracle">
-<meta property="og:description" content="Live port congestion for 35 global ports & chokepoints (18 LIVE multi-region, 17 reference seed). Port congestion API / vessel queue API / demurrage risk signal.">
+<meta property="og:description" content="Port congestion for 35 global ports & chokepoints (5 Brazilian ports with live authority line-ups; the rest calibrated/static reference seed). Port congestion API / vessel queue API / demurrage risk signal.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://aetherx.aether-grid.io/">
 <meta name="twitter:card" content="summary">
@@ -376,7 +376,7 @@ real-time field data.
 | `waiting_vessels` | Reference ships anchored or queued |
 | `freight_volatility_index` | Pressure indicator for freight pricing |
 | `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |
-| `data_source` | Always `static_reference_seed` until live telemetry is connected |
+| `data_source` | `live:appa+santos+lachmann`, `live:portosrio_silog` or `live:shipinfo_ais:<port>` for live observations; otherwise `calibrated_reference_seed` / `static_reference_seed` (reference baseline, NOT live telemetry) |
 | `as_of` | Timestamp of the seed (not a live refresh) |
 
 **Trend (24h/48h/72h)** — `GET /v1/port-trend?port_id=BRSSZ` returns a **synthetic** projection with a `trend` label: `acelerando`, `estável` or `descongestionando`.
@@ -982,8 +982,9 @@ def get_gp5_scdew(
         "`congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, "
         "`freight_volatility_index`, demurrage exposure and `decision_grade`. "
         "Every response includes `data_source` and `as_of`. Coverage: 35 ports & global chokepoints — "
-        "**18 LIVE multi-region ports & chokepoints** (South America, Asia, Europe, Africa & MENA), "
-        "**17 reference seed ports** (`static_reference_seed`). Unknown ports fall back "
+        "**5 Brazilian ports LIVE** (official-authority line-ups), **12 mapped global ports live whenever "
+        "the AIS sensor delivers**, the rest a **calibrated/static reference seed** "
+        "(`static_reference_seed`). Unknown ports fall back "
         'to a global statistical estimate with `country="Global"`. Requests are protected '
         "by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header."
     ),

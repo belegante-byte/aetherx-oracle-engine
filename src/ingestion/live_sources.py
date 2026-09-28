@@ -58,24 +58,15 @@ TO_STATUS = {
 }
 
 SOURCE_LABELS = {
+    # FONTES REAIS: apenas feeds integrados/observados. Labels de feeds não
+    # integrados (era "18 LIVE") foram removidos para impedir que referências
+    # estáticas sejam rotuladas como telemetria viva.
     "appa": "APPA Paranaguá",
     "lachmann": "Lachmann schedules",
     "santos": "Porto de Santos",
     "santos_painel": "Painel de operações de Santos",
     "portosrio_silog": "SILOG PortosRio (Rio de Janeiro, Niterói, Itaguaí)",
     "shipinfo_ais": "ShipInfo AIS (anchorage-derived queue)",
-    "portinsight_ais": "PortInsight (AIS Live Traffic Asia/EU)",
-    "portcast_live": "Portcast (Global Port Congestion Tracker)",
-    "gateway_lines": "Gateway Lines Port Intel",
-    "kuehne_nagel": "Kuehne+Nagel Operational Updates (Wait times & Yard %)",
-    "vesselapi": "VesselAPI Global AIS & EU MRV Emissions",
-    "hutchison_intermodal": "Hutchison Ports Intermodal Rail (Rotterdam Delta/Euromax/Duisburg)",
-    "findtrain_rail": "Findtrain API Live European Rail GPS & Delays",
-    "straittraffic_imf": "StraitTraffic / IMF PortWatch Chokepoint Monitor",
-    "seavantage_chokepoint": "SeaVantage Global Chokepoint Risk Monitor",
-    "hormuztracking": "HormuzTracking Strait of Hormuz Tanker Intelligence",
-    "tankermap": "TankerMap Global Chokepoint & Live Tanker Traffic",
-    "datalastic_africa": "Datalastic African Port & Terminal Traffic Data",
 }
 
 
