@@ -44,3 +44,4 @@ urllib3==2.6.3
 uvicorn==0.39.0
 beautifulsoup4==4.13.4
 lxml==6.0.0
+stripe==10.1.0

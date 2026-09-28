@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI
+from src.api.monetization import router as monetization_router, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ConfigDict
@@ -93,7 +94,7 @@ class RapidAPIGuard:
             }
             or path.startswith("/port-congestion-") or path.startswith("/arbitragem-logistica/")
             or path.startswith(("/docs", "/redoc", "/public/", "/mcp", "/v1/gp5/", "/v1/m2m/"))
-            or path in {"/m2m-keys", "/demo", "/fiscal-demo", "/internal/control-tower", "/aetherx-mcp.json", "/.well-known/ai-plugin.json"}
+            or path in {"/m2m-keys", "/demo", "/fiscal-demo", "/internal/control-tower", "/aetherx-mcp.json", "/.well-known/ai-plugin.json", "/checkout/gp5-monthly", "/webhook/stripe"}
             or bool(_re.fullmatch(r"/google[0-9a-f]{10,}\.html", path))
             or path == "/BingSiteAuth.xml"
         )
