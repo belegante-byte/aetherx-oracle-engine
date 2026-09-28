@@ -15,6 +15,7 @@ class PortRouteOption(BaseModel):
     demurrage_cost_usd: int
     icms_rate_pct: float
     icms_cost_usd: float
+    inland_freight_cost_usd: float
     exemption_note: Optional[str]
     total_cost_usd: float
     is_recommended: bool
@@ -24,6 +25,8 @@ class FiscalRoutingResponse(BaseModel):
     intended_port_id: str
     commodity: str
     cargo_value_usd: float
+    inland_uf: str
+    cargo_tons: float
     options: List[PortRouteOption]
     recommendation_summary: str
 
@@ -42,7 +45,19 @@ def get_state_from_port(port_id: str) -> str:
     }
     return mapping.get(port_id.upper(), "UNKNOWN")
 
-def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_usd: float = 10000000.0) -> FiscalRoutingResponse:
+
+def estimate_inland_freight_usd(port_id: str, inland_uf: str, cargo_tons: float) -> float:
+    # MVP: Mock de frete terrestre (US$ por tonelada) do porto até o estado de destino/origem
+    matrix = {
+        "MT": {"BRSSZ": 45.0, "BRPNG": 50.0, "BRIQI": 35.0, "BRRIO": 55.0, "BRRGD": 65.0},
+        "GO": {"BRSSZ": 40.0, "BRPNG": 45.0, "BRIQI": 50.0, "BRRIO": 50.0, "BRRGD": 60.0},
+        "PR": {"BRSSZ": 25.0, "BRPNG": 10.0, "BRIQI": 70.0, "BRRIO": 35.0, "BRRGD": 30.0},
+        "SP": {"BRSSZ": 10.0, "BRPNG": 25.0, "BRIQI": 80.0, "BRRIO": 20.0, "BRRGD": 45.0},
+    }
+    rate_per_ton = matrix.get(inland_uf.upper(), {}).get(port_id.upper(), 60.0)
+    return cargo_tons * rate_per_ton
+
+def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_usd: float = 10000000.0, inland_uf: str = 'MT', cargo_tons: float = 60000.0) -> FiscalRoutingResponse:
     commodity = commodity.upper()
     intended_port_id = intended_port_id.upper()
     
@@ -81,7 +96,8 @@ def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_u
                 exemption = row[1]
                 
         icms_cost = cargo_value_usd * (icms_pct / 100.0)
-        total_cost = demurrage + icms_cost
+        freight_cost = estimate_inland_freight_usd(pid, inland_uf, cargo_tons)
+        total_cost = demurrage + icms_cost + freight_cost
         
         options.append(PortRouteOption(
             port_id=pid,
@@ -92,6 +108,7 @@ def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_u
             demurrage_cost_usd=demurrage,
             icms_rate_pct=icms_pct,
             icms_cost_usd=icms_cost,
+            inland_freight_cost_usd=freight_cost,
             exemption_note=exemption,
             total_cost_usd=total_cost,
             is_recommended=False
@@ -113,7 +130,7 @@ def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_u
         summary = (
             f"Alerta de Arbitragem: Redirecionar carga de {intended_option.port_name} ({intended_option.state_code}) "
             f"para {best_option.port_name} ({best_option.state_code}) economiza US$ {savings:,.2f}. "
-            f"Motivo principal: ICMS de {best_option.icms_rate_pct}% vs {intended_option.icms_rate_pct}% "
+            f"Motivo principal: ICMS de {best_option.icms_rate_pct}% vs {intended_option.icms_rate_pct}%, e Frete Terrestre de US$ {best_option.inland_freight_cost_usd:,.0f} vs US$ {intended_option.inland_freight_cost_usd:,.0f} "
             f"e fila de {best_option.delay_days} dias vs {intended_option.delay_days} dias."
         )
     elif intended_option and best_option and intended_option.port_id == best_option.port_id:
@@ -125,6 +142,8 @@ def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_u
         intended_port_id=intended_port_id,
         commodity=commodity,
         cargo_value_usd=cargo_value_usd,
+        inland_uf=inland_uf,
+        cargo_tons=cargo_tons,
         options=options,
         recommendation_summary=summary
     )

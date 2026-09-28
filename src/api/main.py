@@ -964,10 +964,12 @@ def get_gp5_corridor_eval(
 def get_gp5_fiscal_routing(
     intended_port_id: str = Query(..., example="BRSSZ"),
     commodity: str = Query(..., example="FERTILIZANTES"),
-    cargo_value_usd: float = Query(10000000.0)
+    cargo_value_usd: float = Query(10000000.0),
+    inland_uf: str = Query("MT", example="MT"),
+    cargo_tons: float = Query(60000.0)
 ):
     try:
-        return evaluate_fiscal_routing(intended_port_id, commodity, cargo_value_usd).model_dump()
+        return evaluate_fiscal_routing(intended_port_id, commodity, cargo_value_usd, inland_uf, cargo_tons).model_dump()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

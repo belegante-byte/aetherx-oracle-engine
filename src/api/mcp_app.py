@@ -353,7 +353,9 @@ def request_m2m_key(agent_name: str, organization: str, contact_email: str = "ag
 def evaluate_fiscal_routing(
     intended_port_id: str,
     commodity: str = "FERTILIZANTES",
-    cargo_value_usd: float = 10000000.0
+    cargo_value_usd: float = 10000000.0,
+    inland_uf: str = "MT",
+    cargo_tons: float = 60000.0
 ) -> dict[str, Any]:
     """[DECISION TOOL] Evaluate fiscal and logistical arbitrage across alternative ports.
 
@@ -364,8 +366,10 @@ def evaluate_fiscal_routing(
         intended_port_id: UN/LOCODE of the intended destination port (e.g. BRSSZ).
         commodity: Cargo type to lookup tax rules for (e.g. FERTILIZANTES, SOJA).
         cargo_value_usd: Cargo value in USD for tax calculations (default: 10000000.0).
+        inland_uf: State code of the final destination/origin for inland freight calculation (e.g. MT, GO, PR).
+        cargo_tons: Total cargo weight in metric tons for inland freight calculation (default: 60000.0).
     """
-    return _run_tool(_eval_fiscal_routing, "evaluate_fiscal_routing", intended_port_id=intended_port_id, commodity=commodity, cargo_value_usd=cargo_value_usd).model_dump()
+    return _run_tool(_eval_fiscal_routing, "evaluate_fiscal_routing", intended_port_id=intended_port_id, commodity=commodity, cargo_value_usd=cargo_value_usd, inland_uf=inland_uf, cargo_tons=cargo_tons).model_dump()
 
 @mcp.tool()
 def evaluate_charter_risk(
