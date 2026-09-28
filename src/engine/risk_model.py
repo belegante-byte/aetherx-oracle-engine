@@ -213,7 +213,7 @@ def calculate_port_risk(port_id: str) -> dict:
                         f"Live AIS & Traffic intelligence via {', '.join(live_sources)} "
                         f"({wait_text}{yard_text}{rail_text})."
                     ),
-                "live_detail": json.dumps({**pinfo, "source": "calibrated_reference_seed", "sources": ["calibrated_reference_seed"]}),
+                    "live_detail": json.dumps(pinfo),
                     "decision_grade": "conditional",
                     "signal": {
                         "level": "ELEVATED OPERATIONAL PRESSURE" if score >= 0.45 else "MODERATE / LOW PRESSURE",
