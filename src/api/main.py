@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict
 
 from src.api.mcp_app import build_http_app
 from src.api.mcp_app import mcp as mcp_server
+from src.api.rate_limit import PublicRateLimitMiddleware
 from src.api import content_pages
 from src.api.content_pages import PORT_METAS, _SLUG_MAP
 from src.api.metrics import MetricsMiddleware, metrics_snapshot
@@ -34,6 +35,9 @@ from src.engine.analytics import (
 )
 
 PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aetherx.aether-grid.io")
+# Fonte única de versão (metadata OpenAPI + /health + landing). Antes conviviam
+# 0.2.1 (app) e 1.1.0 (/health) — divergência de contrato.
+APP_VERSION = "0.2.1"
 DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
 TERMS_PATH = DOCS_DIR / "TERMS_OF_SERVICE.md"
 RAPIDAPI_SPEC_PATH = Path(__file__).resolve().parent.parent.parent / "openapi.rapidapi.json"
@@ -383,7 +387,7 @@ real-time field data.
 - Python SDK: `pip install aetherx-oracle`
 - MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) — tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`
 
-**Coverage** — 35 ports & global chokepoints. **18 LIVE (multi-region):** BRSSZ, BRPNG, BRRIO, BRNIT, BRITG, SGSIN, CNSHA, KRPUS, JPTYO, NLRTM, DEHAM, BEANT, ITGOA, HORMUZ, PABLB, EGSUZ, ZACPT, MPTNG. **17 reference seed:** BRRGD, BRVDC, BRMAO, ARROS, ARBUE, CNTXG, CNSZX, CNTAO, CNNGB, USMSY, USHOU, USLAX, USNYC, USSEA, CAVAN, GBLGP, MXZLO. Unknown ports return a global statistical estimate (`country="Global"`).
+**Coverage** — 35 ports & global chokepoints. **Live hoje (fila real de autoridades/ AIS):** BRSSZ, BRPNG, BRRIO, BRNIT, BRITG — e portos globais recebem `live:shipinfo_ais` quando o sensor AIS entrega dados no ciclo (12 portos mapeados: NLRTM, DEHAM, KRPUS, CNSHA, SGSIN, USLAX, USNYC, AEDXB, CNTAO, CNNGB, GBLGP, ZACPT). Demais portos: referência calibrada/estática (`calibrated_reference_seed`/`static_reference_seed`) — nenhuma resposta finge ser telemetria viva (ver `decision_grade` e `data_source`). Unknown ports return a global statistical estimate (`country="Global"`).
 
 Signals are provided "AS IS" and do not constitute investment advice.
 """
@@ -433,11 +437,25 @@ async def lifespan(app: FastAPI):
         pass
 
 
+def _cors_origins() -> list[str]:
+    """Origens permitidas p/ navegadores. MITIGAÇÃO: antes era "*" (aberto).
+
+    Padrão: produção + localhost (dev/landing). Sobrescreva via CORS_ORIGINS
+    (separado por vírgula) quando houver domínio próprio adicional.
+    """
+    default = ",".join([
+        "https://aetherx.aether-grid.io",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ])
+    return [o.strip() for o in os.getenv("CORS_ORIGINS", default).split(",") if o.strip()]
+
+
 app = FastAPI(
     lifespan=lifespan,
     title="Aether-X Port Congestion Oracle",
     description=API_DESCRIPTION,
-    version="0.2.1",
+    version=APP_VERSION,
     servers=[
         {"url": PRODUCTION_URL, "description": "Production (Railway)"},
         {"url": "http://127.0.0.1:8000", "description": "Local development"}
@@ -494,6 +512,10 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
         auth_header = request.headers.get("authorization")
         context = authenticate_client(auth_header, product="gp5")
         request.state.client_context = context
+
+        # Expõe o client_id ao contexto da requisição (para tool_errors auditáveis).
+        from src.runtime.metering import current_client_id
+        token = current_client_id.set(context.client_id)
 
         path = request.url.path
 
@@ -561,6 +583,10 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
             duration_ms=duration_ms,
             status_code=response.status_code
         )
+        try:
+            current_client_id.reset(token)
+        except Exception:
+            pass
         return response
 
 
@@ -571,9 +597,11 @@ app.add_middleware(MetricsMiddleware)
 
 app.add_middleware(RapidAPIGuard)
 
+app.add_middleware(PublicRateLimitMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins(),
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["mcp-session-id"],
@@ -632,7 +660,7 @@ def landing_page():
 
 @app.get("/health", include_in_schema=False)
 def health_check():
-    return {"status": "ok", "service": "aether-x-oracle", "version": "1.1.0"}
+    return {"status": "ok", "service": "aether-x-oracle", "version": APP_VERSION}
 
 
 @app.get("/health/", include_in_schema=False)

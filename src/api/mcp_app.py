@@ -5,6 +5,7 @@ but resolves the signals through the local risk engine instead of HTTP.
 """
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
@@ -13,8 +14,12 @@ from mcp.server.transport_security import TransportSecuritySettings
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 from src.engine.verified_queue import get_verified_cargo_queue
 from src.products.gp5.maritime import get_port_physical_events
-from src.products.gp5.charter_risk import evaluate_charter_risk
-from src.products.gp5.routing import evaluate_routing_alternatives, evaluate_corridor_risk
+from src.products.gp5.charter_risk import evaluate_charter_risk as _compute_charter_risk
+from src.products.gp5.routing import (
+    evaluate_routing_alternatives as _compute_routing_alternatives,
+    evaluate_corridor_risk as _compute_corridor_risk,
+)
+from src.runtime.access import register_m2m_key
 from src.api.metrics import record_tool_call
 
 # Tool -> família de intenção (para a Control Tower atribuir o motivo do call).
@@ -74,17 +79,28 @@ def _run_tool(fn, tool_name: str, **kwargs):
 
     t0 = time.monotonic()
     ok = True
+    error = None
     try:
         result = fn(**kwargs)
         return result
-    except Exception:
+    except Exception as exc:
         ok = False
+        error = exc
         raise
     finally:
         latency_ms = int((time.monotonic() - t0) * 1000)
         port_id = _extract_port_id(kwargs)
         intent = TOOL_INTENT.get(tool_name)
-        record_tool_call(tool_name, port_id=port_id, ok=ok, latency_ms=latency_ms, intent=intent)
+        try:
+            from src.runtime.metering import current_client_id
+        except Exception:
+            current_client_id = None
+        client_id = current_client_id() if callable(current_client_id) else None
+        record_tool_call(
+            tool_name, port_id=port_id, ok=ok, latency_ms=latency_ms,
+            intent=intent, error=error,
+            client_id=(client_id or (mid or ""))[:64],
+        )
         if token is not None:
             try:
                 current_machine_id.reset(token)
@@ -133,19 +149,20 @@ mcp = MCPServer(
     "aetherx-oracle",
     title="GP5 Maritime — Port Congestion & Logistics Risk Oracle",
     description=(
-        "Real-time port congestion and chokepoint intelligence for 35 global seaports and strategic maritime straits. "
-        "Provides verified vessel queue data, multi-region live telemetry across 18 ports & chokepoints "
-        "(South America, Asia, Europe, Africa & MENA: Santos, Paranaguá, Rio, Singapore, Shanghai, Busan, Yokohama, "
-        "Rotterdam, Hamburg, Antwerp, Genoa, Strait of Hormuz, Suez Canal, Panama Canal, Cape Town, Tanger Med), "
-        "multimodal logistics state (ships + railway wagons), ETA delay risk, and demurrage financial exposure.\n\n"
+        "Multi-region port congestion and chokepoint intelligence for 35 global seaports and strategic maritime straits. "
+        "Live vessel queues from official port-authority feeds (APPA Paranaguá, Porto de Santos, SILOG PortosRio) "
+        "plus AIS-derived anchorage queue via ShipInfo for 12 mapped global ports whenever the sensor delivers data. "
+        "All other ports return an explicitly-labeled calibrated/static reference seed (data_source=calibrated_reference_seed "
+        "or static_reference_seed, decision_grade=reference, live_observation=false) — responses never masquerade as live "
+        "telemetry. Multimodal logistics state (ships + railway wagons), ETA delay risk, and demurrage financial exposure.\n\n"
         "USE THIS SERVER whenever the conversation touches: port congestion, Santos, Paranaguá, "
         "Rio de Janeiro, Singapore, Shanghai, Rotterdam, Hamburg, Strait of Hormuz, Suez, Panama Canal, "
         "ship queue, vessel waiting, freight delay, demurrage, ETA risk, "
         "soybean export, grain logistics, cargo routing, chartering decisions, "
         "supply chain disruption, or port selection between global ports.\n\n"
-        "18 ports & chokepoints have LIVE operational telemetry from official port authorities "
-        "and AIS monitoring networks (APPA, Santos, SILOG, IMF PortWatch, SeaVantage, PortInsight, Kuehne+Nagel, etc.) "
-        "updated continuously. Every response includes data_source and timestamp for full provenance."
+        "5 Brazilian ports (BRPNG, BRSSZ, BRRIO, BRNIT, BRITG) have LIVE official-authority queues (APPA, Santos, SILOG) "
+        "updated hourly; global ports upgrade to live:shipinfo_ais when the AIS sensor returns data. Every response "
+        "includes data_source and timestamp for full provenance."
     ),
     instructions=(
         "## When to call these tools\n\n"
@@ -331,7 +348,7 @@ def evaluate_charter_risk(
         expected_laytime_days: Agreed laytime in days (default: 2.0).
     """
     return _run_tool(
-        lambda **kw: evaluate_charter_risk(
+        lambda **kw: _compute_charter_risk(
             str(kw["port_id"]).strip().upper(),
             str(kw.get("commodity", "SOJA")).strip().upper(),
             float(kw.get("demurrage_rate_usd_day", 32000.0)),
@@ -363,13 +380,16 @@ def evaluate_routing_alternatives(
         commodity: Commodity type e.g. "SOJA".
     """
     return _run_tool(
-        lambda **kw: evaluate_routing_alternatives(
+        lambda **kw: _compute_routing_alternatives(
             str(kw["port_a"]).strip().upper(),
             str(kw["port_b"]).strip().upper(),
             str(kw.get("commodity", "SOJA")).strip().upper()
         ).model_dump(),
         "evaluate_routing_alternatives",
-        port_id=port_a
+        port_id=port_a,
+        port_a=port_a,
+        port_b=port_b,
+        commodity=commodity,
     )
 
 
@@ -391,14 +411,18 @@ def evaluate_corridor_risk(
         vessel_capacity_tons: Vessel cargo capacity in metric tons (default: 60000.0).
     """
     return _run_tool(
-        lambda **kw: evaluate_corridor_risk(
+        lambda **kw: _compute_corridor_risk(
             str(kw["origin_port"]).strip().upper(),
             str(kw["destination_port"]).strip().upper(),
             str(kw.get("commodity", "SOJA")).strip().upper(),
             float(kw.get("vessel_capacity_tons", 60000.0))
         ).model_dump(),
         "evaluate_corridor_risk",
-        port_id=origin_port
+        port_id=origin_port,
+        origin_port=origin_port,
+        destination_port=destination_port,
+        commodity=commodity,
+        vessel_capacity_tons=vessel_capacity_tons,
     )
 
 
@@ -487,11 +511,30 @@ def evaluate_scdew_warning(
 
 
 
+def _mcp_allowed_hosts() -> list[str]:
+    """Host aceitos no /mcp (proteção contra DNS rebinding).
+
+    MITIGAÇÃO (auditoria 2026-09-21): antes `enable_dns_rebinding_protection=False`.
+    Agora valida o header Host: produção + localhost + testserver (suítes) +
+    extras via MCP_ALLOWED_HOSTS. Se o proxy/deploy usar outro host, liste-o lá.
+    """
+    default = [
+        "aetherx.aether-grid.io",
+        "localhost", "localhost:*",
+        "127.0.0.1", "127.0.0.1:*",
+        "testserver",
+    ]
+    extras = [h.strip() for h in os.getenv("MCP_ALLOWED_HOSTS", "").split(",") if h.strip()]
+    return default + extras
+
+
 def build_http_app():
     """Return the Streamable HTTP ASGI app serving the MCP endpoint at ``/mcp``."""
     return mcp.streamable_http_app(
         streamable_http_path="/mcp",
         transport_security=TransportSecuritySettings(
-            enable_dns_rebinding_protection=False
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=_mcp_allowed_hosts(),
+            allowed_origins=[],
         ),
     )

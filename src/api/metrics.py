@@ -74,6 +74,11 @@ _errors_total = 0      # erros HTTP (5xx) observados
 
 _EVENT_KINDS = ("mcp_call", "tool_call", "new_machine", "repeat_machine", "port_query", "error")
 
+# ---- Erros de tool MCP atribuíveis (mitigação auditoria 2026-09-21) ----
+# Antes, ok=False apenas incrementava _mcp_errors — impossível saber qual tool/
+# porto/erro falhou. Este deque (persistido) guarda as últimas causas.
+_tool_errors = collections.deque(maxlen=50)  # [{ts, tool, port, error_type, error}]
+
 # ---- Monetização: assinantes pagos vistos via gateway RapidAPI ----
 _paid_plans = {}      # {plan_name: int}  chamadas por tier pago (PRO/ULTRA/MEGA/CUSTOM)
 _paid_users = set()   # set[str]          X-RapidAPI-User distintos em plano pago
@@ -239,8 +244,13 @@ def record_rapidapi_call(plan: str | None, user: str | None) -> None:
         _mark_stage(mid, "paid")
 
 
-def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, latency_ms: int | None = None, intent: str | None = None) -> None:
-    """Registra uma invocação de tool MCP (ou de produto) para a Control Tower."""
+def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, latency_ms: int | None = None, intent: str | None = None, error: BaseException | None = None, client_id: str | None = None) -> None:
+    """Registra uma invocação de tool MCP (ou de produto) para a Control Tower.
+
+    Quando `ok=False`, registra a CAUSA (tool + porto + tipo de erro) em log WARN
+    e mantém as últimas 50 falhas em `_tool_errors` (persistido e exposto no
+    snapshot), para que um número como `mcp_errors` seja auditável.
+    """
     global _mcp_total, _mcp_errors, _last_tool_call
     mid = get_current_machine()
     if mid:
@@ -272,13 +282,28 @@ def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, lat
         }
         if not ok:
             _mcp_errors += 1
+            err_type = type(error).__name__ if error else "unknown"
+            err_msg = str(error) if error else "no error detail captured"
+            _tool_errors.appendleft({
+                "ts": int(time.time()),
+                "tool": tool,
+                "port": port_id,
+                "error_type": err_type,
+                "error": err_msg[:300],
+                "client_id": (client_id or "")[:16],
+            })
+            logger.warning(
+                "AETHERX_MCP_TOOL_ERROR tool=%s port=%s machine=%s type=%s err=%r",
+                tool, port_id, (mid[:8] if mid else None), err_type, err_msg,
+            )
         _recent_events.appendleft({
             "ts": int(time.time()),
-            "kind": "tool_call",
+            "kind": "tool_error" if not ok else "tool_call",
             "detail": tool,
             "ok": ok,
             "latency_ms": latency_ms,
             "intent": intent,
+            "error": type(error).__name__ if (not ok and error) else None,
         })
 
 
@@ -451,6 +476,7 @@ def metrics_snapshot() -> dict:
             "top_tools": sorted(_tools.items(), key=lambda x: -x[1])[:20],
             "top_ports": sorted(_ports.items(), key=lambda x: -x[1])[:20],
             "recent_events": list(_recent_events)[:50],
+            "tool_errors": list(_tool_errors)[:20],
             # Monetização
             "paid_plans": dict(_paid_plans),
             "paid_users": sorted(_paid_users),
@@ -573,6 +599,7 @@ def _persist_now() -> None:
                 "machine_role": dict(_MACHINE_ROLE),
                 "machine_ua": dict(_MACHINE_UA),
                 "last_tool_call": _last_tool_call,
+                "tool_errors": list(_tool_errors),
                 "saved_at": int(time.time()),
             }
         os.makedirs(os.path.dirname(os.path.abspath(_STATE_PATH)), exist_ok=True)
@@ -621,6 +648,7 @@ def _load_state() -> None:
             _MACHINE_UA.update(state.get("machine_ua", {}))
             if _last_tool_call is None:
                 _last_tool_call = state.get("last_tool_call")
+            _tool_errors.extend(state.get("tool_errors", []) or [])
             events = state.get("events", [])
             if events:
                 _recent_events.extend(events[-100:])
