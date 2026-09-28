@@ -10,6 +10,7 @@ import html
 import json
 
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
+from src.products.gp5.fiscal import evaluate_fiscal_routing
 
 PRODUCTION_URL = "https://aetherx.aether-grid.io"
 RAPIDAPI_URL = "https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle"
@@ -670,3 +671,83 @@ def sitemap_xml() -> str:
 {items}
 </urlset>
 """
+
+
+def fiscal_demo_page(intended_port: str = "BRSSZ", commodity: str = "FERTILIZANTES", cargo_value: float = 10000000.0, inland_uf: str = "MT", cargo_tons: float = 60000.0) -> str:
+    try:
+        res = evaluate_fiscal_routing(intended_port, commodity, cargo_value, inland_uf, cargo_tons)
+        options = res.options
+        summary = res.recommendation_summary
+    except Exception as e:
+        options = []
+        summary = f"Erro ao processar: {str(e)}"
+
+    rows = ""
+    for opt in options:
+        color = "#10b981" if opt.is_recommended else "#ef4444" if opt.port_id == intended_port else "#6b7280"
+        badge = "RECOMENDADO" if opt.is_recommended else "ROTA PRETENDIDA" if opt.port_id == intended_port else "ALTERNATIVA"
+        
+        rows += f"""
+        <tr style="border-bottom: 1px solid #374151;">
+            <td style="padding: 1rem; color: {color}; font-weight: bold;">{opt.port_name} ({opt.state_code})</td>
+            <td style="padding: 1rem;">{opt.delay_days} dias</td>
+            <td style="padding: 1rem;">US$ {opt.demurrage_cost_usd:,.2f}</td>
+            <td style="padding: 1rem;">{opt.icms_rate_pct}%</td>
+            <td style="padding: 1rem;">US$ {opt.icms_cost_usd:,.2f}</td>
+            <td style="padding: 1rem;">US$ {opt.inland_freight_cost_usd:,.2f}</td>
+            <td style="padding: 1rem; font-weight: bold; color: {color};">US$ {opt.total_cost_usd:,.2f}</td>
+            <td style="padding: 1rem; font-size: 0.8rem;"><span style="background: {color}; color: #000; padding: 2px 6px; border-radius: 4px;">{badge}</span></td>
+        </tr>
+        """
+
+    body = f"""
+    <div style="max-width: 1200px; margin: 0 auto; font-family: monospace;">
+        <h2 style="color: #60a5fa;">Aether-X: Motor de Arbitragem Logístico-Tributária</h2>
+        <p style="color: #9ca3af; font-size: 1.1rem; line-height: 1.6;">
+            Esta ferramenta simula o custo total de importação/exportação cruzando o <strong>Congestionamento do Porto (Mar)</strong>, 
+            a <strong>Alíquota de ICMS (Imposto)</strong> e o <strong>Frete Terrestre (Terra)</strong>.
+        </p>
+
+        <div style="background: #1f2937; padding: 20px; border-radius: 8px; border: 1px solid #374151; margin-bottom: 30px;">
+            <h3 style="color: #f3f4f6; margin-top: 0;">Parâmetros da Simulação</h3>
+            <p style="color: #d1d5db; margin: 5px 0;"><strong>Mercadoria:</strong> {commodity} | <strong>Valor da Carga:</strong> US$ {cargo_value:,.2f} | <strong>Volume:</strong> {cargo_tons:,.0f} Tons</p>
+            <p style="color: #d1d5db; margin: 5px 0;"><strong>Destino Terrestre (Inland):</strong> {inland_uf} | <strong>Porto Planejado:</strong> {intended_port}</p>
+        </div>
+
+        <div style="background: #052e16; padding: 20px; border-radius: 8px; border: 1px solid #10b981; margin-bottom: 30px;">
+            <h3 style="color: #34d399; margin-top: 0; font-size: 1.5rem;">Veredito da Inteligência Artificial</h3>
+            <p style="color: #a7f3d0; font-size: 1.2rem; margin-bottom: 0;">{summary}</p>
+        </div>
+
+        <h3 style="color: #f3f4f6;">Análise Comparativa de Rotas</h3>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; background: #111827; border-radius: 8px; overflow: hidden;">
+                <thead style="background: #1f2937; color: #d1d5db;">
+                    <tr>
+                        <th style="padding: 1rem;">Porto (UF)</th>
+                        <th style="padding: 1rem;">Fila Estimada</th>
+                        <th style="padding: 1rem;">Custo Fila (Demurrage)</th>
+                        <th style="padding: 1rem;">ICMS (%)</th>
+                        <th style="padding: 1rem;">Custo ICMS</th>
+                        <th style="padding: 1rem;">Frete P/ {inland_uf}</th>
+                        <th style="padding: 1rem;">Custo Total Operação</th>
+                        <th style="padding: 1rem;">Status</th>
+                    </tr>
+                </thead>
+                <tbody style="color: #9ca3af;">
+                    {rows}
+                </tbody>
+            </table>
+        </div>
+        
+        <p style="text-align: center; color: #6b7280; margin-top: 50px;">Aether-X Oracle &copy; 2026. Powered by DuckDB & FastAPI.</p>
+    </div>
+    """
+    return _page(
+        title="Fiscal Arbitrage | Aether-X",
+        meta_description="O motor de roteamento B2B logístico-tributário definitivo.",
+        h1="Aether-X Oracle: Fiscal Routing",
+        lede="Descubra para onde enviar seu navio para pagar menos impostos e zero demurrage.",
+        body=body,
+        canonical_suffix="/fiscal-demo"
+    )

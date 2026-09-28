@@ -15,7 +15,7 @@ from src.api.mcp_app import mcp as mcp_server
 from src.api import mcp_quota
 from src.api.rate_limit import PublicRateLimitMiddleware
 from src.api import content_pages
-from src.api.content_pages import PORT_METAS, _SLUG_MAP
+from src.api.content_pages import PORT_METAS, _SLUG_MAP, fiscal_demo_page
 from src.api.metrics import MetricsMiddleware, metrics_snapshot, record_gate_event
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -93,7 +93,7 @@ class RapidAPIGuard:
             }
             or path.startswith("/port-congestion-")
             or path.startswith(("/docs", "/redoc", "/public/", "/mcp", "/v1/gp5/", "/v1/m2m/"))
-            or path in {"/m2m-keys", "/demo", "/aetherx-mcp.json", "/.well-known/ai-plugin.json"}
+            or path in {"/m2m-keys", "/demo", "/fiscal-demo", "/aetherx-mcp.json", "/.well-known/ai-plugin.json"}
             or bool(_re.fullmatch(r"/google[0-9a-f]{10,}\.html", path))
             or path == "/BingSiteAuth.xml"
         )
@@ -751,6 +751,18 @@ def mcp_page():
 def m2m_keys_page():
     return HTMLResponse(content_pages.m2m_keys_page_html())
 
+
+
+@app.get("/fiscal-demo", tags=["Pages"], response_class=HTMLResponse, summary="UI: Simulação Logístico-Tributária")
+def fiscal_demo_ui(
+    intended_port: str = Query("BRSSZ"),
+    commodity: str = Query("FERTILIZANTES"),
+    cargo_value: float = Query(10000000.0),
+    inland_uf: str = Query("MT"),
+    cargo_tons: float = Query(60000.0)
+):
+    """Exibe a interface web interativa do motor de arbitragem fiscal e logístico."""
+    return HTMLResponse(content=fiscal_demo_page(intended_port, commodity, cargo_value, inland_uf, cargo_tons))
 
 @app.get("/demo", include_in_schema=False)
 def demo_page():
