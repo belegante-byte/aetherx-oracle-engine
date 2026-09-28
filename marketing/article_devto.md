@@ -1,4 +1,4 @@
-# Predicting Global Port Congestion in Real-Time with Python, DuckDB and MCP
+# Aether-X: Predicting Global Port Congestion in Real-Time
 
 > How to turn public port telemetry into machine-readable congestion signals your trading, logistics or **AI agent** stack can consume — over REST (RapidAPI), a typed Python SDK, or the Model Context Protocol.
 

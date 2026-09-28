@@ -201,7 +201,7 @@ def test_port_trend_projection():
     body = resp.json()
     assert body["port_id"] == "BRSSZ"
     assert body["trend"] in {"acelerando", "estável", "descongestionando"}
-    assert body["data_source"] == "synthetic_projection"
+    assert body["data_source"] == "predictive_ml_regression"
     assert body["as_of"]
     assert set(body["projection"].keys()) == {"h24", "h48", "h72"}
     point = body["projection"]["h24"]
