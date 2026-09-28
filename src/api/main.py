@@ -91,7 +91,7 @@ class RapidAPIGuard:
                 "/robots.txt",
                 "/santos-port-congestion-api",
             }
-            or path.startswith("/port-congestion-")
+            or path.startswith("/port-congestion-") or path.startswith("/arbitragem-logistica/")
             or path.startswith(("/docs", "/redoc", "/public/", "/mcp", "/v1/gp5/", "/v1/m2m/"))
             or path in {"/m2m-keys", "/demo", "/fiscal-demo", "/internal/control-tower", "/aetherx-mcp.json", "/.well-known/ai-plugin.json"}
             or bool(_re.fullmatch(r"/google[0-9a-f]{10,}\.html", path))
@@ -828,6 +828,17 @@ def santos_port_congestion_api_page():
 def port_congestion_python_page():
     return HTMLResponse(content_pages.port_congestion_python_page())
 
+
+
+@app.get("/arbitragem-logistica/{slug}", include_in_schema=False)
+def arbitragem_logistica_page(slug: str):
+    from src.api.content_pages import arbitrage_seo_page
+    html = arbitrage_seo_page(slug)
+    if html == "Not found":
+        raise HTTPException(status_code=404, detail="Page not found")
+    if html.startswith("Error"):
+        raise HTTPException(status_code=500, detail=html)
+    return HTMLResponse(html)
 
 @app.get("/port-congestion-{slug}", include_in_schema=False)
 def port_congestion_detail(slug: str):

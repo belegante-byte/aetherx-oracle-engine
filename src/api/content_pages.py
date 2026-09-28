@@ -664,7 +664,7 @@ def sitemap_xml() -> str:
     lastmod = "2026-09-20"
     base_urls = ["/", "/mcp-page", "/m2m-keys", "/demo", "/port-congestion-api", "/santos-port-congestion-api", "/port-congestion-python"]
     port_urls = [f"/port-congestion-{m['slug']}" for m in PORT_METAS]
-    urls = base_urls + port_urls
+    urls = base_urls + port_urls + SEO_URLS
     items = "\n".join(f"  <url><loc>{PRODUCTION_URL}{u}</loc><lastmod>{lastmod}</lastmod></url>" for u in urls)
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -751,3 +751,125 @@ def fiscal_demo_page(intended_port: str = "BRSSZ", commodity: str = "FERTILIZANT
         body=body,
         canonical_suffix="/fiscal-demo"
     )
+
+
+
+import itertools
+
+SEO_COMMODITIES = ["soja", "milho", "fertilizantes"]
+SEO_UFS = ["mt", "go", "ms", "pr", "sp"]
+# Map slugs back to IDs
+PORT_SLUG_ID = {
+    "santos": "BRSSZ",
+    "paranagua": "BRPNG",
+    "itaqui": "BRMAO",
+    "rio-de-janeiro": "BRRIO",
+    "rio-grande": "BRRGD"
+}
+PORT_SLUGS = list(PORT_SLUG_ID.keys())
+
+# Generate predictable URLs for the sitemap
+SEO_URLS = []
+for comm in SEO_COMMODITIES:
+    for uf in SEO_UFS:
+        # Generate some logical pairs (not all against all to avoid spam, just realistic ones)
+        pairs = [("santos", "paranagua"), ("paranagua", "santos"), ("itaqui", "santos"), ("rio-grande", "paranagua"), ("rio-de-janeiro", "santos")]
+        for p1, p2 in pairs:
+            SEO_URLS.append(f"/arbitragem-logistica/{comm}-{p1}-vs-{p2}-{uf}")
+
+def arbitrage_seo_page(slug: str) -> str:
+    # Slug format: {commodity}-{port1}-vs-{port2}-{uf}
+    parts = slug.split("-vs-")
+    if len(parts) != 2:
+        return "Not found"
+    
+    left = parts[0].split("-")
+    comm = left[0]
+    p1 = "-".join(left[1:])
+    
+    right = parts[1].split("-")
+    uf = right[-1]
+    p2 = "-".join(right[:-1])
+    
+    id1 = PORT_SLUG_ID.get(p1, "BRSSZ")
+    id2 = PORT_SLUG_ID.get(p2, "BRPNG")
+    
+    try:
+        from src.products.gp5.fiscal import evaluate_fiscal_routing
+        res = evaluate_fiscal_routing(intended_port_id=id1, commodity=comm.upper(), cargo_value_usd=10000000.0, inland_uf=uf.upper(), cargo_tons=60000.0)
+        # Find the specific ports
+        opt1 = next((o for o in res.options if o.port_id == id1), None)
+        opt2 = next((o for o in res.options if o.port_id == id2), None)
+        if not opt1 or not opt2:
+            raise ValueError("Ports not found in simulation")
+    except Exception as e:
+        return f"Error: {str(e)}"
+    
+    title = f"Arbitragem Logística de {comm.title()}: {opt1.port_name} vs {opt2.port_name} ({uf.upper()})"
+    desc = f"Descubra qual a rota mais barata para importar ou exportar {comm.title()} no estado {uf.upper()}. Comparação de Frete Terrestre, Demurrage (Fila do Porto) e ICMS."
+    
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title} | Aether-X Oracle</title>
+<meta name="description" content="{desc}">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="{PRODUCTION_URL}/arbitragem-logistica/{slug}" />
+<style>
+body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0a0e14; color: #e6edf3; padding: 2rem; line-height: 1.6; }}
+.container {{ max-width: 800px; margin: 0 auto; }}
+h1 {{ color: #58a6ff; font-size: 2rem; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; }}
+h2 {{ color: #8b949e; margin-top: 2rem; }}
+.card {{ background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }}
+.highlight {{ color: #3fb950; font-weight: bold; font-size: 1.2rem; display: block; margin: 1rem 0; }}
+.data-row {{ display: flex; justify-content: space-between; border-bottom: 1px dashed #30363d; padding: 0.5rem 0; }}
+.vs {{ text-align: center; font-style: italic; color: #6e7681; margin: 1rem 0; font-size: 1.2rem; }}
+.cta {{ text-align: center; margin-top: 3rem; padding: 2rem; background: #0d1117; border-radius: 8px; border: 1px solid #58a6ff; }}
+.cta a {{ color: #0a0e14; background: #58a6ff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; }}
+.disclaimer {{ font-size: 0.8rem; color: #6e7681; margin-top: 2rem; border-top: 1px solid #30363d; padding-top: 1rem; }}
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>{title}</h1>
+    <p>{desc} Dados atualizados em tempo real via telemetria portuária e tabelas estaduais (DIFAL).</p>
+    
+    <span class="highlight">Veredito da Inteligência Artificial: {res.recommendation_summary}</span>
+
+    <div class="card">
+        <h2>Opção A: Rota via {opt1.port_name}</h2>
+        <div class="data-row"><span>Status da Fila (Delay)</span><span>{opt1.delay_days} dias ({opt1.data_source})</span></div>
+        <div class="data-row"><span>Custo de Demurrage</span><span>US$ {opt1.demurrage_cost_usd:,.2f}</span></div>
+        <div class="data-row"><span>Frete Terrestre até {uf.upper()}</span><span>US$ {opt1.inland_freight_cost_usd:,.2f}</span></div>
+        <div class="data-row"><span>ICMS (Regra de Destino)</span><span>US$ {opt1.icms_cost_usd:,.2f} ({opt1.icms_rate_pct}%)</span></div>
+        <div class="data-row" style="font-weight:bold; color:#58a6ff;"><span>Custo Total Estimado (TCO)</span><span>US$ {opt1.total_cost_usd:,.2f}</span></div>
+    </div>
+    
+    <div class="vs">versus</div>
+
+    <div class="card">
+        <h2>Opção B: Rota via {opt2.port_name}</h2>
+        <div class="data-row"><span>Status da Fila (Delay)</span><span>{opt2.delay_days} dias ({opt2.data_source})</span></div>
+        <div class="data-row"><span>Custo de Demurrage</span><span>US$ {opt2.demurrage_cost_usd:,.2f}</span></div>
+        <div class="data-row"><span>Frete Terrestre até {uf.upper()}</span><span>US$ {opt2.inland_freight_cost_usd:,.2f}</span></div>
+        <div class="data-row"><span>ICMS (Regra de Destino)</span><span>US$ {opt2.icms_cost_usd:,.2f} ({opt2.icms_rate_pct}%)</span></div>
+        <div class="data-row" style="font-weight:bold; color:#58a6ff;"><span>Custo Total Estimado (TCO)</span><span>US$ {opt2.total_cost_usd:,.2f}</span></div>
+    </div>
+
+    <h2>Metodologia (Aether-X Oracle)</h2>
+    <p>O cálculo de TCO (Custo Total de Operação) acima foi gerado autonomamente cruzando matrizes de frete rodoviário e ferroviário, isenções de Convênio ICMS 100/97 aplicadas ao estado de destino, e telemetria de congestionamento de navios ao vivo (live line-ups).</p>
+    
+    <div class="cta">
+        <h3>Quer plugar essa inteligência na sua operação corporativa?</h3>
+        <p>Acesse o simulador oficial ou integre seus agentes autônomos via MCP e API REST.</p>
+        <br><a href="/fiscal-demo">Testar Simulador Interativo</a>
+    </div>
+
+    <div class="disclaimer">
+        As informações representam um cenário simulado de 60.000 MT baseado em condições observadas em tempo real. Valores apresentados como referência de mercado. Motor GP5 Aether-X.
+    </div>
+</div>
+</body>
+</html>"""
