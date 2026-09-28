@@ -50,6 +50,7 @@ DECISION_TOOLS = {
     "evaluate_charter_risk",
     "evaluate_routing_alternatives",
     "evaluate_corridor_risk",
+    "evaluate_fiscal_routing",
 }
 FREE_UNLIMITED_TOOLS = {
     "list_supported_ports",

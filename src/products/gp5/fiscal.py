@@ -12,13 +12,16 @@ class PortRouteOption(BaseModel):
     state_code: str
     congestion_score: float
     delay_days: float
-    demurrage_cost_usd: int
+    demurrage_cost_usd: float
     icms_rate_pct: float
     icms_cost_usd: float
     inland_freight_cost_usd: float
     exemption_note: Optional[str]
     total_cost_usd: float
     is_recommended: bool
+    data_source: str
+    as_of: str
+    decision_grade: str
 
 class FiscalRoutingResponse(BaseModel):
     schema_version: str = "fiscal-routing.v1"
@@ -35,13 +38,12 @@ def get_state_from_port(port_id: str) -> str:
     mapping = {
         "BRSSZ": "SP",
         "BRPNG": "PR",
-        "BRIQI": "MA",
+        "BRMAO": "MA",
         "BRRIO": "RJ",
         "BRNIT": "RJ",
         "BRITG": "RJ",
         "BRRGD": "RS",
         "BRVDC": "PA",
-        "BRMAO": "AM"
     }
     return mapping.get(port_id.upper(), "UNKNOWN")
 
@@ -49,20 +51,26 @@ def get_state_from_port(port_id: str) -> str:
 def estimate_inland_freight_usd(port_id: str, inland_uf: str, cargo_tons: float) -> float:
     # MVP: Mock de frete terrestre (US$ por tonelada) do porto até o estado de destino/origem
     matrix = {
-        "MT": {"BRSSZ": 45.0, "BRPNG": 50.0, "BRIQI": 35.0, "BRRIO": 55.0, "BRRGD": 65.0},
-        "GO": {"BRSSZ": 40.0, "BRPNG": 45.0, "BRIQI": 50.0, "BRRIO": 50.0, "BRRGD": 60.0},
-        "PR": {"BRSSZ": 25.0, "BRPNG": 10.0, "BRIQI": 70.0, "BRRIO": 35.0, "BRRGD": 30.0},
-        "SP": {"BRSSZ": 10.0, "BRPNG": 25.0, "BRIQI": 80.0, "BRRIO": 20.0, "BRRGD": 45.0},
+        "MT": {"BRSSZ": 45.0, "BRPNG": 50.0, "BRMAO": 35.0, "BRRIO": 55.0, "BRRGD": 65.0},
+        "GO": {"BRSSZ": 40.0, "BRPNG": 45.0, "BRMAO": 50.0, "BRRIO": 50.0, "BRRGD": 60.0},
+        "PR": {"BRSSZ": 25.0, "BRPNG": 10.0, "BRMAO": 70.0, "BRRIO": 35.0, "BRRGD": 30.0},
+        "SP": {"BRSSZ": 10.0, "BRPNG": 25.0, "BRMAO": 80.0, "BRRIO": 20.0, "BRRGD": 45.0},
     }
     rate_per_ton = matrix.get(inland_uf.upper(), {}).get(port_id.upper(), 60.0)
     return cargo_tons * rate_per_ton
 
 def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_usd: float = 10000000.0, inland_uf: str = 'MT', cargo_tons: float = 60000.0) -> FiscalRoutingResponse:
+
+    if cargo_value_usd <= 0 or cargo_tons <= 0:
+        raise ValueError("Cargo value and tons must be greater than 0.")
+    if inland_uf.upper() not in ["MT", "GO", "PR", "SP", "MS", "MG"]:
+        pass # We allow fallback, but we should probably warn.
+
     commodity = commodity.upper()
     intended_port_id = intended_port_id.upper()
     
     # Busca os portos do Brasil que podemos usar como alternativas (apenas BR no MVP para ICMS)
-    br_ports = ["BRSSZ", "BRPNG", "BRIQI", "BRRIO", "BRRGD"]
+    br_ports = ["BRSSZ", "BRPNG", "BRMAO", "BRRIO", "BRRGD"]
     if intended_port_id not in br_ports and intended_port_id.startswith("BR"):
         br_ports.append(intended_port_id)
         
@@ -81,7 +89,8 @@ def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_u
         # Puxa o risco (demurrage logístico)
         risk = calculate_port_risk(pid)
         delay_days = risk.get("eta_delay_days", 0)
-        demurrage = risk.get("estimated_daily_demurrage_usd", 0)
+        daily_demurrage = risk.get("estimated_daily_demurrage_usd", 0)
+        demurrage = daily_demurrage * delay_days
         
         # Puxa a alíquota fiscal (DuckDB)
         icms_pct = 18.0 # fallback
@@ -107,11 +116,14 @@ def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_u
             delay_days=delay_days,
             demurrage_cost_usd=demurrage,
             icms_rate_pct=icms_pct,
-            icms_cost_usd=icms_cost,
+            icms_cost_usd=round(icms_cost, 2),
             inland_freight_cost_usd=freight_cost,
             exemption_note=exemption,
-            total_cost_usd=total_cost,
-            is_recommended=False
+            total_cost_usd=round(total_cost, 2),
+            is_recommended=False,
+            data_source=risk.get("data_source", "unknown"),
+            as_of=risk.get("as_of", "unknown"),
+            decision_grade=risk.get("decision_grade", "unknown")
         ))
         
     if conn:
