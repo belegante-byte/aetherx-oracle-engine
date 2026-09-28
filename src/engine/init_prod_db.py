@@ -141,7 +141,11 @@ def seed_port_metrics(force: bool = False):
             ("RJ", "SOJA", 20.0, None),
             ("RJ", "FERTILIZANTES", 20.0, None),
             ("RS", "SOJA", 17.0, None),
-            ("RS", "FERTILIZANTES", 17.0, None)
+            ("RS", "FERTILIZANTES", 17.0, None),
+            ("MT", "SOJA", 12.0, None),
+            ("MT", "FERTILIZANTES", 0.0, "Isento - Convênio ICMS 100/97 (Destino)"),
+            ("GO", "SOJA", 12.0, None),
+            ("GO", "FERTILIZANTES", 0.0, "Isento - Convênio ICMS 100/97 (Destino)")
         ]
     )
 

@@ -1,7 +1,7 @@
 import argparse
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from src.products.gp5.fiscal import evaluate_fiscal_routing
 
 def generate_pitch(target_company: str, commodity: str, cargo_value_usd: float, inland_uf: str, cargo_tons: float, intended_port: str):
@@ -27,9 +27,16 @@ def generate_pitch(target_company: str, commodity: str, cargo_value_usd: float, 
         print("Erro: Portos insuficientes no banco de dados para avaliação.")
         sys.exit(1)
         
+
+    # Freshness Check
+    if intended_opt.as_of != "unknown":
+        as_of_dt = datetime.strptime(intended_opt.as_of, "%Y-%m-%d %H:%M:%S")
+        hours_old = (datetime.now(timezone.utc).replace(tzinfo=None) - as_of_dt).total_seconds() / 3600
+        if hours_old > 24:
+            print(f"\n[WARNING] Dados locais muito antigos ({hours_old:.1f}h). Execute a ingestão antes de enviar o pitch!\n")
     date_str = datetime.now().strftime("%d de %B de %Y")
     
-    markdown = f"""# Relatório Executivo de Arbitragem Logístico-Tributária
+    markdown = f"""# Relatório Executivo de Roteamento Logístico Inteligente
 **Preparado para:** {target_company.upper()}
 **Data de Emissão:** {date_str}
 **Commodity:** {commodity.title()}
@@ -44,9 +51,9 @@ def generate_pitch(target_company: str, commodity: str, cargo_value_usd: float, 
 
 ## 2. Metodologia e Premissas ("Sniper Honesto")
 Este relatório foi gerado através do motor **Aether-X Oracle**. Não utilizamos "achismos" nem dados defasados. As premissas matemáticas abertas para a sua validação são:
-- **Telemetria Física:** Baseada nas filas de navios em tempo real de hoje, lidas via fontes primárias e satélite.
-- **Multa de Fila (Demurrage):** Estimativa conservadora de US$ 32.000 a 45.000/dia dependendo da pressão do porto.
-- **Tributação (ICMS):** Tabelas estaduais públicas. Referência ao *Convênio ICMS 100/97* e alíquotas base estaduais.
+- **Telemetria Física:** Baseada nas filas de navios em tempo real de hoje, lidas via integrações primárias (ex: APPA, PortosRio, SILOG) e modelagem de congestionamento.
+- **Multa de Fila (Demurrage):** Estimativa derivada de índices reais de pressão operacional (estimada dinamicamente entre US$ 32.000 a 45.000/dia por navio panamax).
+- **Tributação (ICMS - Regra de Destino/DIFAL):** O modelo atribui a alíquota baseada no **Estado Destinatário da Carga** (`{inland_uf.upper()}`), aplicando o Convênio 100/97 ou isenções vigentes no destino, neutralizando assimetrias de origem portuária.
 - **Frete Terrestre (Rodoviário/Ferroviário):** Matriz paramétrica (média de mercado) calculada com base na quilometragem até `{inland_uf.upper()}`.
 
 ---

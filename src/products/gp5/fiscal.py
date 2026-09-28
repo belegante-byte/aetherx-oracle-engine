@@ -98,7 +98,7 @@ def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_u
         if conn:
             row = conn.execute(
                 "SELECT icms_rate_pct, exemption_note FROM tax_rules WHERE state_code = ? AND commodity = ?",
-                [state_code, commodity]
+                [inland_uf.upper(), commodity]
             ).fetchone()
             if row:
                 icms_pct = row[0]
