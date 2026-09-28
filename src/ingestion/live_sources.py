@@ -985,10 +985,10 @@ def fetch_appa_paranagua(timeout: int = 30) -> list:
             programados = int(data.get("Programados", 0))
             
             # Reconstrói como lista de eventos para o ingestor unificado contar
-            linhas.extend([{"status": "ATRACADO", "ship_name": f"APPA_{i}"} for i in range(atracados)])
-            linhas.extend([{"status": "AO_LARGO", "ship_name": f"APPA_{i}"} for i in range(ao_largo)])
-            linhas.extend([{"status": "ESPERADO", "ship_name": f"APPA_{i}"} for i in range(esperados)])
-            linhas.extend([{"status": "PROGRAMADO", "ship_name": f"APPA_{i}"} for i in range(programados)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "atracado", "ship_name": f"APPA_{i}"} for i in range(atracados)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "ao_largo", "ship_name": f"APPA_{i}"} for i in range(ao_largo)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "esperado", "ship_name": f"APPA_{i}"} for i in range(esperados)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "programado", "ship_name": f"APPA_{i}"} for i in range(programados)])
     except Exception:
         pass
     return linhas
@@ -1021,9 +1021,9 @@ def fetch_emar_itaqui(timeout: int = 30) -> list:
             fundeados = _extract_count('Fundeados')
             esperados = _extract_count('Esperados')
             
-            linhas.extend([{"status": "ATRACADO", "ship_name": f"ITAQUI_{i}"} for i in range(atracados)])
-            linhas.extend([{"status": "AO_LARGO", "ship_name": f"ITAQUI_{i}"} for i in range(fundeados)])
-            linhas.extend([{"status": "ESPERADO", "ship_name": f"ITAQUI_{i}"} for i in range(esperados)])
+            linhas.extend([{"port_id": "BRIQI", "source": "emar_itaqui", "status": "atracado", "ship_name": f"ITAQUI_{i}"} for i in range(atracados)])
+            linhas.extend([{"port_id": "BRIQI", "source": "emar_itaqui", "status": "ao_largo", "ship_name": f"ITAQUI_{i}"} for i in range(fundeados)])
+            linhas.extend([{"port_id": "BRIQI", "source": "emar_itaqui", "status": "esperado", "ship_name": f"ITAQUI_{i}"} for i in range(esperados)])
     except Exception:
         pass
     return linhas
@@ -1047,10 +1047,10 @@ def fetch_appa_paranagua(timeout: int = 30) -> list:
             programados = int(data.get("Programados", 0))
             
             # Reconstrói como lista de eventos para o ingestor unificado contar
-            linhas.extend([{"status": "ATRACADO", "ship_name": f"APPA_{i}"} for i in range(atracados)])
-            linhas.extend([{"status": "AO_LARGO", "ship_name": f"APPA_{i}"} for i in range(ao_largo)])
-            linhas.extend([{"status": "ESPERADO", "ship_name": f"APPA_{i}"} for i in range(esperados)])
-            linhas.extend([{"status": "PROGRAMADO", "ship_name": f"APPA_{i}"} for i in range(programados)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "atracado", "ship_name": f"APPA_{i}"} for i in range(atracados)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "ao_largo", "ship_name": f"APPA_{i}"} for i in range(ao_largo)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "esperado", "ship_name": f"APPA_{i}"} for i in range(esperados)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "programado", "ship_name": f"APPA_{i}"} for i in range(programados)])
     except Exception:
         pass
     return linhas
@@ -1083,9 +1083,9 @@ def fetch_emar_itaqui(timeout: int = 30) -> list:
             fundeados = _extract_count('Fundeados')
             esperados = _extract_count('Esperados')
             
-            linhas.extend([{"status": "ATRACADO", "ship_name": f"ITAQUI_{i}"} for i in range(atracados)])
-            linhas.extend([{"status": "AO_LARGO", "ship_name": f"ITAQUI_{i}"} for i in range(fundeados)])
-            linhas.extend([{"status": "ESPERADO", "ship_name": f"ITAQUI_{i}"} for i in range(esperados)])
+            linhas.extend([{"port_id": "BRIQI", "source": "emar_itaqui", "status": "atracado", "ship_name": f"ITAQUI_{i}"} for i in range(atracados)])
+            linhas.extend([{"port_id": "BRIQI", "source": "emar_itaqui", "status": "ao_largo", "ship_name": f"ITAQUI_{i}"} for i in range(fundeados)])
+            linhas.extend([{"port_id": "BRIQI", "source": "emar_itaqui", "status": "esperado", "ship_name": f"ITAQUI_{i}"} for i in range(esperados)])
     except Exception:
         pass
     return linhas
@@ -1109,10 +1109,10 @@ def fetch_appa_paranagua(timeout: int = 30) -> list:
             programados = int(data.get("Programados", 0))
             
             # Reconstrói como lista de eventos para o ingestor unificado contar
-            linhas.extend([{"status": "ATRACADO", "ship_name": f"APPA_{i}"} for i in range(atracados)])
-            linhas.extend([{"status": "AO_LARGO", "ship_name": f"APPA_{i}"} for i in range(ao_largo)])
-            linhas.extend([{"status": "ESPERADO", "ship_name": f"APPA_{i}"} for i in range(esperados)])
-            linhas.extend([{"status": "PROGRAMADO", "ship_name": f"APPA_{i}"} for i in range(programados)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "atracado", "ship_name": f"APPA_{i}"} for i in range(atracados)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "ao_largo", "ship_name": f"APPA_{i}"} for i in range(ao_largo)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "esperado", "ship_name": f"APPA_{i}"} for i in range(esperados)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "programado", "ship_name": f"APPA_{i}"} for i in range(programados)])
     except Exception:
         pass
     return linhas
@@ -1145,9 +1145,9 @@ def fetch_emar_itaqui(timeout: int = 30) -> list:
             fundeados = _extract_count('Fundeados')
             esperados = _extract_count('Esperados')
             
-            linhas.extend([{"status": "ATRACADO", "ship_name": f"ITAQUI_{i}"} for i in range(atracados)])
-            linhas.extend([{"status": "AO_LARGO", "ship_name": f"ITAQUI_{i}"} for i in range(fundeados)])
-            linhas.extend([{"status": "ESPERADO", "ship_name": f"ITAQUI_{i}"} for i in range(esperados)])
+            linhas.extend([{"port_id": "BRIQI", "source": "emar_itaqui", "status": "atracado", "ship_name": f"ITAQUI_{i}"} for i in range(atracados)])
+            linhas.extend([{"port_id": "BRIQI", "source": "emar_itaqui", "status": "ao_largo", "ship_name": f"ITAQUI_{i}"} for i in range(fundeados)])
+            linhas.extend([{"port_id": "BRIQI", "source": "emar_itaqui", "status": "esperado", "ship_name": f"ITAQUI_{i}"} for i in range(esperados)])
     except Exception:
         pass
     return linhas
@@ -1171,10 +1171,10 @@ def fetch_appa_paranagua(timeout: int = 30) -> list:
             programados = int(data.get("Programados", 0))
             
             # Reconstrói como lista de eventos para o ingestor unificado contar
-            linhas.extend([{"status": "ATRACADO", "ship_name": f"APPA_{i}"} for i in range(atracados)])
-            linhas.extend([{"status": "AO_LARGO", "ship_name": f"APPA_{i}"} for i in range(ao_largo)])
-            linhas.extend([{"status": "ESPERADO", "ship_name": f"APPA_{i}"} for i in range(esperados)])
-            linhas.extend([{"status": "PROGRAMADO", "ship_name": f"APPA_{i}"} for i in range(programados)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "atracado", "ship_name": f"APPA_{i}"} for i in range(atracados)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "ao_largo", "ship_name": f"APPA_{i}"} for i in range(ao_largo)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "esperado", "ship_name": f"APPA_{i}"} for i in range(esperados)])
+            linhas.extend([{"port_id": "BRPNG", "source": "appa_paranagua", "status": "programado", "ship_name": f"APPA_{i}"} for i in range(programados)])
     except Exception:
         pass
     return linhas
@@ -1207,9 +1207,9 @@ def fetch_emar_itaqui(timeout: int = 30) -> list:
             fundeados = _extract_count('Fundeados')
             esperados = _extract_count('Esperados')
             
-            linhas.extend([{"status": "ATRACADO", "ship_name": f"ITAQUI_{i}"} for i in range(atracados)])
-            linhas.extend([{"status": "AO_LARGO", "ship_name": f"ITAQUI_{i}"} for i in range(fundeados)])
-            linhas.extend([{"status": "ESPERADO", "ship_name": f"ITAQUI_{i}"} for i in range(esperados)])
+            linhas.extend([{"port_id": "BRIQI", "source": "emar_itaqui", "status": "atracado", "ship_name": f"ITAQUI_{i}"} for i in range(atracados)])
+            linhas.extend([{"port_id": "BRIQI", "source": "emar_itaqui", "status": "ao_largo", "ship_name": f"ITAQUI_{i}"} for i in range(fundeados)])
+            linhas.extend([{"port_id": "BRIQI", "source": "emar_itaqui", "status": "esperado", "ship_name": f"ITAQUI_{i}"} for i in range(esperados)])
     except Exception:
         pass
     return linhas
