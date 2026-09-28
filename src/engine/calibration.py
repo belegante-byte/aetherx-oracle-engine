@@ -170,7 +170,9 @@ def calibrate(port_id: str, conn=None) -> dict | None:
     """
     own = conn is None
     if own:
-        conn = duckdb.connect(db_path(), read_only=False)
+        # calibrate() é somente leitura; abrir conexão divergente read-write
+        # num arquivo já aberto read-only pela API causa conflito DuckDB.
+        conn = duckdb.connect(db_path(), read_only=True)
     try:
         dist = antaq_distribution(conn, port_id)
         if dist is None:

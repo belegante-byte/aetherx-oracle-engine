@@ -84,12 +84,16 @@ def snapshot(print_fn=print, per_port_latest_day: bool = True) -> int:
         ensure_history_table(conn)
         rows = build_rows(conn)
         if per_port_latest_day:
-            # Uma linha por porto/dia: remove as capturas do dia corrente antes
-            # de inserir as novas (evita duplicatas quando roda várias vezes).
-            conn.execute("""
-                DELETE FROM port_metrics_history
-                WHERE CAST(captured_at AS DATE) = (SELECT MAX(CAST(captured_at AS DATE)) FROM port_metrics_history)
-            """)
+            # Uma linha por porto/dia: remove apenas as capturas do DIA CORRENTE
+            # antes de inserir as novas (evita duplicatas quando roda várias
+            # vezes no mesmo dia). O bug anterior usava MAX(captured_at), o que
+            # apagava o dia ANTERIOR a cada execução e impedia o histórico de
+            # acumular.
+            hoje = datetime.now(timezone.utc).date()
+            conn.execute(
+                "DELETE FROM port_metrics_history WHERE CAST(captured_at AS DATE) = ?",
+                [hoje],
+            )
         conn.executemany(
             """
             INSERT INTO port_metrics_history (

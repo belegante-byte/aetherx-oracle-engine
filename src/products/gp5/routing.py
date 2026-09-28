@@ -98,9 +98,12 @@ def evaluate_corridor_risk(
     dest_delay = DEFAULT_DESTINATION_DELAY_DAYS.get(destination, 3.0)
 
     total_cycle_days = round(origin_delay + transit_days + dest_delay, 1)
-    dest_demurrage_usd = round(dest_delay * 30000.0, 2)
+    # Taxa única de demurrage (consistente com charter_risk): premissa declarada
+    # em daily_demurrage_rate_usd. O valor anterior (30.000 vs 32.000) era
+    # inconsistente com a própria premissa do corredor.
+    dest_demurrage_usd = round(dest_delay * 32000.0, 2)
     total_corridor_demurrage_usd = origin_demurrage_usd + dest_demurrage_usd
-    cost_per_ton_usd = round(total_corridor_demurrage_usd / vessel_capacity_tons, 2)
+    cost_per_ton_usd = round(total_corridor_demurrage_usd / vessel_capacity_tons, 2) if vessel_capacity_tons and vessel_capacity_tons > 0 else None
 
     return DecisionResult(
         decision_id=decision_id,

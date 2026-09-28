@@ -55,6 +55,13 @@ GRID = {
 
 
 def gravar_raw_land() -> int:
+    # INTEGRIDADE: fetch_rumo_operations é um MOCK sintético. Nubla os dados
+    # reais se entrar no banco de produção. Só grava quando o operador força
+    # explicitamente com ALLOW_MOCK_INGESTION=1 (testes locais/dev).
+    if os.getenv("ALLOW_MOCK_INGESTION", "0") != "1":
+        print("[AETHER-X INGESTION] raw_land_queue: fonte Rumo é MOCK e está bloqueada em produção. "
+              "Para desenvolvimento, defina ALLOW_MOCK_INGESTION=1.")
+        return 0
     land_data = fetch_rumo_operations(allow_mock=True)
     conn = duckdb.connect(RAW_DB)
     conn.execute("DROP TABLE IF EXISTS raw_land_queue")
@@ -253,31 +260,48 @@ def main() -> dict:
         )
         por_porto[pid] = met
 
-    # 2. Coleta telemetria viva multi-região (Ásia, Europa, Américas, África & Chokepoints)
+    # 2. Registra referência calibrada para demais portos globais (sem passar falsa impressão de live scraper)
     telemetry_sources = [
         fetch_asian_port_congestion(),
         fetch_european_port_congestion(),
         fetch_americas_port_congestion(),
         fetch_chokepoint_and_african_telemetry(),
     ]
+    referencia_global = {}
     for source_dict in telemetry_sources:
         for pid, tdata in source_dict.items():
-            src_keys = tdata.get("sources", [])
-            src_str = "live:" + "+".join(src_keys) if src_keys else "live:telemetry"
-            src_names = [SOURCE_LABELS.get(s, s.replace("_", " ")) for s in src_keys]
-            src_label = "Live telemetry from " + " + ".join(src_names) + "." if src_names else "Live operational telemetry."
-            por_porto[pid] = {
+            referencia_global[pid] = {
                 "port_name": tdata.get("port_name", pid),
                 "country": tdata.get("country", "Global"),
                 "congestion_score": tdata.get("congestion_score", 0.5),
                 "eta_delay_days": tdata.get("eta_delay_days", 1.0),
                 "waiting_vessels": tdata.get("waiting_vessels", 10),
                 "freight_volatility_index": tdata.get("freight_volatility_index", 0.35),
-                "data_source": src_str,
-                "data_source_label": src_label,
-                "sources_list": src_keys,
+                "data_source": "calibrated_reference_seed",
+                "data_source_label": "Calibrated reference seed baseline (static model, not live network scraper).",
+                "sources_list": ["static_reference_seed"],
                 "live_detail": tdata,
             }
+
+    # 2b. Intel viva de sensores AIS/API (ex: ShipInfo) tem PRIORIDADE sobre a
+    # referência calibrada — mas só quando a fonte entregou registros reais
+    # NESTE ciclo (resumo com total>0). Nada de rotular live sem dado. Isso
+    # amplia a cobertura live para portos globais além dos 5 BR de autoridade.
+    for pid, ref in referencia_global.items():
+        res = resumos.get(pid)
+        if res and res.get("total", 0) > 0:
+            met = _score_from_status(pid, res, fontes_status)
+            fontes_usadas = sorted(k[4:] for k in res if k.startswith("src_"))
+            met["data_source"] = "live:" + "+".join(fontes_usadas)
+            nomes = [SOURCE_LABELS.get(f, f.replace("_", " ")) for f in fontes_usadas]
+            met["data_source_label"] = (
+                "Live AIS sensor feed from " + " + ".join(nomes) + " (anchorage-derived queue)."
+            )
+            met["port_name"] = ref["port_name"]
+            met["country"] = ref["country"]
+            por_porto[pid] = met
+        else:
+            por_porto[pid] = ref
 
     gravar_raw(linhas)
     land_total = gravar_raw_land()

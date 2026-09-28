@@ -148,6 +148,7 @@ def calculate_port_risk(port_id: str) -> dict:
     port_id = port_id.upper()
     now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 
+    conn = None
     try:
         conn = _get_conn()
         row = conn.execute("""
@@ -165,7 +166,10 @@ def calculate_port_risk(port_id: str) -> dict:
         row = None
         seed_at = now
 
-    # Enriquecimento com telemetria ao vivo (Estreitos, Ásia, Europa, África via IMF PortWatch, SeaVantage, TankerMap, VesselAPI, Datalastic)
+    # Enriquecimento com telemetria de referência (Estreitos, Ásia, Europa, África).
+    # INTEGRIDADE: os dicionários em live_sources.py são REFERÊNCIA CALIBRADA
+    # (sources=["static_reference_seed"]), NÃO telemetria viva. Só emitimos
+    # rótulos live:* quando a fonte declara observação real.
     try:
         from src.ingestion.live_sources import (
             fetch_asian_port_congestion,
@@ -184,6 +188,42 @@ def calculate_port_risk(port_id: str) -> dict:
             wait_text = f"Median wait {wait_hours}h" if wait_hours is not None else f"Transits {pinfo.get('daily_transits', 'n/a')}/day ({pinfo.get('pct_of_normal_baseline', '100')}% baseline)"
             yard_text = f", Yard Utilization {pinfo['yard_utilization_pct']}%" if "yard_utilization_pct" in pinfo else ""
             rail_text = f", Intermodal Rail: {pinfo['intermodal_rail_status']}" if "intermodal_rail_status" in pinfo else ""
+            live_sources = [
+                s for s in (pinfo.get("sources") or [])
+                if s and s != "static_reference_seed"
+            ]
+            if live_sources:
+                return {
+                    "port_id": port_id,
+                    "port_name": pinfo["port_name"],
+                    "country": pinfo["country"],
+                    "congestion_score": score,
+                    "eta_delay_days": pinfo["eta_delay_days"],
+                    "waiting_vessels": pinfo["waiting_vessels"],
+                    "freight_volatility_index": 0.40,
+                    "estimated_daily_demurrage_usd": _estimate_demurrage(score),
+                    "updated_at": pinfo["as_of"],
+                    "as_of": pinfo["as_of"],
+                    "data_source": f"live:{'+'.join(live_sources)}",
+                    "data_source_label": (
+                        f"Live AIS & Traffic intelligence via {', '.join(live_sources)} "
+                        f"({wait_text}{yard_text}{rail_text})."
+                    ),
+                    "live_detail": json.dumps(pinfo),
+                    "decision_grade": "conditional",
+                    "signal": {
+                        "level": "ELEVATED OPERATIONAL PRESSURE" if score >= 0.45 else "MODERATE / LOW PRESSURE",
+                        "live_observation": True,
+                        "queue_vessels": pinfo["waiting_vessels"],
+                        "expected_delay_days": pinfo["eta_delay_days"],
+                        "demurrage_expected_usd": int(pinfo["eta_delay_days"] * DEMURRAGE_BASE_USD_PER_DAY),
+                        "confidence": 0.94,
+                        "provenance": f"live:{'+'.join(live_sources)}",
+                        "decision_implication": f"Live stream indicates {pinfo.get('status', 'operational').lower()} conditions at {pinfo['port_name']} ({pinfo['country']}).",
+                        "as_of": pinfo["as_of"],
+                    }
+                }
+            # Referência calibrada/estática: rótulo honesto, sem fingir telemetria viva.
             return {
                 "port_id": port_id,
                 "port_name": pinfo["port_name"],
@@ -191,26 +231,30 @@ def calculate_port_risk(port_id: str) -> dict:
                 "congestion_score": score,
                 "eta_delay_days": pinfo["eta_delay_days"],
                 "waiting_vessels": pinfo["waiting_vessels"],
-                "freight_volatility_index": 0.40,
+                "freight_volatility_index": pinfo.get("freight_volatility_index", 0.40),
                 "estimated_daily_demurrage_usd": _estimate_demurrage(score),
                 "updated_at": pinfo["as_of"],
                 "as_of": pinfo["as_of"],
-                "data_source": f"live:{'+'.join(pinfo['sources'])}",
+                "data_source": "calibrated_reference_seed",
                 "data_source_label": (
-                    f"Live AIS & Traffic intelligence via {', '.join(pinfo['sources'])} "
-                    f"({wait_text}{yard_text}{rail_text})."
+                    "Calibrated reference seed (static model baseline, NOT live telemetry). "
+                    f"Reference conditions: {wait_text}{yard_text}{rail_text}."
                 ),
                 "live_detail": json.dumps(pinfo),
-                "decision_grade": "decision",
+                "decision_grade": "reference",
                 "signal": {
                     "level": "ELEVATED OPERATIONAL PRESSURE" if score >= 0.45 else "MODERATE / LOW PRESSURE",
-                    "live_observation": True,
+                    "live_observation": False,
                     "queue_vessels": pinfo["waiting_vessels"],
                     "expected_delay_days": pinfo["eta_delay_days"],
                     "demurrage_expected_usd": int(pinfo["eta_delay_days"] * DEMURRAGE_BASE_USD_PER_DAY),
-                    "confidence": 0.94,
-                    "provenance": f"live:{'+'.join(pinfo['sources'])}",
-                    "decision_implication": f"Live stream indicates {pinfo.get('status', 'operational').lower()} conditions at {pinfo['port_name']} ({pinfo['country']}).",
+                    "confidence": None,
+                    "provenance": "calibrated_reference_seed",
+                    "decision_implication": (
+                        f"Reference baseline only — NOT a live observation. "
+                        f"Indicates modeled reference conditions at {pinfo['port_name']} ({pinfo['country']}); "
+                        "do not use as real-time field data."
+                    ),
                     "as_of": pinfo["as_of"],
                 }
             }
@@ -273,22 +317,46 @@ def calculate_port_risk(port_id: str) -> dict:
         **extra,
     }
 
-    # Enriquecimento com telemetria ao vivo para portos asiáticos (PortInsight / Portcast / Gateway Lines)
+    # Enriquecimento com referência calibrada para portos asiáticos (honesto:
+    # só rotula live:* quando a fonte declara observação real).
     try:
         from src.ingestion.live_sources import fetch_asian_port_congestion
         asian_data = fetch_asian_port_congestion()
         if port_id in asian_data:
             asian_info = asian_data[port_id]
+            mid_wait = asian_info.get('median_wait_hours')
+            berth = asian_info.get('berth_occupancy_pct')
+            live_sources = [
+                s for s in (asian_info.get("sources") or [])
+                if s and s != "static_reference_seed"
+            ]
             result["congestion_score"] = asian_info["congestion_score"]
             result["eta_delay_days"] = asian_info["eta_delay_days"]
             result["waiting_vessels"] = asian_info["waiting_vessels"]
-            result["data_source"] = f"live:{'+'.join(asian_info['sources'])}"
-            result["data_source_label"] = (
-                f"Live AIS & Traffic intelligence via {', '.join(asian_info['sources'])} "
-                f"(Median wait {asian_info['median_wait_hours']}h, Berth occupancy {asian_info['berth_occupancy_pct']}%)."
-            )
             result["as_of"] = asian_info["as_of"]
             result["live_detail"] = json.dumps(asian_info)
+            if live_sources:
+                result["data_source"] = f"live:{'+'.join(live_sources)}"
+                extra_label = ""
+                if mid_wait is not None:
+                    extra_label += f"Median wait {mid_wait}h"
+                if berth is not None:
+                    extra_label += f"{', ' if extra_label else ''}Berth occupancy {berth}%"
+                result["data_source_label"] = (
+                    f"Live AIS & Traffic intelligence via {', '.join(live_sources)} "
+                    f"({extra_label})."
+                )
+            else:
+                result["data_source"] = "calibrated_reference_seed"
+                extra_label = ""
+                if mid_wait is not None:
+                    extra_label += f"Median wait {mid_wait}h"
+                if berth is not None:
+                    extra_label += f"{', ' if extra_label else ''}Berth occupancy {berth}%"
+                result["data_source_label"] = (
+                    "Calibrated reference seed (static model baseline, NOT live telemetry). "
+                    f"Reference conditions: {extra_label}."
+                )
     except Exception:
         pass
 
