@@ -507,6 +507,7 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
         "/v1/gp5/routing-eval",
         "/v1/gp5/corridor-risk",
         "/v1/gp5/port-exposure",
+        "/v1/gp5/fiscal-routing",
     )
 
     async def dispatch(self, request: Request, call_next):
