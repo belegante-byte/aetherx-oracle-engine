@@ -226,10 +226,12 @@ def generate_openapi():
                 continue
             operation["responses"].pop("422", None)
             resp_200 = operation["responses"].get("200")
-            if resp_200 and "content" in resp_200:
-                resp_200["content"]["application/json"]["example"] = examples_by_path.get(
-                    path, EXAMPLE_RESPONSE
-                )
+            if (
+                resp_200
+                and path in examples_by_path
+                and "application/json" in resp_200.get("content", {})
+            ):
+                resp_200["content"]["application/json"]["example"] = examples_by_path[path]
 
     schemas = rapidapi.get("components", {}).get("schemas", {})
     for unused in ("HTTPValidationError", "ValidationError"):

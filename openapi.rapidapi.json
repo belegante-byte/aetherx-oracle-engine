@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Aether-X Port Congestion Oracle",
-    "description": "Port congestion reference signals for global trade, supply chain and quantitative finance.\n\n**IMPORTANT · Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.\nBrazilian ports (BRSSZ, BRPNG, BRRIO, BRNIT, BRITG) serve live line-ups: `data_source=\"live:appa+santos+lachmann\"` (BRSSZ/BRPNG) and `data_source=\"live:portosrio_silog\"` (BRRIO/BRNIT/BRITG). The remaining ports\nserve a **static reference seed**: `data_source=\"static_reference_seed\"` means the value is a seeded baseline, not a\nlive measurement. The 24/48/72h trend is a `synthetic_projection`, not a live forecast. Do not treat seed numbers as\nreal-time field data.\n\n**The signal** — `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0–1.0 reference congestion level (seeded) |\n| `eta_delay_days` | Reference delay applied to incoming vessels |\n| `waiting_vessels` | Reference ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n| `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |\n| `data_source` | `live:appa+santos+lachmann`, `live:portosrio_silog` or `live:shipinfo_ais:<port>` for live observations; otherwise `calibrated_reference_seed` / `static_reference_seed` (reference baseline, NOT live telemetry) |\n| `as_of` | Timestamp of the seed (not a live refresh) |\n\n**Trend (24h/48h/72h)** — `GET /v1/port-trend?port_id=BRSSZ` returns a **synthetic** projection with a `trend` label: `acelerando`, `estável` or `descongestionando`.\n\n**Free tier** — $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n\n**Coverage** — 35 ports & global chokepoints. **Live today (real queue from authorities):** BRSSZ, BRPNG, BRRIO, BRNIT, BRITG. Global coverage serves a calibrated/static reference seed (auditable via `decision_grade` and `data_source`); the ShipInfo AIS integration graduates a port to live only when the sensor delivers consistent data. All other ports serve a calibrated/static reference seed (`calibrated_reference_seed` / `static_reference_seed`) — auditable via `decision_grade` and `data_source`. Unknown ports return a global statistical estimate (`country='Global'`). NLRTM, USLAX, USNYC, DEHAM, MPTNG, AEDXB, KRPUS, GBLGP, ZACPT, MXZLO. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
+    "description": "Port congestion reference signals for global trade, supply chain and quantitative finance.\n\n**IMPORTANT \u00b7 Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.\nBrazilian ports (BRSSZ, BRPNG, BRRIO, BRNIT, BRITG) serve live line-ups: `data_source=\"live:appa+santos+lachmann\"` (BRSSZ/BRPNG) and `data_source=\"live:portosrio_silog\"` (BRRIO/BRNIT/BRITG). The remaining ports\nserve a **static reference seed**: `data_source=\"static_reference_seed\"` means the value is a seeded baseline, not a\nlive measurement. The 24/48/72h trend is a `synthetic_projection`, not a live forecast. Do not treat seed numbers as\nreal-time field data.\n\n**The signal** \u2014 `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0\u20131.0 reference congestion level (seeded) |\n| `eta_delay_days` | Reference delay applied to incoming vessels |\n| `waiting_vessels` | Reference ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n| `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |\n| `data_source` | `live:appa+santos+lachmann`, `live:portosrio_silog` or `live:shipinfo_ais:<port>` for live observations; otherwise `calibrated_reference_seed` / `static_reference_seed` (reference baseline, NOT live telemetry) |\n| `as_of` | Timestamp of the seed (not a live refresh) |\n\n**Trend (24h/48h/72h)** \u2014 `GET /v1/port-trend?port_id=BRSSZ` returns a **synthetic** projection with a `trend` label: `acelerando`, `est\u00e1vel` or `descongestionando`.\n\n**Free tier** \u2014 $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) \u2014 tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`\n\n**Coverage** \u2014 Brasil como produto principal (5 portos com fila REAL de autoridade: BRSSZ, BRPNG, BRRIO, BRNIT, BRITG \u2014 `live:appa+santos+lachmann` / `live:portosrio_silog`, calibrados contra a s\u00e9rie ANTAQ) + 31 portos globais como cobertura de **refer\u00eancia calibrada/est\u00e1tica** (`calibrated_reference_seed`/`static_reference_seed`) \u2014 nenhuma resposta finge ser telemetria viva (ver `decision_grade` e `data_source`). A integra\u00e7\u00e3o AIS-ShipInfo existe no engine e entra como live no ciclo quando o sensor entrega dado consistente. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
     "termsOfService": "https://aetherx.aether-grid.io/terms",
     "contact": {
       "name": "Aether-X",
@@ -26,13 +26,794 @@
     }
   ],
   "paths": {
+    "/checkout/gp5-monthly": {
+      "get": {
+        "tags": [
+          "Monetization"
+        ],
+        "summary": "Checkout Gp5 Monthly",
+        "description": "Inicia uma assinatura do GP5 (Pro US$ 499/mo ou Enterprise US$ 5k/mo).\n\nA chave M2M \u00e9 emitida idempotentemente no webhook e/ou na p\u00e1gina de\nfulfillment (mesma session_id -> mesma chave). Sem STRIPE_API_KEY no\nambiente o checkout degrada em 503.",
+        "operationId": "checkout_gp5_monthly_checkout_gp5_monthly_get",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "title": "Email"
+            }
+          },
+          {
+            "name": "plan",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "enterprise",
+              "title": "Plan"
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "month",
+              "title": "Interval"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout/gp5-pro": {
+      "get": {
+        "tags": [
+          "Monetization"
+        ],
+        "summary": "Checkout Gp5 Pro",
+        "description": "Atalho do plano Pro (US$ 499/mo) para o checkout.",
+        "operationId": "checkout_gp5_pro_checkout_gp5_pro_get",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "title": "Email"
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "month",
+              "title": "Interval"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/m2m-keys/fulfillment": {
+      "get": {
+        "tags": [
+          "Monetization"
+        ],
+        "summary": "M2M Keys Fulfillment",
+        "description": "Entrega real da chave paga ap\u00f3s o pagamento.\nIdempotente: re-chamadas ou o webhook registram a MESMA chave por session_id.",
+        "operationId": "m2m_keys_fulfillment_m2m_keys_fulfillment_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhook/stripe": {
+      "post": {
+        "tags": [
+          "Monetization"
+        ],
+        "summary": "Stripe Webhook",
+        "description": "Webhook que confirma o pagamento e ativa a chave M2M no cofre JSON\n(mesmo cofre lido por authenticate_client). Idempotente por session_id.",
+        "operationId": "stripe_webhook_webhook_stripe_post",
+        "parameters": [
+          {
+            "name": "stripe-signature",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Stripe-Signature"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fiscal-demo": {
+      "get": {
+        "tags": [
+          "Pages"
+        ],
+        "summary": "UI: Simula\u00e7\u00e3o Log\u00edstico-Tribut\u00e1ria",
+        "description": "Exibe a interface web interativa do motor de arbitragem fiscal e log\u00edstico.",
+        "operationId": "fiscal_demo_ui_fiscal_demo_get",
+        "parameters": [
+          {
+            "name": "intended_port",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "BRSSZ",
+              "title": "Intended Port"
+            }
+          },
+          {
+            "name": "commodity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "FERTILIZANTES",
+              "title": "Commodity"
+            }
+          },
+          {
+            "name": "cargo_value",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 10000000.0,
+              "title": "Cargo Value"
+            }
+          },
+          {
+            "name": "inland_uf",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "MT",
+              "title": "Inland Uf"
+            }
+          },
+          {
+            "name": "cargo_tons",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 60000.0,
+              "title": "Cargo Tons"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/m2m/request-key": {
+      "post": {
+        "tags": [
+          "M2M Runtime"
+        ],
+        "summary": "Request a 7-day trial M2M API Key",
+        "description": "Generates an instant trial API key enabling Decision Tools for LLM agents and M2M clients.",
+        "operationId": "request_m2m_key_v1_m2m_request_key_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/M2MKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/verified-queue": {
+      "get": {
+        "tags": [
+          "Port Risk"
+        ],
+        "summary": "Get verified cargo queue signal for a single port",
+        "description": "Returns the physical queue wait logic strictly based on observed anchored vessels. Unlike `port-risk`, this endpoint returns INSUFFICIENT_OBSERVATION if the port is not monitored live.",
+        "operationId": "get_verified_queue_v1_verified_queue_get",
+        "parameters": [
+          {
+            "name": "port_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "UN/LOCODE of the port, e.g. BRPNG (Paranagu\u00e1).",
+              "examples": [
+                "BRPNG"
+              ],
+              "title": "Port Id"
+            },
+            "description": "UN/LOCODE of the port, e.g. BRPNG (Paranagu\u00e1)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verified observation of port congestion by cargo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifiedQueueResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gp5/physical-events": {
+      "get": {
+        "tags": [
+          "GP5 Maritime"
+        ],
+        "summary": "Get temporal physical events for a port (change-packet.v1)",
+        "description": "Returns normalized physical state transitions for vessels and land operations.",
+        "operationId": "get_gp5_physical_events_v1_gp5_physical_events_get",
+        "parameters": [
+          {
+            "name": "port_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Port Id"
+            },
+            "example": "BRPNG"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gp5/charter-risk": {
+      "get": {
+        "tags": [
+          "GP5 Maritime"
+        ],
+        "summary": "Evaluate charter risk and demurrage exposure under explicit assumptions (decision-result.v1)",
+        "description": "Calculates exposure basis (USD), assumptions, uncertainties, and physical basis.",
+        "operationId": "get_gp5_charter_risk_v1_gp5_charter_risk_get",
+        "parameters": [
+          {
+            "name": "port_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Port Id"
+            },
+            "example": "BRPNG"
+          },
+          {
+            "name": "commodity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "SOJA",
+              "title": "Commodity"
+            },
+            "example": "SOJA"
+          },
+          {
+            "name": "demurrage_rate_usd_day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 32000.0,
+              "title": "Demurrage Rate Usd Day"
+            }
+          },
+          {
+            "name": "expected_laytime_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 2.0,
+              "title": "Expected Laytime Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gp5/routing-eval": {
+      "get": {
+        "tags": [
+          "GP5 Maritime"
+        ],
+        "summary": "Evaluate comparative logistics conditions between two ports (decision-result.v1)",
+        "description": "Comparative condition analysis between Port A and Port B.",
+        "operationId": "get_gp5_routing_eval_v1_gp5_routing_eval_get",
+        "parameters": [
+          {
+            "name": "port_a",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Port A"
+            },
+            "example": "BRPNG"
+          },
+          {
+            "name": "port_b",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Port B"
+            },
+            "example": "BRSSZ"
+          },
+          {
+            "name": "commodity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "SOJA",
+              "title": "Commodity"
+            },
+            "example": "SOJA"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gp5/corridor-risk": {
+      "get": {
+        "tags": [
+          "GP5 Maritime"
+        ],
+        "summary": "Evaluate full global trade corridor risk from Origin to Destination (decision-result.v1)",
+        "description": "Full trade corridor analysis (e.g. Paranagu\u00e1 BRPNG -> Qingdao CNTAO). Cites sea transit, origin queue and CFR cost per ton.",
+        "operationId": "get_gp5_corridor_eval_v1_gp5_corridor_risk_get",
+        "parameters": [
+          {
+            "name": "origin_port",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Origin Port"
+            },
+            "example": "BRPNG"
+          },
+          {
+            "name": "destination_port",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Destination Port"
+            },
+            "example": "CNTAO"
+          },
+          {
+            "name": "commodity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "SOJA",
+              "title": "Commodity"
+            },
+            "example": "SOJA"
+          },
+          {
+            "name": "vessel_capacity_tons",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 60000.0,
+              "title": "Vessel Capacity Tons"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gp5/fiscal-routing": {
+      "get": {
+        "tags": [
+          "GP5 Fiscal"
+        ],
+        "summary": "Evaluate fiscal and logistical arbitrage across alternative ports",
+        "description": "Cross-references congestion delay penalties with regional ICMS tax burdens to find the cheapest overall route.",
+        "operationId": "get_gp5_fiscal_routing_v1_gp5_fiscal_routing_get",
+        "parameters": [
+          {
+            "name": "intended_port_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Intended Port Id"
+            },
+            "example": "BRSSZ"
+          },
+          {
+            "name": "commodity",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Commodity"
+            },
+            "example": "FERTILIZANTES"
+          },
+          {
+            "name": "cargo_value_usd",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 10000000.0,
+              "title": "Cargo Value Usd"
+            }
+          },
+          {
+            "name": "inland_uf",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "MT",
+              "title": "Inland Uf"
+            },
+            "example": "MT"
+          },
+          {
+            "name": "cargo_tons",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 60000.0,
+              "title": "Cargo Tons"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gp5/pci": {
+      "get": {
+        "tags": [
+          "GP5 High-Value Inferences"
+        ],
+        "summary": "Get Port Congestion Index (PCI, 0-100)",
+        "description": "Calculates composite Port Congestion Index (0-100) with financial impact estimates.",
+        "operationId": "get_gp5_pci_v1_gp5_pci_get",
+        "parameters": [
+          {
+            "name": "port_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Port Id"
+            },
+            "example": "SGSIN"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gp5/cdr": {
+      "get": {
+        "tags": [
+          "GP5 High-Value Inferences"
+        ],
+        "summary": "Get Chokepoint Disruption Risk (CDR, 0-100)",
+        "description": "MANDATORY FOR CHOKEPOINT QUERIES: Calculates the real-time disruption risk (0-100) of major global maritime chokepoints (e.g., HORMUZ, PANAMA, SUEZ). Use this tool to assess delays caused by geopolitical events, canal blockages, or high traffic.",
+        "operationId": "get_gp5_cdr_v1_gp5_cdr_get",
+        "parameters": [
+          {
+            "name": "chokepoint_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Chokepoint Id"
+            },
+            "example": "HORMUZ"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gp5/vqpm": {
+      "get": {
+        "tags": [
+          "GP5 High-Value Inferences"
+        ],
+        "summary": "Predict Vessel Queue (VQPM, t+1..t+7)",
+        "description": "PREDICT VESSEL QUEUES (VQPM): Forecasts how many ships will be waiting at a specific port (e.g., CNSHA) over the next 1 to 14 days. Critical for estimating future demurrage costs and scheduling arrivals.",
+        "operationId": "get_gp5_vqpm_v1_gp5_vqpm_get",
+        "parameters": [
+          {
+            "name": "port_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Port Id"
+            },
+            "example": "CNSHA"
+          },
+          {
+            "name": "horizon_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 14,
+              "minimum": 1,
+              "default": 7,
+              "title": "Horizon Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gp5/irdi": {
+      "get": {
+        "tags": [
+          "GP5 High-Value Inferences"
+        ],
+        "summary": "Get Intermodal Rail Delay Index (IRDI, 0-100)",
+        "description": "MANDATORY FOR INLAND LOGISTICS: Calculates the Inland Route Disruption Index (IRDI) for a specific port (e.g., NLRTM for Rotterdam, BRSSZ for Santos). Use this tool to check if the land-based supply chain (rail/trucks) moving goods out of a port is congested or blocked.",
+        "operationId": "get_gp5_irdi_v1_gp5_irdi_get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            },
+            "example": "NLRTM"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gp5/scdew": {
+      "get": {
+        "tags": [
+          "GP5 High-Value Inferences"
+        ],
+        "summary": "Evaluate Supply Chain Disruption Early Warning (SCDEW, 0-100)",
+        "description": "EARLY WARNING (SCDEW): Evaluates the complete end-to-end supply chain risk (0-100) between an origin port (e.g., BRPNG) and a destination port (e.g., CNTAO), optionally passing through a chokepoint (e.g., HORMUZ). Use this for high-level logistical risk assessment.",
+        "operationId": "get_gp5_scdew_v1_gp5_scdew_get",
+        "parameters": [
+          {
+            "name": "origin_port",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Origin Port"
+            },
+            "example": "BRPNG"
+          },
+          {
+            "name": "destination_port",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Destination Port"
+            },
+            "example": "CNTAO"
+          },
+          {
+            "name": "chokepoint_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Chokepoint Id"
+            },
+            "example": "HORMUZ"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/port-risk": {
       "get": {
         "tags": [
           "Port Risk"
         ],
         "summary": "Get port congestion risk for a single port",
-        "description": "Returns the current congestion signal for a port: `congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, `freight_volatility_index`, demurrage exposure and `decision_grade`. Every response includes `data_source` and `as_of`. Coverage: 35 ports — **5 Brazilian LIVE** (BRSSZ conditional; BRPNG, BRRIO, BRNIT, BRITG validated against ANTAQ), **demais portos como referência calibrada/estática** (nunca finge telemetria) (`static_reference_seed`, not live). Unknown ports fall back to a global statistical estimate with `country=\"Global\"`. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
+        "description": "Returns the current congestion signal for a port: `congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, `freight_volatility_index`, demurrage exposure and `decision_grade`. Every response includes `data_source` and `as_of`. Coverage: 35 ports & chokepoints \u2014 **5 portos brasileiros com fila LIVE de autoridade** (Santos, Paranagu\u00e1, Rio/Itagua\u00ed/Niter\u00f3i), demais portos como **refer\u00eancia calibrada/est\u00e1tica** (`reference_seed`, nunca finge telemetria). Unknown ports fall back to a global statistical estimate with `country=\"Global\"`. Paid access: send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the `X-RapidAPI-Proxy-Secret` header.",
         "operationId": "get_port_risk_v1_port_risk_get",
         "parameters": [
           {
@@ -67,11 +848,11 @@
                   "waiting_vessels": 0,
                   "freight_volatility_index": 0.4,
                   "estimated_daily_demurrage_usd": 42000,
-                  "updated_at": "2026-09-19 18:11:43",
-                  "as_of": "2026-09-19 18:11:43",
+                  "updated_at": "2026-09-20 14:39:32",
+                  "as_of": "2026-09-20 14:39:32",
                   "data_source": "live:santos+santos_painel",
-                  "data_source_label": "Live line-up from Porto de Santos + Painel de operações de Santos.",
-                  "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 595, \"programados\": 135}",
+                  "data_source_label": "Live line-up from Porto de Santos + Painel de opera\u00e7\u00f5es de Santos.",
+                  "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 26, \"programados\": 135}",
                   "validation": {
                     "source": "antaq_estatistico_aquaviario",
                     "ano": 2026,
@@ -88,32 +869,31 @@
                   "live": {
                     "ao_largo": 0,
                     "esperados": 0,
-                    "atracados": 595,
+                    "atracados": 26,
                     "programados": 135
                   },
-                  "decision_grade": "conditional",
+                  "decision_grade": "decision",
                   "signal": {
                     "level": "MODERATE / LOW PRESSURE",
                     "live_observation": true,
                     "queue_vessels": 0,
                     "expected_delay_days": 0.2,
-                    "demurrage_expected_usd": null,
-                    "demurrage_p90_usd": null,
-                    "confidence": null,
+                    "demurrage_expected_usd": 6400,
+                    "confidence": 0.94,
                     "provenance": "live:santos+santos_painel",
-                    "decision_implication": "Current conditions indicate moderate / low pressure at Santos. Use caution when making schedule-sensitive routing, vessel-scheduling or demurrage-sensitive decisions.",
-                    "as_of": "2026-09-19 18:11:43"
+                    "decision_implication": "Live stream indicates operational pressure at Santos.",
+                    "as_of": "2026-09-20 14:39:32"
                   }
                 }
               }
             }
           },
           "401": {
-            "description": "Missing or invalid X-RapidAPI-Proxy-Secret header.",
+            "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "Missing or invalid X-RapidAPI-Proxy-Secret header."
+                  "detail": "Missing or invalid paid credential: send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the `X-RapidAPI-Proxy-Secret` header."
                 }
               }
             }
@@ -127,7 +907,7 @@
           "Port Risk"
         ],
         "summary": "Get port risk trend",
-        "description": "Returns the 24h, 48h and 72h congestion projections for a single global port, with a `trend` label (`acelerando`, `estável` or `descongestionando`). Each projection point includes `congestion_score`, `eta_delay_days` and the estimated `estimated_daily_demurrage_usd`. NOTE: the projection is `synthetic_projection` (derived from the static reference seed), not a live forecast. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
+        "description": "Returns the 24h, 48h and 72h congestion projections for a single port, with a `trend` label (`acelerando`, `est\u00e1vel` or `descongestionando`). Each projection point includes `congestion_score`, `eta_delay_days` and the estimated `estimated_daily_demurrage_usd`. NOTE: the projection is `synthetic_projection` (derived from the static reference seed), not a live forecast. Paid access: send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the `X-RapidAPI-Proxy-Secret` header.",
         "operationId": "get_port_trend_v1_port_trend_get",
         "parameters": [
           {
@@ -157,39 +937,39 @@
                   "port_id": "BRSSZ",
                   "port_name": "Santos",
                   "country": "Brasil",
-                  "trend": "acelerando",
+                  "trend": "est\u00e1vel",
                   "congestion_score": 0.25,
                   "projection": {
                     "h24": {
-                      "congestion_score": 0.27,
-                      "eta_delay_days": 0.22,
-                      "estimated_daily_demurrage_usd": 42800
+                      "congestion_score": 0.25,
+                      "eta_delay_days": 0.2,
+                      "estimated_daily_demurrage_usd": 42000
                     },
                     "h48": {
-                      "congestion_score": 0.28,
-                      "eta_delay_days": 0.22,
-                      "estimated_daily_demurrage_usd": 43200
+                      "congestion_score": 0.25,
+                      "eta_delay_days": 0.2,
+                      "estimated_daily_demurrage_usd": 42000
                     },
                     "h72": {
-                      "congestion_score": 0.28,
-                      "eta_delay_days": 0.22,
-                      "estimated_daily_demurrage_usd": 43200
+                      "congestion_score": 0.25,
+                      "eta_delay_days": 0.2,
+                      "estimated_daily_demurrage_usd": 42000
                     }
                   },
-                  "updated_at": "2026-09-19 18:11:43",
-                  "as_of": "2026-09-19 18:11:43",
-                  "data_source": "synthetic_projection",
-                  "data_source_label": "Synthetic projection from static reference seed (not a live forecast)."
+                  "updated_at": "2026-09-20 14:39:32",
+                  "as_of": "2026-09-20 14:39:32",
+                  "data_source": "predictive_ml_regression",
+                  "data_source_label": "Local ML Regression (Numpy) trained on historical telemetry."
                 }
               }
             }
           },
           "401": {
-            "description": "Missing or invalid X-RapidAPI-Proxy-Secret header.",
+            "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "Missing or invalid X-RapidAPI-Proxy-Secret header."
+                  "detail": "Missing or invalid paid credential: send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the `X-RapidAPI-Proxy-Secret` header."
                 }
               }
             }
@@ -203,7 +983,7 @@
           "Port Risk"
         ],
         "summary": "Get congestion risk for multiple ports in one call",
-        "description": "Returns the congestion signals for up to 20 ports in a single request, preserving the order of the `port_ids` (comma-separated UN/LOCODEs). Unknown ports fall back to the global statistical estimate. Requests are protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header.",
+        "description": "Returns the congestion signals for up to 20 ports in a single request, preserving the order of the `port_ids` (comma-separated UN/LOCODEs). Unknown ports fall back to the global statistical estimate. Paid access: send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the `X-RapidAPI-Proxy-Secret` header.",
         "operationId": "get_ports_risk_v1_ports_risk_get",
         "parameters": [
           {
@@ -240,11 +1020,11 @@
                       "waiting_vessels": 0,
                       "freight_volatility_index": 0.4,
                       "estimated_daily_demurrage_usd": 42000,
-                      "updated_at": "2026-09-19 18:11:43",
-                      "as_of": "2026-09-19 18:11:43",
+                      "updated_at": "2026-09-20 14:39:32",
+                      "as_of": "2026-09-20 14:39:32",
                       "data_source": "live:santos+santos_painel",
-                      "data_source_label": "Live line-up from Porto de Santos + Painel de operações de Santos.",
-                      "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 595, \"programados\": 135}",
+                      "data_source_label": "Live line-up from Porto de Santos + Painel de opera\u00e7\u00f5es de Santos.",
+                      "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 26, \"programados\": 135}",
                       "validation": {
                         "source": "antaq_estatistico_aquaviario",
                         "ano": 2026,
@@ -261,50 +1041,47 @@
                       "live": {
                         "ao_largo": 0,
                         "esperados": 0,
-                        "atracados": 595,
+                        "atracados": 26,
                         "programados": 135
                       },
-                      "decision_grade": "conditional",
+                      "decision_grade": "decision",
                       "signal": {
                         "level": "MODERATE / LOW PRESSURE",
                         "live_observation": true,
                         "queue_vessels": 0,
                         "expected_delay_days": 0.2,
-                        "demurrage_expected_usd": null,
-                        "demurrage_p90_usd": null,
-                        "confidence": null,
+                        "demurrage_expected_usd": 6400,
+                        "confidence": 0.94,
                         "provenance": "live:santos+santos_painel",
-                        "decision_implication": "Current conditions indicate moderate / low pressure at Santos. Use caution when making schedule-sensitive routing, vessel-scheduling or demurrage-sensitive decisions.",
-                        "as_of": "2026-09-19 18:11:43"
+                        "decision_implication": "Live stream indicates operational pressure at Santos.",
+                        "as_of": "2026-09-20 14:39:32"
                       }
                     },
                     {
                       "port_id": "CNSHA",
                       "port_name": "Shanghai",
                       "country": "China",
-                      "congestion_score": 0.72,
-                      "eta_delay_days": 1.5,
-                      "waiting_vessels": 18,
-                      "freight_volatility_index": 0.38,
-                      "estimated_daily_demurrage_usd": 60800,
-                      "updated_at": "2026-09-19 11:24:44",
-                      "as_of": "2026-09-19 11:24:44",
-                      "data_source": "static_reference_seed",
-                      "data_source_label": "Static reference seed (not live telemetry).",
-                      "live_detail": null,
-                      "validation": null,
+                      "congestion_score": 0.62,
+                      "eta_delay_days": 1.4,
+                      "waiting_vessels": 24,
+                      "freight_volatility_index": 0.4,
+                      "estimated_daily_demurrage_usd": 56800,
+                      "updated_at": "2026-09-29 16:50 UTC",
+                      "as_of": "2026-09-29 16:50 UTC",
+                      "data_source": "calibrated_reference_seed",
+                      "data_source_label": "Calibrated reference seed (static model baseline, NOT live telemetry). Reference conditions: Median wait 32.9h.",
+                      "live_detail": "{\"port_name\": \"Shanghai\", \"country\": \"China\", \"congestion_score\": 0.62, \"eta_delay_days\": 1.4, \"waiting_vessels\": 24, \"median_wait_hours\": 32.9, \"berth_occupancy_pct\": 76.0, \"status\": \"MODERATE\", \"sources\": [\"calibrated_reference_seed\"], \"as_of\": \"2026-09-29 16:50 UTC\", \"source\": \"calibrated_reference_seed\"}",
                       "decision_grade": "reference",
                       "signal": {
-                        "level": "HIGH OPERATIONAL PRESSURE",
+                        "level": "ELEVATED OPERATIONAL PRESSURE",
                         "live_observation": false,
-                        "queue_vessels": 18,
-                        "expected_delay_days": 1.5,
-                        "demurrage_expected_usd": null,
-                        "demurrage_p90_usd": null,
+                        "queue_vessels": 24,
+                        "expected_delay_days": 1.4,
+                        "demurrage_expected_usd": 44800,
                         "confidence": null,
-                        "provenance": "static_reference_seed",
-                        "decision_implication": "Current conditions indicate high operational pressure at Shanghai. Use caution when making schedule-sensitive routing, vessel-scheduling or demurrage-sensitive decisions.",
-                        "as_of": "2026-09-19 11:24:44"
+                        "provenance": "calibrated_reference_seed",
+                        "decision_implication": "Reference baseline only \u2014 NOT a live observation. Indicates modeled reference conditions at Shanghai (China); do not use as real-time field data.",
+                        "as_of": "2026-09-29 16:50 UTC"
                       }
                     }
                   ]
@@ -323,11 +1100,11 @@
             }
           },
           "401": {
-            "description": "Missing or invalid X-RapidAPI-Proxy-Secret header.",
+            "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "Missing or invalid X-RapidAPI-Proxy-Secret header."
+                  "detail": "Missing or invalid paid credential: send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the `X-RapidAPI-Proxy-Secret` header."
                 }
               }
             }
@@ -338,6 +1115,29 @@
   },
   "components": {
     "schemas": {
+      "M2MKeyRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "organization": {
+            "type": "string",
+            "title": "Organization"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "organization"
+        ],
+        "title": "M2MKeyRequest"
+      },
       "PortRiskResponse": {
         "properties": {
           "port_id": {
@@ -553,34 +1353,36 @@
         "title": "PortRiskResponse",
         "examples": [
           {
-            "as_of": "2026-09-19 18:11:43",
+            "as_of": "2026-09-20 14:39:32",
             "congestion_score": 0.25,
             "country": "Brasil",
             "data_source": "live:santos+santos_painel",
-            "data_source_label": "Live line-up from Porto de Santos + Painel de operações de Santos.",
-            "decision_grade": "conditional",
+            "data_source_label": "Live line-up from Porto de Santos + Painel de opera\u00e7\u00f5es de Santos.",
+            "decision_grade": "decision",
             "estimated_daily_demurrage_usd": 42000,
             "eta_delay_days": 0.2,
             "freight_volatility_index": 0.4,
             "live": {
               "ao_largo": 0,
-              "atracados": 595,
+              "atracados": 26,
               "esperados": 0,
               "programados": 135
             },
-            "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 595, \"programados\": 135}",
+            "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 26, \"programados\": 135}",
             "port_id": "BRSSZ",
             "port_name": "Santos",
             "signal": {
-              "as_of": "2026-09-19 18:11:43",
-              "decision_implication": "Current conditions indicate moderate / low pressure at Santos. Use caution when making schedule-sensitive routing, vessel-scheduling or demurrage-sensitive decisions.",
+              "as_of": "2026-09-20 14:39:32",
+              "confidence": 0.94,
+              "decision_implication": "Live stream indicates operational pressure at Santos.",
+              "demurrage_expected_usd": 6400,
               "expected_delay_days": 0.2,
               "level": "MODERATE / LOW PRESSURE",
               "live_observation": true,
               "provenance": "live:santos+santos_painel",
               "queue_vessels": 0
             },
-            "updated_at": "2026-09-19 18:11:43",
+            "updated_at": "2026-09-20 14:39:32",
             "validation": {
               "ano": 2026,
               "atracado_h_avg": 50.1,
@@ -660,32 +1462,32 @@
         "title": "PortTrendResponse",
         "examples": [
           {
-            "as_of": "2026-09-19 18:11:43",
+            "as_of": "2026-09-20 14:39:32",
             "congestion_score": 0.25,
             "country": "Brasil",
-            "data_source": "synthetic_projection",
-            "data_source_label": "Synthetic projection from static reference seed (not a live forecast).",
+            "data_source": "predictive_ml_regression",
+            "data_source_label": "Local ML Regression (Numpy) trained on historical telemetry.",
             "port_id": "BRSSZ",
             "port_name": "Santos",
             "projection": {
               "h24": {
-                "congestion_score": 0.27,
-                "estimated_daily_demurrage_usd": 42800,
-                "eta_delay_days": 0.22
+                "congestion_score": 0.25,
+                "estimated_daily_demurrage_usd": 42000,
+                "eta_delay_days": 0.2
               },
               "h48": {
-                "congestion_score": 0.28,
-                "estimated_daily_demurrage_usd": 43200,
-                "eta_delay_days": 0.22
+                "congestion_score": 0.25,
+                "estimated_daily_demurrage_usd": 42000,
+                "eta_delay_days": 0.2
               },
               "h72": {
-                "congestion_score": 0.28,
-                "estimated_daily_demurrage_usd": 43200,
-                "eta_delay_days": 0.22
+                "congestion_score": 0.25,
+                "estimated_daily_demurrage_usd": 42000,
+                "eta_delay_days": 0.2
               }
             },
-            "trend": "acelerando",
-            "updated_at": "2026-09-19 18:11:43"
+            "trend": "est\u00e1vel",
+            "updated_at": "2026-09-20 14:39:32"
           }
         ]
       },
@@ -708,34 +1510,36 @@
           {
             "results": [
               {
-                "as_of": "2026-09-19 18:11:43",
+                "as_of": "2026-09-20 14:39:32",
                 "congestion_score": 0.25,
                 "country": "Brasil",
                 "data_source": "live:santos+santos_painel",
-                "data_source_label": "Live line-up from Porto de Santos + Painel de operações de Santos.",
-                "decision_grade": "conditional",
+                "data_source_label": "Live line-up from Porto de Santos + Painel de opera\u00e7\u00f5es de Santos.",
+                "decision_grade": "decision",
                 "estimated_daily_demurrage_usd": 42000,
                 "eta_delay_days": 0.2,
                 "freight_volatility_index": 0.4,
                 "live": {
                   "ao_largo": 0,
-                  "atracados": 595,
+                  "atracados": 26,
                   "esperados": 0,
                   "programados": 135
                 },
-                "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 595, \"programados\": 135}",
+                "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 26, \"programados\": 135}",
                 "port_id": "BRSSZ",
                 "port_name": "Santos",
                 "signal": {
-                  "as_of": "2026-09-19 18:11:43",
-                  "decision_implication": "Current conditions indicate moderate / low pressure at Santos. Use caution when making schedule-sensitive routing, vessel-scheduling or demurrage-sensitive decisions.",
+                  "as_of": "2026-09-20 14:39:32",
+                  "confidence": 0.94,
+                  "decision_implication": "Live stream indicates operational pressure at Santos.",
+                  "demurrage_expected_usd": 6400,
                   "expected_delay_days": 0.2,
                   "level": "MODERATE / LOW PRESSURE",
                   "live_observation": true,
                   "provenance": "live:santos+santos_painel",
                   "queue_vessels": 0
                 },
-                "updated_at": "2026-09-19 18:11:43",
+                "updated_at": "2026-09-20 14:39:32",
                 "validation": {
                   "ano": 2026,
                   "atracado_h_avg": 50.1,
@@ -752,28 +1556,30 @@
                 "waiting_vessels": 0
               },
               {
-                "as_of": "2026-09-19 11:24:44",
-                "congestion_score": 0.72,
+                "as_of": "2026-09-29 16:50 UTC",
+                "congestion_score": 0.62,
                 "country": "China",
-                "data_source": "static_reference_seed",
-                "data_source_label": "Static reference seed (not live telemetry).",
+                "data_source": "calibrated_reference_seed",
+                "data_source_label": "Calibrated reference seed (static model baseline, NOT live telemetry). Reference conditions: Median wait 32.9h.",
                 "decision_grade": "reference",
-                "estimated_daily_demurrage_usd": 60800,
-                "eta_delay_days": 1.5,
-                "freight_volatility_index": 0.38,
+                "estimated_daily_demurrage_usd": 56800,
+                "eta_delay_days": 1.4,
+                "freight_volatility_index": 0.4,
+                "live_detail": "{\"port_name\": \"Shanghai\", \"country\": \"China\", \"congestion_score\": 0.62, \"eta_delay_days\": 1.4, \"waiting_vessels\": 24, \"median_wait_hours\": 32.9, \"berth_occupancy_pct\": 76.0, \"status\": \"MODERATE\", \"sources\": [\"calibrated_reference_seed\"], \"as_of\": \"2026-09-29 16:50 UTC\", \"source\": \"calibrated_reference_seed\"}",
                 "port_id": "CNSHA",
                 "port_name": "Shanghai",
                 "signal": {
-                  "as_of": "2026-09-19 11:24:44",
-                  "decision_implication": "Current conditions indicate high operational pressure at Shanghai. Use caution when making schedule-sensitive routing, vessel-scheduling or demurrage-sensitive decisions.",
-                  "expected_delay_days": 1.5,
-                  "level": "HIGH OPERATIONAL PRESSURE",
+                  "as_of": "2026-09-29 16:50 UTC",
+                  "decision_implication": "Reference baseline only \u2014 NOT a live observation. Indicates modeled reference conditions at Shanghai (China); do not use as real-time field data.",
+                  "demurrage_expected_usd": 44800,
+                  "expected_delay_days": 1.4,
+                  "level": "ELEVATED OPERATIONAL PRESSURE",
                   "live_observation": false,
-                  "provenance": "static_reference_seed",
-                  "queue_vessels": 18
+                  "provenance": "calibrated_reference_seed",
+                  "queue_vessels": 24
                 },
-                "updated_at": "2026-09-19 11:24:44",
-                "waiting_vessels": 18
+                "updated_at": "2026-09-29 16:50 UTC",
+                "waiting_vessels": 24
               }
             ]
           }
@@ -801,6 +1607,86 @@
           "estimated_daily_demurrage_usd"
         ],
         "title": "TrendPoint"
+      },
+      "VerifiedQueueResponse": {
+        "properties": {
+          "port_id": {
+            "type": "string",
+            "title": "Port Id"
+          },
+          "signal": {
+            "type": "string",
+            "title": "Signal"
+          },
+          "pressure_level": {
+            "type": "string",
+            "title": "Pressure Level"
+          },
+          "waiting_vessels": {
+            "type": "integer",
+            "title": "Waiting Vessels"
+          },
+          "cargo_distribution": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Cargo Distribution"
+          },
+          "total_waiting_dwt": {
+            "type": "number",
+            "title": "Total Waiting Dwt"
+          },
+          "land_operations": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Land Operations"
+          },
+          "total_wagons_waiting": {
+            "type": "integer",
+            "title": "Total Wagons Waiting",
+            "default": 0
+          },
+          "evidence": {
+            "type": "string",
+            "title": "Evidence"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources",
+            "default": []
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          }
+        },
+        "type": "object",
+        "required": [
+          "port_id",
+          "signal",
+          "pressure_level",
+          "waiting_vessels",
+          "cargo_distribution",
+          "total_waiting_dwt",
+          "evidence"
+        ],
+        "title": "VerifiedQueueResponse"
       }
     }
   },
