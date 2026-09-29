@@ -22,7 +22,7 @@ from src.api.metrics import MetricsMiddleware, metrics_snapshot, record_gate_eve
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 import time
-from src.runtime.access import authenticate_client, register_m2m_key
+from src.runtime.access import TRIAL_VALIDITY_DAYS, authenticate_client, register_m2m_key
 from src.runtime.metering import record_usage
 from src.products.gp5.maritime import get_port_physical_events
 from src.products.gp5.fiscal import evaluate_fiscal_routing
@@ -95,7 +95,7 @@ class RapidAPIGuard:
             }
             or path.startswith("/port-congestion-") or path.startswith("/arbitragem-logistica/")
             or path.startswith(("/docs", "/redoc", "/public/", "/mcp", "/v1/gp5/", "/v1/m2m/"))
-            or path in {"/m2m-keys", "/m2m-keys/fulfillment", "/demo", "/fiscal-demo", "/internal/control-tower", "/aetherx-mcp.json", "/.well-known/ai-plugin.json", "/checkout/gp5-monthly", "/webhook/stripe"}
+            or path in {"/m2m-keys", "/m2m-keys/fulfillment", "/demo", "/fiscal-demo", "/internal/control-tower", "/aetherx-mcp.json", "/.well-known/ai-plugin.json", "/checkout/gp5-monthly", "/checkout/gp5-pro", "/webhook/stripe"}
             or bool(_re.fullmatch(r"/google[0-9a-f]{10,}\.html", path))
             or path == "/BingSiteAuth.xml"
         )
@@ -811,7 +811,7 @@ def request_m2m_key(req: M2MKeyRequest):
             "status": "success",
             "api_key": key,
             "access_mode": "authenticated",
-            "valid_days": 7,
+            "valid_days": TRIAL_VALIDITY_DAYS,
             "message": f"Key generated. Pass 'Authorization: Bearer {key}' in your M2M headers."
         }
     except Exception as e:

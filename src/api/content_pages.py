@@ -413,23 +413,51 @@ def m2m_keys_page_html() -> str:
     </div>
 
     
-    <div class="card" style="max-width:650px; margin: 0 auto 3rem; padding: 2rem; border-color:#f59e0b; background: rgba(245, 158, 11, 0.05);">
-      <h2 style="font-size:1.4rem; margin-bottom:1rem; color:#f59e0b;">Assinatura Enterprise (Acesso M2M Ilimitado)</h2>
-      <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:1.5rem;">Cancele a qualquer momento. Acesso total à infraestrutura GP5, Decision Tools, e SLAs dedicados. Valor: <strong>US$ 5.000 / mês</strong>.</p>
-      
-      <form method="GET" action="/checkout/gp5-monthly">
-        <div style="margin-bottom:1rem;">
-          <label style="display:block; color:#cbd5e1; font-size:0.85rem; margin-bottom:0.3rem;">E-mail do Gestor da Conta *</label>
-          <input type="email" name="email" required placeholder="ceo@trading.com.br" style="width:100%; padding:0.75rem; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:6px;">
-        </div>
-        <button type="submit" style="width:100%; padding:0.85rem; background:#f59e0b; color:#1e293b; border:none; font-weight:bold; font-size:1rem; border-radius:6px; cursor:pointer;">
-          Assinar Plano Enterprise (Redirecionamento Seguro) →
-        </button>
-      </form>
+    <div style="display:flex; flex-wrap:wrap; gap:1.5rem; justify-content:center; margin: 0 auto 3rem; max-width:1100px;">
+      <div class="card" style="flex:1 1 300px; margin:0; padding:2rem; border-color:#38bdf8; background: rgba(56, 189, 248, 0.05);">
+        <h2 style="font-size:1.3rem; margin-bottom:0.4rem; color:#38bdf8;">GP5 Pro</h2>
+        <div style="font-size:1.7rem; font-weight:bold; color:#f8fafc;">US$ 499<span style="font-size:0.9rem; color:#94a3b8; font-weight:normal;"> /mês</span></div>
+        <div style="color:#64748b; font-size:0.85rem; margin-bottom:1rem;">ou US$ 4.990/ano (2 meses grátis)</div>
+        <ul style="color:#cbd5e1; font-size:0.9rem; line-height:1.7; padding-left:1.1rem; margin-bottom:1.5rem;">
+          <li>Decision Tools (Arbitragem Fiscal + Risco de Fretamento)</li>
+          <li>Chave M2M permanente via Stripe</li>
+          <li>Ideal para trading desks e agentes MCP single-tenant</li>
+        </ul>
+        <form method="GET" action="/checkout/gp5-pro">
+          <div style="margin-bottom:1rem;">
+            <label style="display:block; color:#cbd5e1; font-size:0.85rem; margin-bottom:0.3rem;">E-mail do Gestor da Conta *</label>
+            <input type="email" name="email" required placeholder="ceo@trading.com.br" style="width:100%; padding:0.75rem; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:6px;">
+          </div>
+          <button type="submit" style="width:100%; padding:0.85rem; background:#38bdf8; color:#082f49; border:none; font-weight:bold; font-size:1rem; border-radius:6px; cursor:pointer;">
+            Assinar GP5 Pro →
+          </button>
+        </form>
+      </div>
+
+      <div class="card" style="flex:1 1 300px; margin:0; padding:2rem; border-color:#f59e0b; background: rgba(245, 158, 11, 0.05);">
+        <div class="pill-amber">FLAGSHIP · Brasil</div>
+        <h2 style="font-size:1.3rem; margin-bottom:0.4rem; color:#f59e0b;">GP5 Enterprise</h2>
+        <div style="font-size:1.7rem; font-weight:bold; color:#f8fafc;">US$ 5.000<span style="font-size:0.9rem; color:#94a3b8; font-weight:normal;"> /mês</span></div>
+        <div style="color:#64748b; font-size:0.85rem; margin-bottom:1rem;">ou US$ 50.000/ano · multi-slot · SLA dedicado</div>
+        <ul style="color:#cbd5e1; font-size:0.9rem; line-height:1.7; padding-left:1.1rem; margin-bottom:1.5rem;">
+          <li>Tudo do GP5 Pro + uso estendido e prioridade</li>
+          <li>Parâmetros de demurrage por operação</li>
+          <li>Onboarding dedicado, topo da escada (quote-gated)</li>
+        </ul>
+        <form method="GET" action="/checkout/gp5-monthly">
+          <div style="margin-bottom:1rem;">
+            <label style="display:block; color:#cbd5e1; font-size:0.85rem; margin-bottom:0.3rem;">E-mail do Gestor da Conta *</label>
+            <input type="email" name="email" required placeholder="ceo@trading.com.br" style="width:100%; padding:0.75rem; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:6px;">
+          </div>
+          <button type="submit" style="width:100%; padding:0.85rem; background:#f59e0b; color:#1e293b; border:none; font-weight:bold; font-size:1rem; border-radius:6px; cursor:pointer;">
+            Assinar GP5 Enterprise →
+          </button>
+        </form>
+      </div>
     </div>
 
     <div class="card" style="max-width:650px; margin: 0 auto 3rem; padding: 2rem;">
-      <h2 style="font-size:1.4rem; margin-bottom:1rem; color:#f8fafc;">Solicitar Chave M2M (7 Dias Grátis)</h2>
+      <h2 style="font-size:1.4rem; margin-bottom:1rem; color:#f8fafc;">Solicitar Chave M2M (30 Dias Grátis)</h2>
       <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:1.5rem;">Preencha os dados abaixo para gerar instantaneamente a sua credencial M2M para teste empresarial.</p>
       
       <form id="keyForm" onsubmit="generateKey(event)">
@@ -781,7 +809,7 @@ def fiscal_demo_page(intended_port: str = "BRSSZ", commodity: str = "FERTILIZANT
             <h3 style="color: white; font-size: 1.8rem; margin-bottom: 15px;">Quer plugar essa inteligência no ERP da sua empresa?</h3>
             <p style="color: #9ca3af; font-size: 1.1rem; margin-bottom: 30px;">O Motor GP5 toma essas decisões sozinho (M2M) para todos os navios que você opera.</p>
             <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-                <a href="/checkout/gp5-monthly" style="display: inline-block; padding: 15px 35px; background: #10b981; color: #000; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 1.1rem;">Adquirir Licença M2M (US$ 5k/mês)</a>
+                <a href="/checkout/gp5-pro" style="display: inline-block; padding: 15px 35px; background: #10b981; color: #000; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 1.1rem;">Adquirir Licença M2M (a partir de US$ 499/mês)</a>
             </div>
         </div>
     </div>

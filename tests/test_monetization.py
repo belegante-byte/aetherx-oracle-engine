@@ -167,3 +167,84 @@ def test_webhook_and_fulfillment_share_one_key(monkeypatch):
     tokens = re.findall(r"gp5_enterprise_[0-9a-f]{16}", fulfillment_resp.text)
     assert tokens, "fulfillment deve expor a chave"
     assert tokens[0] == access._PAYMENT_GRANTS[session["id"]], "uma única chave por assinatura"
+
+
+# -----------------------------------------------------------------------------
+# Escada de preços (paridade com a prateleira): Pro US$ 499/mo, Enterprise
+# US$ 5.000/mo, intervalos month/year, e degradação 503 sem Stripe.
+# -----------------------------------------------------------------------------
+
+def _capture_create(monkeypatch):
+    import stripe
+
+    calls = {}
+
+    class FakeSession:
+        url = "https://checkout.stripe.com/c/pay/x"
+
+    def fake_create(**kwargs):
+        calls.update(kwargs)
+        return FakeSession()
+
+    monkeypatch.setattr(stripe.checkout.Session, "create", fake_create)
+    return calls
+
+
+def test_checkout_default_remains_enterprise_monthly(monkeypatch):
+    calls = _capture_create(monkeypatch)
+    client.get("/checkout/gp5-monthly", params={"email": "ceo@corp.com.br"}, follow_redirects=False)
+    price = calls["line_items"][0]["price_data"]
+    assert price["unit_amount"] == 500000
+    assert price["recurring"] == {"interval": "month"}
+    assert calls["metadata"] == {"product": "gp5_monthly_m2m", "plan": "enterprise"}
+
+
+def test_checkout_pro_plan_price(monkeypatch):
+    calls = _capture_create(monkeypatch)
+    client.get("/checkout/gp5-monthly", params={"email": "ceo@corp.com.br", "plan": "pro"}, follow_redirects=False)
+    price = calls["line_items"][0]["price_data"]
+    assert price["unit_amount"] == 49900
+    assert "GP5 Pro" in price["product_data"]["name"]
+    assert calls["metadata"]["plan"] == "pro"
+
+
+def test_checkout_pro_alias_route(monkeypatch):
+    calls = _capture_create(monkeypatch)
+    client.get("/checkout/gp5-pro", params={"email": "ceo@corp.com.br"}, follow_redirects=False)
+    assert calls["line_items"][0]["price_data"]["unit_amount"] == 49900
+
+
+def test_checkout_enterprise_annual(monkeypatch):
+    calls = _capture_create(monkeypatch)
+    client.get("/checkout/gp5-monthly", params={"email": "ceo@corp.com.br", "interval": "year"}, follow_redirects=False)
+    price = calls["line_items"][0]["price_data"]
+    assert price["unit_amount"] == 5000000
+    assert price["recurring"] == {"interval": "year"}
+
+
+def test_checkout_pro_annual_discount(monkeypatch):
+    calls = _capture_create(monkeypatch)
+    client.get("/checkout/gp5-pro", params={"email": "ceo@corp.com.br", "interval": "year"}, follow_redirects=False)
+    assert calls["line_items"][0]["price_data"]["unit_amount"] == 499000  # 10 meses
+
+
+def test_checkout_invalid_plan_returns_400(monkeypatch):
+    calls = _capture_create(monkeypatch)
+    resp = client.get("/checkout/gp5-monthly", params={"email": "ceo@corp.com.br", "plan": "gold"}, follow_redirects=False)
+    assert resp.status_code == 400
+    assert not calls, "nenhuma session Stripe deve ser criada"
+
+
+def test_checkout_invalid_interval_returns_400(monkeypatch):
+    calls = _capture_create(monkeypatch)
+    resp = client.get("/checkout/gp5-monthly", params={"email": "ceo@corp.com.br", "interval": "week"}, follow_redirects=False)
+    assert resp.status_code == 400
+    assert not calls
+
+
+def test_checkout_pro_without_stripe_key_returns_503(monkeypatch):
+    import stripe
+
+    monkeypatch.setattr(stripe, "api_key", None)
+    resp = client.get("/checkout/gp5-pro", params={"email": "ceo@corp.com.br"})
+    assert resp.status_code == 503

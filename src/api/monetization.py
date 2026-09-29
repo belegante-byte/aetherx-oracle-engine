@@ -12,7 +12,29 @@ stripe.api_key = os.getenv("STRIPE_API_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://aetherx.aether-grid.io")
 
-GP5_MONTHLY_PRICE_USD = 500000  # $5,000.00 em centavos (assinatura mensal)
+# Escada de preços (Benchmark SupplyMaven API/MCP Pro = US$ 499/mo):
+#   - Pro:       US$ 499/mo  (ou US$ 4.990/ano = 10 meses)
+#   - Enterprise: US$ 5.000/mo (ou US$ 50.000/ano) — moat tributário, quote-gated
+# Ambos os planos concedem o MESMO nível de acesso às Decision Tools
+# (GP5_ENTERPRISE); a Tabela do Gemini, "GP5 Enterprise" como único plano a
+# US$ 5.000/mo, ficava 10x acima do anchor da prateleira.
+PLANS = {
+    "pro": {
+        "label": "GP5 Pro",
+        "name": "Aether Grid GP5 Pro - Chave MCP",
+        "description": "Acesso ao Motor GP5 (Arbitragem Fiscal e Risco de Fretamento) - GP5 Pro",
+        "monthly_cents": 49900,     # US$ 499/mo
+        "yearly_cents": 499000,     # US$ 4.990/ano (2 meses grátis)
+    },
+    "enterprise": {
+        "label": "GP5 Enterprise",
+        "name": "Aether Grid GP5 - Chave de Acesso B2B",
+        "description": "Acesso ao Motor GP5 (Arbitragem Fiscal e Risco de Fretamento) - GP5 Enterprise",
+        "monthly_cents": 500000,    # US$ 5.000/mo
+        "yearly_cents": 5000000,    # US$ 50.000/ano
+    },
+}
+VALID_INTERVALS = {"month", "year"}
 GP5_ENTERPRISE_PLAN = "GP5_ENTERPRISE"
 
 
@@ -21,13 +43,14 @@ def _require_stripe() -> None:
         raise HTTPException(status_code=503, detail="Stripe API Key não configurada no servidor.")
 
 
-@router.get("/checkout/gp5-monthly")
-def checkout_gp5_monthly(email: str = Query(..., min_length=3)):
-    """
-    Inicia uma assinatura mensal do GP5 Enterprise no Checkout do Stripe.
-    A chave M2M é emitida idempotentemente no webhook e/ou na página de
-    fulfillment (mesma session_id -> mesma chave).
-    """
+def _checkout_session(email: str, plan: str, interval: str) -> RedirectResponse:
+    plan_key = plan.lower()
+    if plan_key not in PLANS:
+        raise HTTPException(status_code=400, detail=f"Plano inválido. Escolha entre: {', '.join(PLANS)}")
+    if interval not in VALID_INTERVALS:
+        raise HTTPException(status_code=400, detail="Intervalo inválido. Escolha month ou year.")
+    cfg = PLANS[plan_key]
+    unit_amount = cfg["monthly_cents"] if interval == "month" else cfg["yearly_cents"]
     _require_stripe()
     try:
         session = stripe.checkout.Session.create(
@@ -36,11 +59,11 @@ def checkout_gp5_monthly(email: str = Query(..., min_length=3)):
                 "price_data": {
                     "currency": "usd",
                     "product_data": {
-                        "name": "Aether Grid GP5 - Chave de Acesso B2B Mensal",
-                        "description": "Acesso ao Motor GP5 (Arbitragem Fiscal e Risco de Fretamento) - GP5 Enterprise",
+                        "name": cfg["name"],
+                        "description": cfg["description"],
                     },
-                    "unit_amount": GP5_MONTHLY_PRICE_USD,
-                    "recurring": {"interval": "month"},
+                    "unit_amount": unit_amount,
+                    "recurring": {"interval": interval},
                 },
                 "quantity": 1,
             }],
@@ -50,7 +73,7 @@ def checkout_gp5_monthly(email: str = Query(..., min_length=3)):
             cancel_url=f"{PUBLIC_BASE_URL}/m2m-keys",
             metadata={
                 "product": "gp5_monthly_m2m",
-                "plan": GP5_ENTERPRISE_PLAN,
+                "plan": plan_key,
             },
         )
         return RedirectResponse(url=session.url, status_code=303)
@@ -59,6 +82,30 @@ def checkout_gp5_monthly(email: str = Query(..., min_length=3)):
     except Exception as e:
         logging.error(f"Falha ao criar checkout Stripe: {e}")
         raise HTTPException(status_code=500, detail=f"Falha ao criar checkout: {e}")
+
+
+@router.get("/checkout/gp5-monthly")
+def checkout_gp5_monthly(
+    email: str = Query(..., min_length=3),
+    plan: str = "enterprise",
+    interval: str = "month",
+):
+    """Inicia uma assinatura do GP5 (Pro US$ 499/mo ou Enterprise US$ 5k/mo).
+
+    A chave M2M é emitida idempotentemente no webhook e/ou na página de
+    fulfillment (mesma session_id -> mesma chave). Sem STRIPE_API_KEY no
+    ambiente o checkout degrada em 503.
+    """
+    return _checkout_session(email, plan, interval)
+
+
+@router.get("/checkout/gp5-pro")
+def checkout_gp5_pro(
+    email: str = Query(..., min_length=3),
+    interval: str = "month",
+):
+    """Atalho do plano Pro (US$ 499/mo) para o checkout."""
+    return _checkout_session(email, "pro", interval)
 
 
 @router.get("/m2m-keys/fulfillment")
@@ -92,7 +139,7 @@ def m2m_keys_fulfillment(session_id: str = Query(...)):
         <p>Guarde sua chave de acesso M2M API (Bearer Token) — <b>não a exiba publicamente.</b></p>
         <h2 style="background:#161b22; padding:20px; border-radius:8px; border:1px solid #30363d; display:inline-block; user-select:all;">{token}</h2>
         <p>Utilize esta chave no header <code>Authorization: Bearer {token}</code> para autenticar agentes MCP e integrações REST.</p>
-        <p>Chaves GP5 Enterprise são permanentes e vinculadas à sua assinatura ativa.</p>
+        <p>Chaves pagas (GP5 Pro / Enterprise) são permanentes e vinculadas à sua assinatura ativa.</p>
         <br>
         <a href="/docs" style="color:#58a6ff;">Ir para a Documentação da API</a>
     </body>

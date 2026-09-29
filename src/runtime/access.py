@@ -13,10 +13,11 @@ logger = logging.getLogger("m2m_access")
 # - Não há mais segredo fallback hardcoded. O valor "gp5_m2m_default_secret_key"
 #   foi exposto publicamente (commitado em data/m2m_keys.json) e é filtrado no
 #   load. O segredo mestre DEVE vir de M2M_API_SECRET no ambiente.
-# - Chaves de trial expiram após TRIAL_VALIDITY_DAYS (7 por padrão); o
+# - Chaves de trial expiram após TRIAL_VALIDITY_DAYS (30 por padrão — funil
+#   grátis permanente via observação anônima; trial longo p/ testes sérios); o
 #   timestamp de emissão fica em m2m_keys_meta.json (não versionado no git).
 _M2M_SECRET = os.getenv("M2M_API_SECRET")
-TRIAL_VALIDITY_DAYS = int(os.getenv("M2M_TRIAL_VALIDITY_DAYS", "7"))
+TRIAL_VALIDITY_DAYS = int(os.getenv("M2M_TRIAL_VALIDITY_DAYS", "30"))
 _COMPROMISED_DEFAULT_SECRET = "gp5_m2m_default_secret_key"
 KEYS_FILE = Path(os.getenv("DATA_DIR", "data")) / "m2m_keys.json"
 META_FILE = Path(os.getenv("DATA_DIR", "data")) / "m2m_keys_meta.json"
@@ -137,7 +138,7 @@ load_keys_from_disk()
 
 
 def register_m2m_key(name: str, email: str, organization: str) -> str:
-    """Gera e registra uma chave de trial M2M de TRIAL_VALIDITY_DAYS dias (padrão 7)."""
+    """Gera e registra uma chave de trial M2M de TRIAL_VALIDITY_DAYS dias (padrão 30)."""
     token = f"gp5_trial_{uuid.uuid4().hex[:16]}"
     client_label = f"{name} ({organization} - {email})"
 

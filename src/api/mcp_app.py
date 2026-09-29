@@ -20,7 +20,7 @@ from src.products.gp5.routing import (
     evaluate_routing_alternatives as _compute_routing_alternatives,
     evaluate_corridor_risk as _compute_corridor_risk,
 )
-from src.runtime.access import register_m2m_key
+from src.runtime.access import TRIAL_VALIDITY_DAYS, register_m2m_key
 from src.api.metrics import record_tool_call, record_gate_event
 
 # Tool -> família de intenção (para a Control Tower atribuir o motivo do call).
@@ -404,7 +404,7 @@ def request_m2m_key(agent_name: str, organization: str, contact_email: str = "ag
         "status": "success",
         "api_key": key,
         "access_mode": "authenticated",
-        "valid_days": 7,
+        "valid_days": TRIAL_VALIDITY_DAYS,
         "instruction": f"Set 'Authorization: Bearer {key}' header in your M2M requests to access Decision Tools."
     }
 
