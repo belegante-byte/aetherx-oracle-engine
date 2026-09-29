@@ -95,7 +95,7 @@ class RapidAPIGuard:
             }
             or path.startswith("/port-congestion-") or path.startswith("/arbitragem-logistica/")
             or path.startswith(("/docs", "/redoc", "/public/", "/mcp", "/v1/gp5/", "/v1/m2m/"))
-            or path in {"/m2m-keys", "/demo", "/fiscal-demo", "/internal/control-tower", "/aetherx-mcp.json", "/.well-known/ai-plugin.json", "/checkout/gp5-monthly", "/webhook/stripe"}
+            or path in {"/m2m-keys", "/m2m-keys/fulfillment", "/demo", "/fiscal-demo", "/internal/control-tower", "/aetherx-mcp.json", "/.well-known/ai-plugin.json", "/checkout/gp5-monthly", "/webhook/stripe"}
             or bool(_re.fullmatch(r"/google[0-9a-f]{10,}\.html", path))
             or path == "/BingSiteAuth.xml"
         )
@@ -641,6 +641,8 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
 
 
 
+
+app.include_router(monetization_router)
 
 app.add_middleware(M2MGatewayMiddleware)
 app.add_middleware(MetricsMiddleware)

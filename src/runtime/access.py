@@ -28,13 +28,38 @@ if _M2M_SECRET:
 # token -> ISO timestamp de emissão (nunca versionado — ver .gitignore)
 _KEY_META: dict[str, str] = {}
 
+# Chaves pagas (tokens) e planos associados (ex.: GP5_ENTERPRISE).
+# Chaves pagas NUNCA expiram; são persistidas no mesmo cofre JSON que a auth lê.
+_KEY_PLANS: dict[str, str] = {}
+
+# Idempotência de pagamento: external_id (ex.: Stripe session/event id) -> token já concedido.
+_PAYMENT_GRANTS: dict[str, str] = {}
+
+_META_PLANS_KEY = "__plans__"
+_META_GRANTS_KEY = "__payment_grants__"
+
 
 def _load_meta():
     if META_FILE.exists():
         try:
             stored = json.loads(META_FILE.read_text(encoding="utf-8"))
             if isinstance(stored, dict):
-                _KEY_META.update(stored)
+                for token, iso in stored.items():
+                    if token in (_META_PLANS_KEY, _META_GRANTS_KEY):
+                        continue
+                    _KEY_META[token] = iso
+                plans_raw = stored.get(_META_PLANS_KEY)
+                if plans_raw:
+                    try:
+                        _KEY_PLANS.update(json.loads(plans_raw))
+                    except Exception:
+                        logger.warning("Meta plans corrompido; ignorado.")
+                grants_raw = stored.get(_META_GRANTS_KEY)
+                if grants_raw:
+                    try:
+                        _PAYMENT_GRANTS.update(json.loads(grants_raw))
+                    except Exception:
+                        logger.warning("Meta payment grants corrompido; ignorado.")
         except Exception as e:
             logger.warning(f"Erro ao ler {META_FILE}: {e}")
 
@@ -55,7 +80,10 @@ def _persist_keys():
 def _persist_meta():
     try:
         META_FILE.parent.mkdir(parents=True, exist_ok=True)
-        META_FILE.write_text(json.dumps(_KEY_META, indent=2), encoding="utf-8")
+        payload = dict(_KEY_META)
+        payload[_META_PLANS_KEY] = json.dumps(_KEY_PLANS)
+        payload[_META_GRANTS_KEY] = json.dumps(_PAYMENT_GRANTS)
+        META_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     except Exception as e:
         logger.error(f"Erro ao salvar metadados em {META_FILE}: {e}")
 
@@ -84,6 +112,9 @@ def _token_expired(token: str) -> bool:
     antigas foram expostas no histórico git.
     """
     if _M2M_SECRET and token == _M2M_SECRET:
+        return False
+    # Chaves pagas (GP5 Enterprise) validam por assinatura ativa, não por idade.
+    if token in _KEY_PLANS:
         return False
     issued = _KEY_META.get(token)
     if not issued:
@@ -117,6 +148,39 @@ def register_m2m_key(name: str, email: str, organization: str) -> str:
     _persist_meta()
 
     return token
+
+
+def register_paid_m2m_key(name: str, email: str, organization: str, external_id: str) -> str:
+    """Registra uma chave paga (GP5 Enterprise) com idempotência.
+
+    external_id é o identificador da transação na plataforma de pagamento
+    (ex.: Stripe session/event id). Se o mesmo external_id já concedeu uma
+    chave, devolve a MESMA chave em vez de duplicar.
+    """
+    existing = _PAYMENT_GRANTS.get(external_id)
+    if existing:
+        return existing
+
+    token = f"gp5_enterprise_{uuid.uuid4().hex[:16]}"
+    client_label = f"{name} ({organization} - {email})"
+
+    VALID_M2M_KEYS[token] = client_label
+    _KEY_META[token] = datetime.now(timezone.utc).isoformat()
+    _KEY_PLANS[token] = "GP5_ENTERPRISE"
+    _PAYMENT_GRANTS[external_id] = token
+
+    _persist_keys()
+    _persist_meta()
+
+    return token
+
+
+def get_paid_key_for_email(email: str) -> Optional[str]:
+    """Devolve a chave paga já emitida para um e-mail, se existir."""
+    for token, label in VALID_M2M_KEYS.items():
+        if token in _KEY_PLANS and label.endswith(f"- {email})"):
+            return token
+    return None
 
 
 LEGACY_PERMISSIONS = [
