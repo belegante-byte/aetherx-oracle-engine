@@ -3,6 +3,56 @@
 Histórico de mudanças relevantes do **Aether-X Oracle Engine**. Formato baseado em
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.1] — 2026-09-29
+
+### Corrigido (integridade do banco de produção — a descoberta do dia)
+- **Produção nasceu sem `antaq_validation` nem `calibration_pairs`.** Causa raiz:
+  em produção `data/` é um **volume persistente do Railway** que *sombreia* o
+  `data/` da imagem, então o `init_prod_db` rodava contra o volume vazio e criava
+  só o esqueleto (`port_metrics`, `port_metrics_history`, `freight_rates`,
+  `tax_rules`). As duas tabelas que o produto consome
+  (`risk_model.load_antaq_validation` → bloco `validation` de `/v1/port-risk`;
+  `control_tower` e `metrics` → portas de calibração) **não existiam**: o bloco
+  `validation` voltava vazio em produção.
+- **Seed curado fora do volume** (`seed/oracle_seed.duckdb`, 1,5 MB, gerado por
+  `scripts/build_seed.py` a partir do banco commitado, sha256 e regras gravados
+  em `_seed_manifest`): `antaq_validation` 185 (5 portos × 37 meses, 2023–2026),
+  `calibration_pairs` 6, `port_metrics` 32 e `port_metrics_history` 64.
+- **Hidratação aditiva e idempotente** (`src/engine/seed_hydration.py`, chamada
+  pelo bootstrap a cada boot): cria/migra o schema, insere **somente o que falta**
+  por chave natural (`port_metrics(port_id)`, `antaq_validation(port_id,ano,mes)`,
+  `calibration_pairs(port_id,observed_at)`, `port_metrics_history(port_id,captured_at)`),
+  **nunca** sobrescreve observação existente, **nunca** faz drop/delete, e
+  **nunca** ressuscita sensor morto (`data_source LIKE 'live:%'`). Cada execução
+  vira uma linha em `seed_hydration_log` com contagens e sha256 do seed.
+- **Sensor morto fora do seed:** `santospainel.com.br` e `web3.antaq.gov.br`
+  estão em NXDOMAIN público, então as 5 linhas `live:*` de `port_metrics` e as 10
+  de `port_metrics_history` do banco commitado foram **excluídas do seed** — não
+  podem ser reexibidas como leitura atual.
+- Rehearsal contra o backup do volume (off-box, sha256
+  `19910a9d…c4636`): `antaq_validation` 0→185, `calibration_pairs` 0→6,
+  `port_metrics_history` 0→64, `port_metrics` 36→38 (entraram `HORMUZ` e
+  `ITGOA`); `freight_rates` 35 e `tax_rules` 14 intactos; 0 linhas `live:*`;
+  3 execuções seguidas → só a 1ª insere; reabertura do arquivo mantém tudo.
+- Testes: `tests/test_seed_hydration.py` (7 casos: banco vazio, idempotência,
+  não-sobrescrita, sensor morto, seed ausente, migração aditiva de coluna,
+  proveniência no log). Suíte: **145 testes passando**.
+
+### Corrigido (promessas que a evidência não sustentava)
+- **`/v1/port-history` responde 503 `FEATURE_IN_VALIDATION` por padrão.** As
+  capturas em `port_metrics_history` são pontuais/de referência (2 instantes), não
+  uma série observada contínua de 90 dias. O endpoint só é servido com
+  `PORT_HISTORY_ENABLED=1`, depois de cobertura operacional comprovada. O
+ 1.4.0 havia anunciado "série observada de até 90 dias" como recurso Pro.
+- **Copy que prometia fila ao-vivo saiu do ar** (home/destaque, `upgrade_hint`
+  de plano e páginas de conteúdo): agora diz **estatística oficial ANTAQ
+  (37 meses) + sinais de referência calibrada** para os 5 portos BR, e os 37
+  portos globais como **cobertura de referência**. A linha ao vivo volta quando a
+  fonte oficial voltar a responder.
+- Honestidade do Enterprise: `calibration_pairs` cobre **4 dos 5 portos BR**
+  (BRPNG, BRRIO, BRITG, BRNIT) — **BRSSZ não tem par de calibração**, só a série
+  mensal ANTAQ. Nenhum texto afirma validação de BRSSZ.
+
 ## [1.4.0] — 2026-09-29
 
 ### Adicionado (controle de acesso por plano — engenharia de produto)
@@ -11,11 +61,10 @@ Histórico de mudanças relevantes do **Aether-X Oracle Engine**. Formato basead
   endpoint pago declara o nível mínimo em `MIN_LEVEL_BY_PATH`
   (`src/runtime/access.py`). Antes, Pro e Enterprise recebiam a mesma chave com a
   mesma permissão — não havia diferença de produto.
-- **Pro** = sinais dos 5 portos BR com fila de autoridade (`port-risk`,
+- **Pro** = sinais dos 5 portos BR com estatística oficial ANTAQ (`port-risk`,
   `port-trend`, `ports-risk`, índice físico, charter/corridor risk, PCI/CDR/VQPM/
-  IRDI/SCDEW) **+ novo endpoint `/v1/port-history`** (série observada de até 90
-  dias, com cobertura real declarada: `observations`, `span_days`, `first_seen`,
-  `last_seen`, `coverage_note` — sem interpolação onde falta observação).
+  IRDI/SCDEW) **+ `/v1/port-history`**, que foi entregue aqui em validação e só
+  é servido com cobertura contínua comprovada (ver 1.4.1).
 - **Enterprise** = tudo do Pro + arbitragem (`routing-eval`, `fiscal-routing`) e
   evidência validada (`verified-queue`/ANTAQ).
 - **Slots = integrações/consumidores simultâneos, não chamadas.** Limite de

@@ -301,6 +301,17 @@ def seed_port_metrics(force: bool = False):
     # referência calibrada honesta — idempotente, roda a cada boot.
     normalizadas = _normalize_legacy_fake_live(conn)
 
+    # Hidratação do seed curado (2026-09-29): `data/` é VOLUME no Railway e
+    # sombreia o `data/` da imagem, então prod nascia sem antaq_validation /
+    # calibration_pairs. A hidratação é ADITIVA e idempotente (nunca drop/update
+    # de observação, nunca ressuscita sensor morto). Ver src/engine/seed_hydration.py.
+    seed_report = {}
+    try:
+        from src.engine.seed_hydration import hydrate_from_seed
+        seed_report = hydrate_from_seed(conn)
+    except Exception as exc:  # pragma: no cover - bootstrap nunca deve morrer por isso
+        seed_report = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
+
     count = conn.execute("SELECT COUNT(*) FROM port_metrics").fetchone()[0]
     vivos = conn.execute(
         "SELECT COUNT(*) FROM port_metrics WHERE data_source LIKE 'live:%'"
@@ -314,6 +325,16 @@ def seed_port_metrics(force: bool = False):
     print(f"[AETHER-X PROD INIT] Total de portos: {count} | sources live preservadas: {vivos}")
     if normalizadas:
         print(f"[AETHER-X PROD INIT] Fakes-live normalizados p/ conferência: {normalizadas}")
+    if seed_report:
+        print(
+            "[AETHER-X PROD INIT] Seed: status={status} inseridos={ins} "
+            "colunas_add={cols} live_bloqueados={live}".format(
+                status=seed_report.get("status"),
+                ins=seed_report.get("inserted"),
+                cols=seed_report.get("added_columns") or "-",
+                live=seed_report.get("live_rows_blocked") or "-",
+            )
+        )
     print(f"[AETHER-X PROD INIT] Amostra: {sample}")
 
 

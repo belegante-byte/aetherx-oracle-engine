@@ -60,7 +60,7 @@ LEVEL_ORDER = {"": 0, PLAN_TRIAL: 1, PLAN_PRO: 2, PLAN_ENTERPRISE: 3}
 
 # Endpoint REST paga -> nível mínimo do plano que pode consultá-lo.
 MIN_LEVEL_BY_PATH: dict[str, str] = {
-    # Pro (dados: fila ao-live BR + exposição de demurrage e cobertura de referência)
+    # Pro (dados: sinais BR + estatística oficial ANTAQ + demurrage e referência global)
     "/v1/port-risk": PLAN_PRO,
     "/v1/port-trend": PLAN_PRO,
     "/v1/ports-risk": PLAN_PRO,
@@ -401,9 +401,9 @@ def upgrade_hint(required_plan: str) -> str:
             "https://aetherx.aether-grid.io/m2m-keys ou via RapidAPI."
         )
     return (
-        "Este endpoint exige o plano GP5 Pro (fila ao-live oficial dos 5 portos BR "
-        "e exposição de demurrage). Upgrade em https://aetherx.aether-grid.io/m2m-keys "
-        "ou via RapidAPI."
+        "Este endpoint exige o plano GP5 Pro (sinais dos 5 portos BR com estatística "
+        "oficial ANTAQ e exposição de demurrage). Upgrade em "
+        "https://aetherx.aether-grid.io/m2m-keys ou via RapidAPI."
     )
 
 

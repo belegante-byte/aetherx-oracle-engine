@@ -86,7 +86,7 @@ ERROR_429_EXAMPLE = {
     "code": "SLOT_LIMIT_EXCEEDED",
     "plan": "pro",
     "slot_limit": 1,
-    "upgrade_hint": "Este endpoint exige o plano GP5 Pro (fila ao-live oficial dos 5 portos BR e exposição de demurrage). Upgrade em https://aetherx.aether-grid.io/m2m-keys ou via RapidAPI.",
+    "upgrade_hint": "Este endpoint exige o plano GP5 Pro (sinais dos 5 portos BR com estatística oficial ANTAQ e exposição de demurrage). Upgrade em https://aetherx.aether-grid.io/m2m-keys ou via RapidAPI.",
 }
 ERROR_422_EXAMPLE = {
     "detail": [
@@ -267,7 +267,7 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
   </div>
 
   <h1>Aether-X Port Congestion Oracle</h1>
-  <p class="subtitle">MCP &amp; REST Engine &mdash; congestion &amp; demurrage risk. <strong>5 portos BR com fila ao-vivo de autoridade</strong> (Santos, Paranaguá, Rio/Itaguaí/Niterói); cobertura global como referência calibrada.</p>
+  <p class="subtitle">MCP &amp; REST Engine &mdash; congestion &amp; demurrage risk. <strong>5 portos BR com estatística oficial ANTAQ (37 meses)</strong> (Santos, Paranaguá, Rio/Itaguaí/Niterói) e sinais de referência calibrada; os 37 portos globais são cobertura de <em>referência</em>. A linha ao vivo entra quando a fonte oficial voltar a responder.</p>
 
   <p class="section-title">Connect in 5 seconds</p>
 
@@ -1410,23 +1410,38 @@ def get_port_trend(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _port_history_enabled() -> bool:
+    """`/v1/port-history` fica ATRASADO até existir cobertura operacional contínua.
+
+    2026-09-29: o `port_metrics_history` tem capturas pontuais de referência, não
+    uma série observada contínua de 90 dias. promised 90 dias seria exatamente a
+    promessa que a evidência não sustenta, então o default é OFF e a resposta
+    explica o estado em vez de fingir cobertura. Liga com PORT_HISTORY_ENABLED=1
+    só depois de a ingestão ao vivo oficial voltar e haver cobertura comprovada.
+    """
+    return os.getenv("PORT_HISTORY_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+
 @app.get(
     "/v1/port-history",
     response_model=PortHistoryResponse,
     tags=["Port Risk"],
-    summary="Observed congestion history for a port (up to 90 days, Pro+)",
+    summary="Observed congestion history for a port (90-day window, in validation)",
     description=(
-        "Returns the OBSERVED historical series for a port from the persisted "
-        "snapshot history: `congestion_score`, `eta_delay_days`, `waiting_vessels`, "
-        "`freight_volatility_index` per `captured_at`. Coverage is explicit: "
-        "`observations`, `span_days`, `first_seen`, `last_seen` and `coverage_note` "
-        "declare the real coverage of the requested window (up to 90 days on Pro). "
-        "Where observations are missing there is NO interpolation — the gap is explicit. "
-        "This is history, not a forecast. Paid access: send `Authorization: "
-        "Bearer <chave paga>` or the `X-RapidAPI-Proxy-Secret` header."
+        "EM VALIDAÇÃO (2026-09-29): responde 503 `FEATURE_IN_VALIDATION` por padrão "
+        "porque ainda não há cobertura operacional contínua comprovada de 90 dias — "
+        "as capturas em `port_metrics_history` são pontuais/de referência. "
+        "Quando habilitado (PORT_HISTORY_ENABLED=1), retorna a série OBSERVADA por "
+        "`captured_at` com a cobertura real declarada em `observations`, `span_days`, "
+        "`first_seen`, `last_seen` e `coverage_note`; sem interpolação em buracos. "
+        "Isto é histórico, não previsão. Acesso pago: `Authorization: Bearer <chave paga>` "
+        "ou header `X-RapidAPI-Proxy-Secret`."
     ),
     response_description="The observed history series and its explicit real coverage.",
     responses={
+        503: {
+            "description": "Recurso em validação operacional: sem cobertura contínua comprovada de 90 dias (503 FEATURE_IN_VALIDATION).",
+        },
         401: {
             "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
             "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
@@ -1453,6 +1468,20 @@ def get_port_history(
     ),
     days: int = Query(90, ge=1, le=90, description="History window in days (max 90)."),
 ):
+    if not _port_history_enabled():
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "FEATURE_IN_VALIDATION",
+                "status": "em_validacao",
+                "message": (
+                    "O histórico observado de 90 dias está em validação operacional: "
+                    "ainda não há cobertura contínua comprovada nas fontes oficiais. "
+                    "Use /v1/port-risk e /v1/port-trend, que respondem hoje."
+                ),
+                "available_now": ["/v1/port-risk", "/v1/port-trend", "/v1/ports-risk"],
+            },
+        )
     try:
         return get_port_history_series(port_id, days)
     except Exception as e:

@@ -131,8 +131,21 @@ def test_pro_key_reads_live_br_port_signals():
     assert body["waiting_vessels"] is not None
 
 
-def test_pro_key_reads_history_with_explicit_coverage():
+def test_pro_key_history_is_blocked_until_coverage_is_proven(monkeypatch):
+    """90 dias não é prometido: por padrão o endpoint responde 503 em validação."""
     key = _pro_key()
+    monkeypatch.delenv("PORT_HISTORY_ENABLED", raising=False)
+    resp = client.get("/v1/port-history", params={"port_id": "BRSSZ", "days": 90}, headers=_auth(key))
+    assert resp.status_code == 503
+    detail = resp.json()["detail"]
+    assert detail["code"] == "FEATURE_IN_VALIDATION"
+    assert detail["status"] == "em_validacao"
+    assert "/v1/port-risk" in detail["available_now"]
+
+
+def test_history_serves_observed_series_when_explicitly_enabled(monkeypatch):
+    key = _pro_key()
+    monkeypatch.setenv("PORT_HISTORY_ENABLED", "1")
     resp = client.get("/v1/port-history", params={"port_id": "BRSSZ", "days": 90}, headers=_auth(key))
     assert resp.status_code == 200
     body = resp.json()
