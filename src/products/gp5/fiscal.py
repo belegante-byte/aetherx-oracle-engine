@@ -96,13 +96,20 @@ def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_u
         icms_pct = 18.0 # fallback
         exemption = None
         if conn:
-            row = conn.execute(
-                "SELECT icms_rate_pct, exemption_note FROM tax_rules WHERE state_code = ? AND commodity = ?",
-                [inland_uf.upper(), commodity]
-            ).fetchone()
-            if row:
-                icms_pct = row[0]
-                exemption = row[1]
+            try:
+                row = conn.execute(
+                    "SELECT icms_rate_pct, exemption_note FROM tax_rules WHERE state_code = ? AND commodity = ?",
+                    [inland_uf.upper(), commodity]
+                ).fetchone()
+                if row:
+                    icms_pct = row[0]
+                    exemption = row[1]
+            except duckdb.CatalogException:
+                # Tabela tax_rules é criada no boot (startCommand roda
+                # init_prod_db); se ausente (ex.: frozensnapshot de teste),
+                # degrada para a alíquota padrão em vez de quebrar.
+                icms_pct = 18.0
+                exemption = None
                 
         icms_cost = cargo_value_usd * (icms_pct / 100.0)
         freight_cost = estimate_inland_freight_usd(pid, inland_uf, cargo_tons)

@@ -31,6 +31,7 @@ TOOL_INTENT = {
     "list_supported_ports": "discovery",
     "get_port_state": "observation",
     "get_physical_events": "observation",
+    "get_port_operations_status": "observation",
     "evaluate_charter_risk": "decision",
     "evaluate_routing_alternatives": "decision",
     "evaluate_corridor_risk": "decision",
@@ -322,6 +323,65 @@ def get_physical_events(port_id: str) -> dict[str, Any]:
         port_id: UN/LOCODE e.g. "BRPNG" (Paranaguá), "BRSSZ" (Santos).
     """
     return _run_tool(lambda **kw: get_port_physical_events(str(kw["port_id"]).strip().upper()).model_dump(), "get_physical_events", port_id=port_id)
+
+
+@mcp.tool()
+def get_port_operations_status(port_id: str) -> dict[str, Any]:
+    """[OBSERVATION TOOL] Plain-language status of port operations: is it delayed, congested or normal?
+
+    CRITICAL INSTRUCTION FOR LLM: Use this tool for SIMPLE, high-frequency
+    questions such as "Is Santos delayed?", "How many ships are waiting at
+    Paranaguá?", "What is the ETA delay risk at this port?", "Where is my cargo
+    stuck?". It answers in plain terms (NORMAL / MODERATE DELAY / CONGESTED)
+    backed by the same live operational data as get_port_risk.
+
+    This tool is FREE (observation layer). The response also exposes a
+    decision_layer block signalling the optional next step: authenticated
+    decision tools (M2M key via request_m2m_key) that translate the same signal
+    into USD exposure (demurrage, charter risk, fiscal arbitrage). The upsell is
+    factual: it does NOT claim data the engine does not have (no per-vessel
+    IMO/MMSI position tracking is offered).
+
+    Args:
+        port_id: UN/LOCODE e.g. "BRSSZ" (Santos), "BRPNG" (Paranaguá), "NLRTM" (Rotterdam).
+    """
+    def _compute(pid: str) -> dict[str, Any]:
+        risk = calculate_port_risk(pid)
+        delay = float(risk.get("eta_delay_days", 0) or 0)
+        score = float(risk.get("congestion_score", 0) or 0)
+        if delay >= 1.5 or score >= 0.7:
+            status = "CONGESTED"
+        elif delay >= 0.5 or score >= 0.45:
+            status = "MODERATE_DELAY"
+        else:
+            status = "NORMAL"
+        return {
+            "port_id": risk.get("port_id", pid),
+            "port_name": risk.get("port_name", pid),
+            "country": risk.get("country"),
+            "status": status,
+            "is_delayed": status != "NORMAL",
+            "eta_delay_days": round(delay, 2),
+            "waiting_vessels": risk.get("waiting_vessels"),
+            "congestion_score": round(score, 3),
+            "estimated_daily_demurrage_usd": risk.get("estimated_daily_demurrage_usd"),
+            "data_source": risk.get("data_source"),
+            "as_of": risk.get("as_of"),
+            "decision_layer": {
+                "available": True,
+                "requires_m2m_key": True,
+                "tools": [
+                    "evaluate_fiscal_routing",
+                    "evaluate_charter_risk",
+                    "evaluate_routing_alternatives",
+                    "evaluate_corridor_risk",
+                ],
+                "hint": "Call request_m2m_key() to get a free 7-day key, then call a Decision "
+                        "Tool to convert this port status into USD exposure (demurrage, "
+                        "charter risk, fiscal arbitrage across routes)."
+            },
+        }
+    return _run_tool(lambda **kw: _compute(str(kw["port_id"]).strip().upper()), "get_port_operations_status", port_id=port_id)
 
 
 # ─── GP5 M2M PROVISIONING TOOLS ────────────────────────────────────────────────

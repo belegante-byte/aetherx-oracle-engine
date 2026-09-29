@@ -1,8 +1,10 @@
-# aetherx-mcp
+# aetherx-mcp — Port Congestion, Maritime Logistics & Supply Chain MCP Server
 
 <!-- mcp-name: io.github.belegante-byte/aetherx-mcp -->
 
-**MCP server for the [Aether-X Port Congestion Oracle](https://aetherx.aether-grid.io)** — gives any MCP-compatible agent (Claude Desktop, Cursor, VS Code, custom LLM agents) **reference** port congestion signals for global trade and quantitative finance.
+**Aether-X** is an MCP server for the [Aether-X Port Congestion Oracle](https://aetherx.aether-grid.io) that gives any MCP-compatible agent (Claude Desktop, Cursor, VS Code, custom LLM agents) **port congestion, maritime delay, vessel queue and supply-chain risk** signals for global trade — answered in plain language for simple queries ("is Rotterdam delayed?") and in USD exposure for decision-grade workflows (demurrage, charter risk, fiscal arbitrage across routes).
+
+**Keywords:** maritime, shipping, vessels, ports, port congestion, demurrage, freight, logistics, supply chain, ETA delay, vessel queue, chokepoints, Suez, Panama, trade lanes, cargo, quantitative finance.
 
 > **DATA INTEGRITY NOTICE**: Brazilian ports (BRSSZ Santos, BRPNG Paranaguá, BRRIO Rio de Janeiro) feed **live** operational line-ups (`data_source="live:appa+santos+lachmann"`); Niterói (BRNIT) and Itaguaí (BRITG) together with Rio de Janeiro feed **live** line-up from SILOG PortosRio (`data_source="live:portosrio_silog"`). The remaining ports serve a **static reference seed** (`data_source="static_reference_seed"`). Every tool result includes `data_source` and `as_of`. The 24/48/72h trend is a synthetic projection, not a live forecast. Seed values are NOT real-time field data.
 
@@ -48,6 +50,7 @@ uvx aetherx-mcp
 
 | Tool | Arguments | Returns |
 |------|-----------|---------|
+| `get_port_operations_status` | `port_id` (UN/LOCODE) | **Plain-language status (NORMAL / CONGESTED)**, delay, waiting vessels, source provenance + optional decision-layer upsell — free observation |
 | `get_port_risk` | `port_id` (UN/LOCODE) | Congestion score, ETA delay, waiting vessels, freight volatility, daily demurrage estimate |
 | `get_ports_risk` | `port_ids` (list) | Same, for a whole portfolio, fetched in parallel |
 | `get_port_trend` | `port_id` (UN/LOCODE) | 24h / 48h / 72h congestion projection + trend label (acelerando / estável / descongestionando) |
@@ -81,10 +84,12 @@ Without `RAPIDAPI_KEY`, the server calls the public production API directly.
 
 ## Example agent prompts
 
-- *"What's the congestion risk at Santos right now?"*
-- *"Rank these ports by congestion: BRSSZ, CNSHA, NLRTM, USLAX."*
-- *"Which of my Asian ports has the highest freight volatility index?"*
-- *"Project the congestion at Rotterdam over the next 3 days."*
+- *"Is the port of Santos delayed right now?"* (→ `get_port_operations_status`)
+- *"Where is my cargo stuck? What's the waiting time at Paranaguá?"* (→ `get_port_operations_status`)
+- *"What's the congestion risk at Rotterdam over the next 3 days?"* (→ `get_port_trend`, `forecast_vessel_queue_delays`)
+- *"Rank these ports by congestion: BRSSZ, CNSHA, NLRTM, USLAX."* (→ `get_ports_risk`)
+- *"How many ships are waiting at Shanghai?"* (→ `get_port_state`, `get_port_operations_status`)
+- *"Which route minimizes demurrage + fiscal cost for my fertilizer cargo to MT?"* (→ `evaluate_fiscal_routing`, requires M2M key)
 
 ## License
 
