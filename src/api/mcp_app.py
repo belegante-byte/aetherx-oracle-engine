@@ -601,3 +601,30 @@ def build_http_app():
             allowed_origins=[],
         ),
     )
+
+
+# --- DEPRECATED ALIASES FOR RETROCOMPATIBILITY ---
+@mcp.tool()
+def get_pci_index(port_id: str) -> dict:
+    '''[DEPRECATED: Use get_port_congestion_risk instead] Calculate Port Congestion Index.'''
+    return get_port_congestion_risk(port_id)
+
+@mcp.tool()
+def get_cdr_risk(chokepoint_id: str = "HORMUZ") -> dict:
+    '''[DEPRECATED: Use evaluate_chokepoint_disruption instead] Calculate Chokepoint Disruption Risk.'''
+    return evaluate_chokepoint_disruption(chokepoint_id)
+
+@mcp.tool()
+def predict_vessel_queue(port_id: str, forecast_horizon_days: int = 1) -> dict:
+    '''[DEPRECATED: Use forecast_vessel_queue_delays instead] Vessel Queue Predictive Model.'''
+    return forecast_vessel_queue_delays(port_id, forecast_horizon_days)
+
+@mcp.tool()
+def get_irdi_index(port_or_corridor_id: str = "NLRTM") -> dict:
+    '''[DEPRECATED: Use get_inland_logistics_bottlenecks instead] Calculate Intermodal Rail Delay Index.'''
+    return get_inland_logistics_bottlenecks(port_or_corridor_id)
+
+@mcp.tool()
+def evaluate_scdew_warning(origin_port: str = "BRPNG", destination_port: str = "CNTAO", chokepoint_id: str = "HORMUZ") -> dict:
+    '''[DEPRECATED: Use evaluate_end_to_end_supply_chain_risk instead] Supply Chain Disruption Early Warning.'''
+    return evaluate_end_to_end_supply_chain_risk(origin_port, destination_port, chokepoint_id)
