@@ -7,8 +7,8 @@ from typing import Optional
 
 from fastapi import FastAPI
 from fastapi import Query, HTTPException
-from src.api.monetization import router as monetization_router
 from fastapi.middleware.cors import CORSMiddleware
+from src.api.monetization import router as monetization_router  # Stripe (coexist)
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ConfigDict
 
@@ -22,7 +22,8 @@ from src.api.metrics import MetricsMiddleware, metrics_snapshot, record_gate_eve
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 import time
-from src.runtime.access import TRIAL_VALIDITY_DAYS, authenticate_client, register_m2m_key
+from src.runtime.access import TRIAL_VALIDITY_DAYS, AUTHENTICATED_PERMISSIONS, authenticate_client, register_m2m_key, is_paid_key
+from src.runtime.contracts.v1 import ClientContext
 from src.runtime.metering import record_usage
 from src.products.gp5.maritime import get_port_physical_events
 from src.products.gp5.fiscal import evaluate_fiscal_routing
@@ -53,7 +54,9 @@ EXAMPLE_TREND_RESPONSE = calculate_port_trend("BRSSZ")
 EXAMPLE_BATCH_RESPONSE = {
     "results": [EXAMPLE_RISK_RESPONSE, calculate_port_risk("CNSHA")]
 }
-ERROR_401_EXAMPLE = {"detail": "Missing or invalid X-RapidAPI-Proxy-Secret header."}
+ERROR_401_EXAMPLE = {
+    "detail": "Missing or invalid paid credential: send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the `X-RapidAPI-Proxy-Secret` header."
+}
 ERROR_422_EXAMPLE = {
     "detail": [
         {
@@ -80,6 +83,14 @@ class RapidAPIGuard:
     @staticmethod
     def is_public_path(path: str) -> bool:
         import re as _re
+        # Governança (2026-09-29, decisão do Giovanni): Stripe é o ÚNICO
+        # merchant-of-record. REST de produto NÃO é caminho público. Acesso com
+        # (a) chave paga Stripe (`Bearer gp5_enterprise_*`, ver _has_paid_bearer)
+        # ou (b) X-RapidAPI-Proxy-Secret (requests que ainda vêm do proxy do
+        # marketplace). Trial M2M (30 dias) NÃO abre a REST paga.
+        # Ficam públicos: vitrine/SEO, docs/interativos, funnel M2M e o servidor
+        # MCP (/mcp) — que precisa ficar acessível para distribuição em
+        # diretórios MCP e self-serve de trial (request_m2m_key).
         return (
             path in {
                 "/",
@@ -92,10 +103,26 @@ class RapidAPIGuard:
                 "/sitemap.xml",
                 "/robots.txt",
                 "/santos-port-congestion-api",
+                "/m2m-keys",
+                "/demo",
+                "/fiscal-demo",
+                "/internal/control-tower",
+                "/aetherx-mcp.json",
+                # Trial self-service (lead-gen, NÃO monetiza): o /m2m-keys page
+                # público chama este POST para emitir chave de 30 dias. Só emite
+                # trial — nunca chave paga.
+                "/v1/m2m/request-key",
+                # Stripe (coexist): checkout precisa ser clicável sem secret; o
+                # sucesso redireciona para o fulfillment; o webhook chega via
+                # Stripe (assinatura whsec_, validada no código).
+                "/checkout/gp5-monthly",
+                "/checkout/gp5-pro",
+                "/m2m-keys/fulfillment",
+                "/webhook/stripe",
             }
             or path.startswith("/port-congestion-") or path.startswith("/arbitragem-logistica/")
-            or path.startswith(("/docs", "/redoc", "/public/", "/mcp", "/v1/gp5/", "/v1/m2m/"))
-            or path in {"/m2m-keys", "/m2m-keys/fulfillment", "/demo", "/fiscal-demo", "/internal/control-tower", "/aetherx-mcp.json", "/.well-known/ai-plugin.json", "/checkout/gp5-monthly", "/checkout/gp5-pro", "/webhook/stripe"}
+            or path.startswith(("/docs", "/redoc", "/public/", "/mcp"))
+            or path in {"/.well-known/ai-plugin.json"}
             or bool(_re.fullmatch(r"/google[0-9a-f]{10,}\.html", path))
             or path == "/BingSiteAuth.xml"
         )
@@ -117,6 +144,13 @@ class RapidAPIGuard:
         if headers.get("x-rapidapi-proxy-secret") == self.secret:
             await self.app(scope, receive, send)
             return
+        # Governança (coexistir, 2026-09-29): REST de produto também aceita
+        # chave PAGA emitida via Stripe (`Authorization: Bearer gp5_enterprise_*`)
+        # — chave em _KEY_PLANS/_PAYMENT_GRANTS é assinatura ativa. Trial NÃO
+        # abre a REST paga. O M2M gateway valida a chave e as permissões.
+        if self._has_paid_bearer(headers):
+            await self.app(scope, receive, send)
+            return
         payload = json.dumps(ERROR_401_EXAMPLE).encode("utf-8")
         await send(
             {
@@ -129,6 +163,14 @@ class RapidAPIGuard:
             }
         )
         await send({"type": "http.response.body", "body": payload})
+
+    @staticmethod
+    def _has_paid_bearer(headers: dict) -> bool:
+        auth = headers.get("authorization", "")
+        if not auth.lower().startswith("bearer "):
+            return False
+        token = auth[7:].strip()
+        return bool(token and is_paid_key(token))
 
 
 LANDING_HTML = """<!DOCTYPE html>
@@ -272,9 +314,10 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
   <p class="section-title" style="margin-top:2rem">Access &amp; Pricing</p>
   <div class="links-grid">
     <a class="link-card" href="/mcp-page"><strong>Free · Observation</strong><br><span style="color:#8b949e">REST + MCP data tools with a daily free quota. $0.00, no credit card.</span></a>
-    <a class="link-card" href="/m2m-keys"><strong>M2M · Decision tools</strong><br><span style="color:#8b949e">Free 7-day trial key unlocks demurrage / routing / corridor risk. Self-serve.</span></a>
+    <a class="link-card" href="/m2m-keys"><strong>M2M · Decision tools</strong><br><span style="color:#8b949e">Free 30-day trial key unlocks demurrage / routing / corridor risk. Self-serve.</span></a>
     <a class="link-card" href="/demo"><strong>Interactive simulator</strong><br><span style="color:#8b949e">Try demurrage, total cycle days and SCDEW risk in the browser.</span></a>
-    <a class="link-card" href="https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle"><strong>RapidAPI · Pay-as-you-go</strong><br><span style="color:#8b949e">Scaled production access, SLA and business terms.</span></a>
+    <a class="link-card" href="/checkout/gp5-pro"><strong>GP5 Pro · US$ 499/mês</strong><br><span style="color:#8b949e">Assinatura paga no Stripe desbloqueia REST paga + MCP. Cobrança direta.</span></a>
+    <a class="link-card" href="/checkout/gp5-monthly"><strong>GP5 Enterprise · US$ 5.000/mês</strong><br><span style="color:#8b949e">Multi-slot, parâmetros de demurrage por operação, SLA dedicado (quote-gated).</span></a>
   </div>
 
   <div class="footer">
@@ -516,6 +559,27 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
         t0 = time.monotonic()
         auth_header = request.headers.get("authorization")
         context = authenticate_client(auth_header, product="gp5")
+
+        # Governança (2026-09-29): Stripe = merchant-of-record. Se o request chegou
+        # pelo proxy do marketplace com X-RapidAPI-Proxy-Secret válido, o proxy
+        # já autenticou/cobrou (tier em X-RapidAPI-Subscription) e tem
+        # permissão de decisão — não exigimos chave M2M por cima. O caminho
+        # B2B pago é a chave Stripe (`Bearer gp5_enterprise_*`).
+        is_rapidapi_paid = bool(
+            request.headers.get("x-rapidapi-proxy-secret")
+            and request.headers.get("x-rapidapi-proxy-secret") == os.getenv("RAPIDAPI_PROXY_SECRET", "")
+        )
+        if is_rapidapi_paid and not context.has_permission("decision.*"):
+            rapid_api_user = request.headers.get("x-rapidapi-user", "unknown")
+            rapid_api_sub = request.headers.get("x-rapidapi-subscription", "unknown")
+            context = ClientContext(
+                request_id=context.request_id,
+                client_id=f"rapidapi_{rapid_api_sub}:{rapid_api_user}",
+                access_mode="rapidapi_paid",
+                product="gp5",
+                permissions=list(AUTHENTICATED_PERMISSIONS),
+            )
+
         request.state.client_context = context
 
         # Expõe o client_id ao contexto da requisição (para tool_errors auditáveis).
@@ -642,6 +706,12 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
 
 
 
+# Canais de monetização (governança, 2026-09-29): Stripe = ÚNICO
+# merchant-of-record (checkout/fulfillment/webhook emite chave paga
+# `gp5_enterprise_*`, aceita na REST de produto e no MCP). O guard também
+# aceita X-RapidAPI-Proxy-Secret para requests vindos do proxy do marketplace
+# (listing mantida só como vitrine/direcionamento → checkout Stripe).
+# Trial M2M (30 dias) NUNCA abre a REST paga (só MCP). Ver AGENTS.md.
 app.include_router(monetization_router)
 
 app.add_middleware(M2MGatewayMiddleware)
@@ -1078,8 +1148,9 @@ def get_gp5_scdew(
         "**5 Brazilian ports LIVE** (official-authority line-ups), **12 mapped global ports live whenever "
         "the AIS sensor delivers**, the rest a **calibrated/static reference seed** "
         "(`static_reference_seed`). Unknown ports fall back "
-        'to a global statistical estimate with `country="Global"`. Requests are protected '
-        "by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header."
+        'to a global statistical estimate with `country="Global"`. Paid access: '
+        "send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the "
+        "`X-RapidAPI-Proxy-Secret` header."
     ),
     response_description="The current reference signal for the requested port.",
     responses={
@@ -1089,7 +1160,7 @@ def get_gp5_scdew(
             "content": {"application/json": {"example": EXAMPLE_RISK_RESPONSE}},
         },
         401: {
-            "description": "Missing or invalid X-RapidAPI-Proxy-Secret header.",
+            "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
             "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
         },
         422: {
@@ -1121,8 +1192,9 @@ def get_port_risk(
         "with a `trend` label (`acelerando`, `estável` or `descongestionando`). Each "
         "projection point includes `congestion_score`, `eta_delay_days` and the estimated "
         "`estimated_daily_demurrage_usd`. NOTE: the projection is `synthetic_projection` "
-        "(derived from the static reference seed), not a live forecast. Requests are "
-        "protected by the RapidAPI proxy secret and must send the `X-RapidAPI-Proxy-Secret` header."
+        "(derived from the static reference seed), not a live forecast. Paid access: "
+        "send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the "
+        "`X-RapidAPI-Proxy-Secret` header."
     ),
     response_description="The 24h, 48h and 72h congestion projections for the requested port.",
     responses={
@@ -1132,7 +1204,7 @@ def get_port_risk(
             "content": {"application/json": {"example": EXAMPLE_TREND_RESPONSE}},
         },
         401: {
-            "description": "Missing or invalid X-RapidAPI-Proxy-Secret header.",
+            "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
             "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
         },
         422: {
@@ -1162,8 +1234,8 @@ def get_port_trend(
     description=(
         "Returns the congestion signals for up to 20 ports in a single request, preserving "
         "the order of the `port_ids` (comma-separated UN/LOCODEs). Unknown ports fall back "
-        "to the global statistical estimate. Requests are protected by the RapidAPI proxy "
-        "secret and must send the `X-RapidAPI-Proxy-Secret` header."
+        "to the global statistical estimate. Paid access: send `Authorization: "
+        "Bearer <chave paga>` (assinatura Stripe) or the `X-RapidAPI-Proxy-Secret` header."
     ),
     response_description="A list of congestion signals, one per requested port, in the same order.",
     responses={
@@ -1177,7 +1249,7 @@ def get_port_trend(
             "content": {"application/json": {"example": ERROR_400_EXAMPLE}},
         },
         401: {
-            "description": "Missing or invalid X-RapidAPI-Proxy-Secret header.",
+            "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
             "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
         },
         422: {

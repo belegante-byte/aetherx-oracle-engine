@@ -3,6 +3,29 @@
 Histórico de mudanças relevantes do **Aether-X Oracle Engine**. Formato baseado em
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.3.2] — 2026-09-29
+
+### Alterado (decisão do Giovanni — Stripe é o ÚNICO merchant-of-record)
+- **Stripe como cobrança oficial da API.** Assinatura direta via
+  `/checkout/gp5-pro` (US$ 499/mo, US$ 4.990/ano) e `/checkout/gp5-monthly`
+  (US$ 5.000/mo, US$ 50.000/ano). Confirmado o pagamento, `/m2m-keys/fulfillment`
+  e `/webhook/stripe` entregam a chave paga `gp5_enterprise_*` (idempotente por
+  `session_id`) no cofre que o `authenticate_client` lê.
+- **Credencial paga abre a REST.** `RapidAPIGuard` agora aceita `Authorization:
+  Bearer <chave paga>` (Stripe) OU `X-RapidAPI-Proxy-Secret` (requests do proxy
+  do marketplace). Trial (30 dias) NÃO abre a REST paga — só MCP.
+- **Playground corrigido:** `monetization.py` passou a ler `STRIPE_SECRET_KEY`
+  (antes `STRIPE_API_KEY`, que nunca era setado → checkout sempre 503 em prod).
+- **Landing/funil 100% Stripe:** removidos os CTAs e o card "RapidAPI
+  Pay-as-you-go" da landing, páginas SEO/API e footer; `/m2m-keys` volta com o
+  gride de 2 tiers (checkout Stripe) + trial 30 dias; CTA do fiscal-demo volta
+  ao `/checkout/gp5-pro`. A listing RapidAPI continua existindo, mas só como
+  storefront que direciona para o checkout Stripe.
+- **Testes:** suíte Stripe do histórico restaurada (16) + coexistência de
+  credencial paga (Bearer abre REST, trial NÃO abre); 121 testes passando.
+- **Governança:** `AGENTS.md` atualizado — Stripe merchant-of-record único,
+  RapidAPI não volta a cobrar sem aprovação explícita.
+
 ## [1.3.0] — 2026-09-28
 
 ### Adicionado

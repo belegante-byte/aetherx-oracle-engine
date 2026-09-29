@@ -13,7 +13,6 @@ from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 from src.products.gp5.fiscal import evaluate_fiscal_routing
 
 PRODUCTION_URL = "https://aetherx.aether-grid.io"
-RAPIDAPI_URL = "https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle"
 REGISTRY_URL = "io.github.belegante-byte/aetherx-mcp"
 PYPI_SDK = "https://pypi.org/project/aetherx-oracle/"
 PYPI_MCP = "https://pypi.org/project/aetherx-mcp/"
@@ -128,7 +127,7 @@ def _page(title: str, meta_description: str, h1: str, lede: str, body: str, cano
 <h1>{h1}</h1>
 <p class="lede muted">{lede}</p>
 {body}
-<div class="footer">Aether Grid Port Congestion Oracle &middot; Free tier $0.00 &middot; <a href="{RAPIDAPI_URL}">RapidAPI</a> &middot; <a href="{PYPI_SDK}">PyPI SDK</a> &middot; <a href="{PYPI_MCP}">MCP server</a> &middot; MCP Registry: {REGISTRY_URL}</div>
+<div class="footer">Aether Grid Port Congestion Oracle &middot; Free trial 30 dias <a href="{PRODUCTION_URL}/m2m-keys">/m2m-keys</a> &middot; Pago via Stripe <a href="{PRODUCTION_URL}/checkout/gp5-pro">US$ 499/mês</a> &middot; <a href="{PYPI_SDK}">PyPI SDK</a> &middot; <a href="{PYPI_MCP}">MCP server</a> &middot; MCP Registry: {REGISTRY_URL}</div>
 </div>
 </body>
 </html>"""
@@ -146,8 +145,8 @@ client = OracleClient(api_key="YOUR_RAPIDAPI_KEY")
 risk = client.get_port_risk("BRSSZ")
 print(risk.congestion_score)
 print(risk.estimated_daily_demurrage_usd)</code></pre></div>
-<p>Get a free key on the <a href="{RAPIDAPI_URL}">RapidAPI listing</a> (Free Developer Tier, $0.00).</p>
-<a class="cta" href="{RAPIDAPI_URL}">Get a free API key</a>
+<p>Get a free 30-day trial key at <a href="{PRODUCTION_URL}/m2m-keys">/m2m-keys</a>; paid plans start at US$ 499/mês via <a href="{PRODUCTION_URL}/checkout/gp5-pro">Stripe checkout</a>.</p>
+<a class="cta" href="{PRODUCTION_URL}/fiscal-demo">See the fiscal demo</a>
 <h2>MCP server for AI agents</h2>
 <p>The same signal is exposed over the Model Context Protocol, so agents call <code>get_port_risk</code>, <code>get_ports_risk</code> and <code>get_port_trend</code> directly:</p>
 <div class="snippet-card"><div class="card-header"><span>Claude Desktop / Cursor / any MCP client</span></div><pre><code>{STDIO_CFG}</code></pre></div>
@@ -196,7 +195,7 @@ Every response includes data_source and as_of.</code></pre></div>
 </ul>
 
 <h2>Reference signal (Santos)</h2>{live_card("BRSSZ")}
-<a class="cta" href="{RAPIDAPI_URL}">Get a free API key</a>
+<a class="cta" href="{PRODUCTION_URL}/m2m-keys">Get a free trial key (REST)</a>
 """
     return _page(
         "Aether Grid MCP — Port Congestion Server for AI Agents",
@@ -255,7 +254,7 @@ client = OracleClient(api_key="YOUR_RAPIDAPI_KEY")
 risk = client.get_port_risk("BRSSZ")
 print(risk.congestion_score, risk.eta_delay_days)</code></pre></div>
 <p>Add the 24/48/72h trend with <code>client.get_port_trend("BRSSZ")</code>, or monitor several Brazilian ports at once with <code>client.get_ports_risk(["BRSSZ", "BRRIO"])</code>. AI agents can consume the same data via the <a href="/mcp-page">Aether Grid MCP server</a>.</p>
-<a class="cta" href="{RAPIDAPI_URL}">Get a free API key for Santos data</a>
+<a class="cta" href="{PRODUCTION_URL}/m2m-keys">Get a free trial key for Santos data</a>
 """
     return _page(
         "Santos Port Congestion API — Reference Risk & ETA",
@@ -300,7 +299,7 @@ async def main():
 asyncio.run(main())</code></pre></div>
 {_json_pre(calculate_port_risk("NLRTM"))}
 <p>The same signal is available through the <a href="/mcp-page">MCP server for AI agents</a> and the plain REST API (<code>{PRODUCTION_URL}/v1/port-risk?port_id=BRSSZ</code>).</p>
-<a class="cta" href="{RAPIDAPI_URL}">Get a free API key</a>
+<a class="cta" href="{PRODUCTION_URL}/m2m-keys">Get a free trial key (REST)</a>
 """
     return _page(
         "Port Congestion API with Python — Quick Start SDK",
@@ -358,7 +357,7 @@ client = OracleClient(api_key="YOUR_RAPIDAPI_KEY")
 risk = client.get_port_risk("{port_id}")
 print(risk.congestion_score, risk.eta_delay_days)</code></pre></div>
 <p>Add the 24/48/72h trend with <code>client.get_port_trend("{port_id}")</code>, or monitor several ports at once with <code>client.get_ports_risk(["{port_id}", "CNSHA"])</code>. AI agents can consume the same data via the <a href="/mcp-page">Aether Grid MCP server</a>.</p>
-<a class="cta" href="{RAPIDAPI_URL}">Get a free API key</a>
+<a class="cta" href="{PRODUCTION_URL}/m2m-keys">Get a free trial key (REST)</a>
 """
     return _page(
         f"{port_name} Port Congestion — Reference Risk, ETA & Demurrage",
@@ -420,7 +419,7 @@ def m2m_keys_page_html() -> str:
         <div style="color:#64748b; font-size:0.85rem; margin-bottom:1rem;">ou US$ 4.990/ano (2 meses grátis)</div>
         <ul style="color:#cbd5e1; font-size:0.9rem; line-height:1.7; padding-left:1.1rem; margin-bottom:1.5rem;">
           <li>Decision Tools (Arbitragem Fiscal + Risco de Fretamento)</li>
-          <li>Chave M2M permanente via Stripe</li>
+          <li>REST paga + MCP com chave própria, cobrada pelo Stripe</li>
           <li>Ideal para trading desks e agentes MCP single-tenant</li>
         </ul>
         <form method="GET" action="/checkout/gp5-pro">

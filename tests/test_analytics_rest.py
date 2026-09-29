@@ -1,5 +1,12 @@
 """Testes unitários e de integração para o motor estatístico e rotas REST /v1/gp5/*."""
 
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
+os.environ.setdefault("RAPIDAPI_PROXY_SECRET", "test-secret")
+
 import pytest
 from fastapi.testclient import TestClient
 from src.api.main import app
@@ -11,7 +18,7 @@ from src.engine.analytics import (
     calculate_scdew,
 )
 
-client = TestClient(app)
+client = TestClient(app, headers={"X-RapidAPI-Proxy-Secret": "test-secret"})
 
 
 def test_pci_model_calculation():

@@ -151,6 +151,18 @@ def register_m2m_key(name: str, email: str, organization: str) -> str:
     return token
 
 
+def is_paid_key(token: str) -> bool:
+    """True se o token é uma chave PAGA (assinatura ativa), não trial.
+
+    Chaves pagas são registradas via `register_paid_m2m_key` (Stripe). Chaves
+    de trial NÃO passam aqui: trial dá acesso MCP, mas não abre a REST de
+    produto (Governança, ver AGENTS.md).
+    """
+    if not token:
+        return False
+    return token in _KEY_PLANS or token in _PAYMENT_GRANTS.values()
+
+
 def register_paid_m2m_key(name: str, email: str, organization: str, external_id: str) -> str:
     """Registra uma chave paga (GP5 Enterprise) com idempotência.
 

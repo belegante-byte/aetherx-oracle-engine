@@ -1,3 +1,11 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
+os.environ.setdefault("RAPIDAPI_PROXY_SECRET", "test-secret")
+TEST_SECRET = os.environ["RAPIDAPI_PROXY_SECRET"]
+
 import duckdb
 import pytest
 from fastapi.testclient import TestClient
@@ -20,10 +28,25 @@ def test_evaluate_fiscal_routing_logic():
         evaluate_fiscal_routing(intended_port_id="BRSSZ", commodity="FERTILIZANTES", cargo_value_usd=-500, inland_uf="MT", cargo_tons=60000.0)
 
 def test_fiscal_routing_auth_required():
-    # Calling the REST endpoint without token should return 403 Access Denied
+    # Governança (2026-09-29): REST /v1/gp5/* não é público — só passa com
+    # chave paga Stripe (Bearer) ou X-RapidAPI-Proxy-Secret do marketplace.
     resp = client.get("/v1/gp5/fiscal-routing?intended_port_id=BRSSZ&commodity=FERTILIZANTES")
-    assert resp.status_code == 403
-    assert "Access denied" in resp.json()["detail"]
+    assert resp.status_code == 401
+    assert "X-RapidAPI-Proxy-Secret" in resp.json()["detail"]
+    assert "Bearer" in resp.json()["detail"]
+
+
+def test_fiscal_routing_with_proxy_secret():
+    # Assinante RapidAPI (proxy-secret válido) acessa a Decision Tool sem chave M2M.
+    resp = client.get(
+        "/v1/gp5/fiscal-routing?intended_port_id=BRSSZ&commodity=FERTILIZANTES",
+        headers={"X-RapidAPI-Proxy-Secret": TEST_SECRET,
+                 "X-RapidAPI-Subscription": "PRO", "X-RapidAPI-User": "bob.bola@trading.com.br"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["schema_version"] == "fiscal-routing.v1"
+    assert body["inland_uf"] == "MT"
 
 
 def test_fiscal_routing_summary_leads_with_real_driver():

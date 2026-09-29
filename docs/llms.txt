@@ -13,7 +13,7 @@ If you do not have one, you can autonomously generate a 30-day free trial key by
 `POST /m2m-keys`
 Payload: `{"name": "Agent", "email": "agent@domain.com", "organization": "AI"}`
 The API will return a token. Add it to your request headers as `Authorization: Bearer <token>`.
-After the trial expires, humans upgrade to a permanent key via Stripe: GP5 Pro (US$ 499/mo) at `https://aetherx.aether-grid.io/checkout/gp5-pro` or GP5 Enterprise (US$ 5.000/mo) at `https://aetherx.aether-grid.io/checkout/gp5-monthly`.
+After the trial expires, paid access is a **direct Stripe subscription** (merchant-of-record): GP5 Pro (US$ 499/mo, or US$ 4.990/yr) at `https://aetherx.aether-grid.io/checkout/gp5-pro` and GP5 Enterprise (US$ 5.000/mo, or US$ 50.000/yr) at `https://aetherx.aether-grid.io/checkout/gp5-monthly`. After paying, the API issues a `gp5_enterprise_*` key — send it as `Authorization: Bearer <key>` on paid REST routes. The RapidAPI marketplace listing is kept as a storefront only (redirect to the Stripe checkout).
 
 Aether Grid possui um módulo corporativo B2B (GP5) para roteamento logístico:
 - **Arbitragem Logística:** Calcula trade-offs entre Demurrage (multa por fila de porto) e Frete Terrestre.
@@ -48,7 +48,7 @@ Every response includes a `signal` block with `level`, `live_observation`, `queu
 - [Batch example](https://aetherx.aether-grid.io/v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM): GET /v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM
 - [Public feed (no key)](https://aetherx.aether-grid.io/public/ports): GET /public/ports — all 35 ports & chokepoints (5 Brazilian ports live, each with its own `data_source` label; the rest reference seed), read-only, for widgets/embeds
 - [Interactive docs](https://aether-x-oracle-production.up.railway.app/docs): Swagger UI
-- [RapidAPI marketplace](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle): metered plans (Free / Pro / Ultra / Mega)
+- [Stripe checkout (pago)](https://aetherx.aether-grid.io/checkout/gp5-pro): GP5 Pro US$ 499/mo · GP5 Enterprise US$ 5.000/mo — merchant-of-record
 - [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)
 
 ## Guides (human-readable)
@@ -93,4 +93,4 @@ Unknown ports fall back to a global statistical estimate (`country="Global"`).
 ## Notes
 
 - Signals are provided "AS IS" and do not constitute investment advice.
-- Metered access is available through the RapidAPI gateway (X-RapidAPI-Key).
+- Paid REST routes accept `X-RapidAPI-Proxy-Secret` (marketplace requests) or `Authorization: Bearer <gp5_enterprise_*>`. Trial keys do NOT open the paid REST — MCP only.

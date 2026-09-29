@@ -8,7 +8,7 @@ from src.runtime.access import register_paid_m2m_key
 
 router = APIRouter(tags=["Monetization"])
 
-stripe.api_key = os.getenv("STRIPE_API_KEY")
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://aetherx.aether-grid.io")
 

@@ -7,6 +7,7 @@ data/processed/*
 data/antaq_cache/
 .env
 .DS_Store
+COFRE/
 data/acumula_diario.log
 data/metrics_state.json
 data/tower_history.jsonl

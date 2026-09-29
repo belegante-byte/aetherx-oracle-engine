@@ -248,3 +248,61 @@ def test_checkout_pro_without_stripe_key_returns_503(monkeypatch):
     monkeypatch.setattr(stripe, "api_key", None)
     resp = client.get("/checkout/gp5-pro", params={"email": "ceo@corp.com.br"})
     assert resp.status_code == 503
+
+
+# -----------------------------------------------------------------------------
+# Coexistência (governança 2026-09-29): REST de produto aceita proxy-secret
+# (RapidAPI) OU chave paga via Bearer (Stripe). Trial NÃO abre a REST paga.
+# -----------------------------------------------------------------------------
+import os
+
+os.environ.setdefault("RAPIDAPI_PROXY_SECRET", "test-secret")
+
+RECT = {"port_id": "brssz"}
+
+
+def test_rest_product_without_secret_and_without_key_401():
+    assert TestClient(app).get("/v1/port-risk", params=RECT).status_code == 401
+
+
+def test_rest_product_with_paid_key_bearer_200(tmp_path, monkeypatch):
+    from src.runtime.access import register_paid_m2m_key
+
+    monkeypatch.setattr(access, "KEYS_FILE", tmp_path / "m2m_keys.json")
+    monkeypatch.setattr(access, "META_FILE", tmp_path / "m2m_keys_meta.json")
+    monkeypatch.setattr(access, "VALID_M2M_KEYS", {})
+    monkeypatch.setattr(access, "_KEY_META", {})
+    monkeypatch.setattr(access, "_KEY_PLANS", {})
+    monkeypatch.setattr(access, "_PAYMENT_GRANTS", {})
+    access.load_keys_from_disk()
+
+    key = register_paid_m2m_key("Trader", "ceo@corp.com.br", "Acme", "evt_coexist_1")
+    resp = TestClient(app).get(
+        "/v1/gp5/fiscal-routing",
+        params={"intended_port_id": "BRSSZ", "commodity": "FERTILIZANTES"},
+        headers={"Authorization": f"Bearer {key}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["schema_version"] == "fiscal-routing.v1"
+
+
+def test_rest_product_with_trial_key_still_401(tmp_path, monkeypatch):
+    # Trial dá acesso MCP, mas NÃO abre a REST de produto (só proxy-secret ou
+    # chave paga). Regressão do fluxo pré-1.3.0 em que trial abria /v1/gp5/.
+    from src.runtime.access import register_m2m_key
+
+    monkeypatch.setattr(access, "KEYS_FILE", tmp_path / "m2m_keys.json")
+    monkeypatch.setattr(access, "META_FILE", tmp_path / "m2m_keys_meta.json")
+    monkeypatch.setattr(access, "VALID_M2M_KEYS", {})
+    monkeypatch.setattr(access, "_KEY_META", {})
+    monkeypatch.setattr(access, "_KEY_PLANS", {})
+    monkeypatch.setattr(access, "_PAYMENT_GRANTS", {})
+    access.load_keys_from_disk()
+
+    key = register_m2m_key("Agent", "agent@corp.com.br", "Acme")
+    resp = TestClient(app).get(
+        "/v1/gp5/fiscal-routing",
+        params={"intended_port_id": "BRSSZ", "commodity": "FERTILIZANTES"},
+        headers={"Authorization": f"Bearer {key}"},
+    )
+    assert resp.status_code == 401
