@@ -17,7 +17,7 @@ import time
 logger = logging.getLogger("aetherx.metrics")
 
 # Versão da aplicação exposta no /internal/metrics (diagnóstico de rollout).
-APP_VERSION = os.getenv("AETHERX_APP_VERSION", "1.3.0")
+APP_VERSION = os.getenv("AETHERX_APP_VERSION", "1.3.3")
 
 # Rotas que não interessam ao KPI (liveness, docs, assets).
 _SKIP_PREFIXES = ("/health", "/docs", "/redoc", "/static", "/tzdata/")
@@ -575,11 +575,15 @@ def _quality_matrix_snapshot() -> list[dict]:
         rows = conn.execute(
             "SELECT port_id, data_source, live_detail FROM port_metrics ORDER BY port_id"
         ).fetchall()
-        paired = set(
-            r[0] for r in conn.execute(
-                "SELECT port_id FROM calibration_pairs WHERE matched=1"
-            ).fetchall()
-        )
+        paired: set[str] = set()
+        try:
+            paired = set(
+                r[0] for r in conn.execute(
+                    "SELECT port_id FROM calibration_pairs WHERE matched=1"
+                ).fetchall()
+            )
+        except Exception:
+            paired = set()
         out = []
         for pid, ds, ld in rows:
             live = ds is not None and ds.startswith("live:")

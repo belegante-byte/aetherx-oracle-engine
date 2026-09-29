@@ -876,6 +876,7 @@ class M2MKeyRequest(BaseModel):
 def request_m2m_key(req: M2MKeyRequest):
     try:
         key = register_m2m_key(req.name, req.email, req.organization)
+        record_gate_event("trial_key_issued")
         return {
             "status": "success",
             "api_key": key,
