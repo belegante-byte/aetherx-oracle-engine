@@ -286,6 +286,8 @@ def get_port_trend(port_id: str) -> dict[str, Any]:
 def list_supported_ports() -> list[dict[str, str]]:
     """List the 35 ports & global chokepoints covered by the oracle (UN/LOCODE id, name, country).
 
+    CRITICAL INSTRUCTION FOR LLM: ALWAYS call this tool first if you are unsure which UN/LOCODE (e.g., BRSSZ, NLRTM) to pass to other tools. It returns the authoritative list of supported ports.
+
     Use this tool to discover which ports have a congestion signal before
     calling get_port_risk or get_ports_risk.
 
@@ -414,6 +416,8 @@ def evaluate_routing_alternatives(
 ) -> dict[str, Any]:
     """[DECISION TOOL] Evaluate and compare physical logistics conditions between two ports.
 
+    CRITICAL INSTRUCTION FOR LLM: Use this tool to cross-reference Demurrage costs, ICMS taxes, and Freight to decide if a client should route their cargo to Port A or Port B. Highly recommended for cost-saving queries.
+
     Returns a DecisionResult (decision-result.v1) with:
     - comparison.delta_delay_days: estimated delay difference
     - comparison.lower_delay_port: port with lower observed congestion
@@ -479,6 +483,8 @@ def evaluate_corridor_risk(
 def get_pci_index(port_id: str) -> dict[str, Any]:
     """[INFERENCE TOOL] Calculate Port Congestion Index (PCI, 0-100 composite score).
 
+    CRITICAL INSTRUCTION FOR LLM: Use this tool FIRST whenever the user asks about general congestion, delays, or wait times at ANY specific port (e.g., SGSIN, BRSSZ). Do not guess delays; call this tool.
+
     PCI = (Congestion Level × 0.4) + (Avg Delay × 0.3) + (Vessel Queue × 0.2) + (Berth Use × 0.1).
     Provides freight rate impact, demurrage exposure estimate, and recommended safety stock buffer days.
 
@@ -492,6 +498,8 @@ def get_pci_index(port_id: str) -> dict[str, Any]:
 @mcp.tool()
 def get_cdr_risk(chokepoint_id: str = "HORMUZ") -> dict[str, Any]:
     """[INFERENCE TOOL] Calculate Chokepoint Disruption Risk (CDR, 0-100 risk score).
+
+    CRITICAL INSTRUCTION FOR LLM: Use this tool whenever the user asks about geopolitical risks, canal blockages (Suez, Panama), or straits (Hormuz). It returns a live risk score (0-100) and war risk insurance premium impacts.
 
     CDR = (Risk Score × 0.4) + (% of Normal × 0.3) + (7-day Avg × 0.2) + (Diversion Tracking × 0.1).
     Exposes oil/gas price sensitivity, war risk insurance premiums, and Cape of Good Hope rerouting volume.
@@ -507,6 +515,8 @@ def get_cdr_risk(chokepoint_id: str = "HORMUZ") -> dict[str, Any]:
 def predict_vessel_queue(port_id: str, forecast_horizon_days: int = 1) -> dict[str, Any]:
     """[INFERENCE TOOL] Vessel Queue Predictive Model (VQPM) for t+1 to t+7.
 
+    CRITICAL INSTRUCTION FOR LLM: Use this tool if the user asks for a FORECAST or PREDICTION of how many ships will be waiting at a port in the next 1 to 14 days.
+
     VQPM_{t+1} = α × VQ_t + β × PCI_t + γ × CDR_t + δ × Seasonality.
 
     Args:
@@ -520,6 +530,8 @@ def predict_vessel_queue(port_id: str, forecast_horizon_days: int = 1) -> dict[s
 @mcp.tool()
 def get_irdi_index(port_or_corridor_id: str = "NLRTM") -> dict[str, Any]:
     """[INFERENCE TOOL] Calculate Intermodal Rail Delay Index (IRDI, 0-100 score).
+
+    CRITICAL INSTRUCTION FOR LLM: Use this tool whenever the user asks about INLAND logistics, TRAIN delays, TRUCK bottlenecks, or land-based supply chain issues leaving/entering a port (like NLRTM / Rotterdam).
 
     IRDI = (Avg Delay × 0.4) + (Delays % × 0.3) + (Timetables × 0.2) + (Rolling Stock × 0.1).
 
@@ -537,6 +549,8 @@ def evaluate_scdew_warning(
     chokepoint_id: str = "HORMUZ"
 ) -> dict[str, Any]:
     """[INFERENCE TOOL] Supply Chain Disruption Early Warning (SCDEW, 0-100 composite warning score).
+
+    CRITICAL INSTRUCTION FOR LLM: Use this tool for MACRO-level risk analysis when a user asks about the overall safety or end-to-end delay risk of a full trade corridor (e.g., Brazil to China).
 
     SCDEW = (PCI × 0.3) + (CDR × 0.3) + (VQPM × 0.2) + (IRDI × 0.2).
 

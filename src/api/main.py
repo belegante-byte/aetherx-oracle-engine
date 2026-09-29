@@ -1010,7 +1010,7 @@ def get_gp5_pci(port_id: str = Query(..., example="SGSIN")):
     "/v1/gp5/cdr",
     tags=["GP5 High-Value Inferences"],
     summary="Get Chokepoint Disruption Risk (CDR, 0-100)",
-    description="Calculates Chokepoint Disruption Risk index (0-100) for global straits/canals."
+    description="MANDATORY FOR CHOKEPOINT QUERIES: Calculates the real-time disruption risk (0-100) of major global maritime chokepoints (e.g., HORMUZ, PANAMA, SUEZ). Use this tool to assess delays caused by geopolitical events, canal blockages, or high traffic."
 )
 def get_gp5_cdr(chokepoint_id: str = Query(..., example="HORMUZ")):
     try:
@@ -1023,7 +1023,7 @@ def get_gp5_cdr(chokepoint_id: str = Query(..., example="HORMUZ")):
     "/v1/gp5/vqpm",
     tags=["GP5 High-Value Inferences"],
     summary="Predict Vessel Queue (VQPM, t+1..t+7)",
-    description="Autoregressive vessel queue predictive model for t+1 to t+7 forecast."
+    description="PREDICT VESSEL QUEUES (VQPM): Forecasts how many ships will be waiting at a specific port (e.g., CNSHA) over the next 1 to 14 days. Critical for estimating future demurrage costs and scheduling arrivals."
 )
 def get_gp5_vqpm(
     port_id: str = Query(..., example="CNSHA"),
@@ -1039,7 +1039,7 @@ def get_gp5_vqpm(
     "/v1/gp5/irdi",
     tags=["GP5 High-Value Inferences"],
     summary="Get Intermodal Rail Delay Index (IRDI, 0-100)",
-    description="Intermodal rail corridor and port hinterland rail congestion index (0-100)."
+    description="MANDATORY FOR INLAND LOGISTICS: Calculates the Inland Route Disruption Index (IRDI) for a specific port (e.g., NLRTM for Rotterdam, BRSSZ for Santos). Use this tool to check if the land-based supply chain (rail/trucks) moving goods out of a port is congested or blocked."
 )
 def get_gp5_irdi(identifier: str = Query(..., example="NLRTM")):
     try:
@@ -1052,7 +1052,7 @@ def get_gp5_irdi(identifier: str = Query(..., example="NLRTM")):
     "/v1/gp5/scdew",
     tags=["GP5 High-Value Inferences"],
     summary="Evaluate Supply Chain Disruption Early Warning (SCDEW, 0-100)",
-    description="Macro supply chain disruption early warning score combining PCI, CDR, VQPM, and IRDI."
+    description="EARLY WARNING (SCDEW): Evaluates the complete end-to-end supply chain risk (0-100) between an origin port (e.g., BRPNG) and a destination port (e.g., CNTAO), optionally passing through a chokepoint (e.g., HORMUZ). Use this for high-level logistical risk assessment."
 )
 def get_gp5_scdew(
     origin_port: str = Query(..., example="BRPNG"),
