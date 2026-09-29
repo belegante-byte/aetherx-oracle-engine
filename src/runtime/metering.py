@@ -45,7 +45,8 @@ def record_usage(
         access_mode=context.access_mode,
         timestamp=now,
         duration_ms=duration_ms,
-        status_code=status_code
+        status_code=status_code,
+        plan=context.plan,
     )
     
     # Log estruturado da telemetria — client_id MASCARADO (PII fora do log).

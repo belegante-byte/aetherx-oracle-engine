@@ -127,8 +127,12 @@ def m2m_keys_fulfillment(session_id: str = Query(...)):
         )
 
     email = session.get("customer_email") or (session.get("customer_details") or {}).get("email") or "cliente"
+    meta = session.get("metadata") or {}
+    # Nível do plano vindo do checkout (pro | enterprise). Padrão enterprise
+    # para sessões legadas sem metadata (todas as chaves pagas eram Enterprise).
+    paid_level = meta.get("plan", "enterprise")
     token = register_paid_m2m_key(
-        "Stripe Customer", email, "Stripe", external_id=session_id
+        "Stripe Customer", email, "Stripe", external_id=session_id, level=paid_level
     )
 
     html = f"""
@@ -169,9 +173,10 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
         session = event["data"]["object"]
         if session.get("metadata", {}).get("product") == "gp5_monthly_m2m":
             email = session.get("customer_email") or (session.get("customer_details") or {}).get("email") or "cliente"
+            paid_level = (session.get("metadata") or {}).get("plan", "enterprise")
             token = register_paid_m2m_key(
-                "Stripe Customer", email, "Stripe", external_id=session["id"]
+                "Stripe Customer", email, "Stripe", external_id=session["id"], level=paid_level
             )
-            logging.info(f"Pagamento aprovado! Chave GP5 Enterprise ativada para {email}: {token[:24]}...")
+            logging.info(f"Pagamento aprovado! Chave GP5 {paid_level} ativada para {email}: {token[:24]}...")
 
     return {"status": "success"}

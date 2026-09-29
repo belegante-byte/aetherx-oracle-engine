@@ -22,14 +22,28 @@ from src.api.metrics import MetricsMiddleware, metrics_snapshot, record_gate_eve
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 import time
-from src.runtime.access import TRIAL_VALIDITY_DAYS, AUTHENTICATED_PERMISSIONS, authenticate_client, register_m2m_key, is_paid_key
+from src.runtime.access import (
+    TRIAL_VALIDITY_DAYS,
+    AUTHENTICATED_PERMISSIONS,
+    authenticate_client,
+    register_m2m_key,
+    is_paid_key,
+    authorization_gate,
+    upgrade_hint,
+    acquire_slot,
+    release_slot,
+    consume_call_quota,
+    MIN_LEVEL_BY_PATH,
+    PLAN_LABEL,
+    SLOT_LIMITS,
+)
 from src.runtime.contracts.v1 import ClientContext
 from src.runtime.metering import record_usage
 from src.products.gp5.maritime import get_port_physical_events
 from src.products.gp5.fiscal import evaluate_fiscal_routing
 from src.products.gp5.charter_risk import evaluate_charter_risk
 from src.products.gp5.routing import evaluate_routing_alternatives, evaluate_corridor_risk
-from src.engine.risk_model import calculate_port_risk, calculate_port_trend
+from src.engine.risk_model import calculate_port_risk, calculate_port_trend, get_port_history as get_port_history_series
 from src.engine.verified_queue import get_verified_cargo_queue
 from src.engine.analytics import (
     calculate_pci,
@@ -56,6 +70,23 @@ EXAMPLE_BATCH_RESPONSE = {
 }
 ERROR_401_EXAMPLE = {
     "detail": "Missing or invalid paid credential: send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the `X-RapidAPI-Proxy-Secret` header."
+}
+ERROR_403_EXAMPLE = {
+    "detail": "Upgrade necessário: o endpoint /v1/gp5/fiscal-routing exige o plano GP5 Enterprise. Sua chave é GP5 Pro.",
+    "code": "PLAN_REQUIRED",
+    "required_plan": "enterprise",
+    "feature": "/v1/gp5/fiscal-routing",
+    "plan": "pro",
+    "access_mode": "authenticated",
+    "upgrade_hint": "Este endpoint exige o plano GP5 Enterprise (evidência ANTAQ validada, arbitragem de corredor e fiscal-routing). Upgrade em https://aetherx.aether-grid.io/m2m-keys ou via RapidAPI.",
+    "request_id": "req_9f2c1a7b3d4e",
+}
+ERROR_429_EXAMPLE = {
+    "detail": "Limite de slots de integração concorrente atingido (1 simultâneo(s) para o plano GP5 Pro).",
+    "code": "SLOT_LIMIT_EXCEEDED",
+    "plan": "pro",
+    "slot_limit": 1,
+    "upgrade_hint": "Este endpoint exige o plano GP5 Pro (fila ao-live oficial dos 5 portos BR e exposição de demurrage). Upgrade em https://aetherx.aether-grid.io/m2m-keys ou via RapidAPI.",
 }
 ERROR_422_EXAMPLE = {
     "detail": [
@@ -400,6 +431,31 @@ class PortsRiskResponse(BaseModel):
     results: list[PortRiskResponse]
 
 
+class PortHistoryPoint(BaseModel):
+    captured_at: str
+    congestion_score: float | None = None
+    eta_delay_days: float | None = None
+    waiting_vessels: int | None = None
+    freight_volatility_index: float | None = None
+    data_source: str | None = None
+
+
+class PortHistoryResponse(BaseModel):
+    """Série histórica observada (contrato Pro: até 90 dias quando houver dados)."""
+
+    port_id: str
+    series: list[PortHistoryPoint]
+    observations: int
+    days_requested: int
+    days_max: int
+    span_days: float
+    first_seen: str | None = None
+    last_seen: str | None = None
+    data_source: str
+    data_source_label: str
+    coverage_note: str
+
+
 class VerifiedQueueResponse(BaseModel):
     port_id: str
     signal: str
@@ -601,7 +657,84 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                 from starlette.responses import Response
                 return Response(content=body, status_code=403, media_type="application/json")
 
-        # ── 2. Boundary: Decision MCP tools + quota de observation ──────────
+        # ── 2. Tier gate da REST paga (engenharia de produto 2026-09-29) ─────
+        # Aplicado a endpooints em MIN_LEVEL_BY_PATH quando acessados com chave
+        # Bearer paga. O proxy do marketplace (is_rapidapi_paid) é o rail ativo
+        # (RapidAPI cobra/mede; tier em X-RapidAPI-Subscription) → passa direto
+        # como enterprise-equivalente, preservando compatibilidade do fluxo.
+        # Aqui o RapidAPIGuard (mais externo) já validou a chave como paga, então
+        # credencial inválida nunca chega — sem fallback legacy na REST paga.
+        slot_token = ""
+        if not is_rapidapi_paid and path in MIN_LEVEL_BY_PATH:
+            raw = (request.headers.get("authorization") or "").strip()
+            if raw.lower().startswith("bearer "):
+                raw = raw[7:].strip()
+            gate = authorization_gate(raw, path)
+            if not gate["allowed"]:
+                # 403 com upgrade_hint — chave paga abaixo do nível do endpoint.
+                request_id = getattr(request.state, "request_id", "")
+                body = json.dumps({
+                    "detail": (
+                        f"Upgrade necessário: o endpoint {path} exige o plano "
+                        f"{PLAN_LABEL[gate['required_plan']]}. Sua chave é {PLAN_LABEL[gate['plan']]}."
+                    ),
+                    "code": "PLAN_REQUIRED",
+                    "required_plan": gate["required_plan"],
+                    "feature": path,
+                    "plan": gate["plan"],
+                    "access_mode": context.access_mode,
+                    "upgrade_hint": upgrade_hint(gate["required_plan"]),
+                    "request_id": request_id,
+                }).encode("utf-8")
+                record_usage(context, product="gp5", tool=path, duration_ms=0, status_code=403)
+                record_gate_event("tier_denied")
+                from starlette.responses import Response
+                return Response(content=body, status_code=403, media_type="application/json")
+
+            # Slots: integrações concorrentes autorizadas (não quantidade de chamadas).
+            if not acquire_slot(raw):
+                body = json.dumps({
+                    "detail": (
+                        f"Limite de slots de integração concorrente atingido "
+                        f"({SLOT_LIMITS[gate['plan']]} simultâneo(s) para o plano "
+                        f"{PLAN_LABEL[gate['plan']]})."
+                    ),
+                    "code": "SLOT_LIMIT_EXCEEDED",
+                    "plan": gate["plan"],
+                    "slot_limit": SLOT_LIMITS.get(gate["plan"], 0),
+                    "upgrade_hint": upgrade_hint("enterprise" if gate["plan"] != "enterprise" else "enterprise"),
+                }).encode("utf-8")
+                record_usage(context, product="gp5", tool=path, duration_ms=0, status_code=429)
+                record_gate_event("slot_denied")
+                from starlette.responses import Response
+                return Response(content=body, status_code=429, media_type="application/json")
+            slot_token = raw
+
+            # Quota diária de chamadas do plano (independente dos slots).
+            q = consume_call_quota(raw)
+            if not q["allowed"]:
+                body = json.dumps({
+                    "detail": (
+                        f"Quota diária de chamadas do plano {PLAN_LABEL[q['plan']]} "
+                        f"esgotada ({q['used']}/{q['limit']})."
+                    ),
+                    "code": "CALL_QUOTA_EXCEEDED",
+                    "plan": q["plan"],
+                    "used": q["used"],
+                    "limit": q["limit"],
+                    "quota_resets": "midnight_utc",
+                    "upgrade_hint": upgrade_hint("enterprise" if q["plan"] != "enterprise" else "enterprise"),
+                }).encode("utf-8")
+                record_usage(context, product="gp5", tool=path, duration_ms=0, status_code=429)
+                record_gate_event("quota_denied")
+                from starlette.responses import Response
+                return Response(content=body, status_code=429, media_type="application/json")
+            request.state.call_quota = q
+            request.state.plan_header = gate["plan"]
+        elif is_rapidapi_paid and path in MIN_LEVEL_BY_PATH:
+            request.state.plan_header = "enterprise"
+
+        # ── 3. Boundary: Decision MCP tools + quota de observation ──────────
         # O protocolo MCP usa POST /mcp com um body JSON-RPC.
         # Inspecionamos o campo "method" e "params.name" para identificar tool calls.
         if path.startswith("/mcp") and request.method == "POST":
@@ -682,7 +815,13 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
             except Exception:
                 pass  # Falha silenciosa: deixa passar, o servidor MCP emitirá o erro correto
 
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        finally:
+            # Libera o slot de integração concorrente reservado no tier gate,
+            # garantido mesmo em caso de erro interno da rota.
+            if slot_token:
+                release_slot(slot_token)
 
         duration_ms = int((time.monotonic() - t0) * 1000)
         record_usage(
@@ -692,6 +831,21 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
             duration_ms=duration_ms,
             status_code=response.status_code
         )
+        q = getattr(request.state, "call_quota", None)
+        if q is not None:
+            try:
+                response.headers["X-Call-Quota-Used"] = str(q["used"])
+                response.headers["X-Call-Quota-Limit"] = str(q["limit"])
+                response.headers["X-Call-Quota-Remaining"] = str(max(0, q["limit"] - q["used"]))
+            except Exception:
+                pass
+        plan = getattr(request.state, "plan_header", None)
+        if plan:
+            try:
+                response.headers["X-Plan"] = plan
+                response.headers["X-Slot-Limit"] = str(SLOT_LIMITS.get(plan, 0))
+            except Exception:
+                pass
         if getattr(request.state, "quota_left", None) is not None:
             try:
                 response.headers["X-Observation-Quota-Left"] = str(request.state.quota_left)
@@ -959,9 +1113,17 @@ def ai_plugin_manifest():
     summary="Get verified cargo queue signal for a single port",
     description=(
         "Returns the physical queue wait logic strictly based on observed anchored vessels. "
-        "Unlike `port-risk`, this endpoint returns INSUFFICIENT_OBSERVATION if the port is not monitored live."
+        "Unlike `port-risk`, this endpoint returns INSUFFICIENT_OBSERVATION if the port is not monitored live. "
+        "**GP5 Enterprise**: evidência validada (calibração ANTAQ) e séries de observação. "
+        "Chave Pro recebe 403 com `upgrade_hint`."
     ),
-    response_description="Verified observation of port congestion by cargo."
+    response_description="Verified observation of port congestion by cargo.",
+    responses={
+        403: {
+            "description": "Enterprise plan required (ANTAQ validated evidence).",
+            "content": {"application/json": {"example": ERROR_403_EXAMPLE}},
+        },
+    },
 )
 def get_verified_queue(
     port_id: str = Query(
@@ -1050,7 +1212,13 @@ def get_gp5_corridor_eval(
     "/v1/gp5/fiscal-routing",
     tags=["GP5 Fiscal"],
     summary="Evaluate fiscal and logistical arbitrage across alternative ports",
-    description="Cross-references congestion delay penalties with regional ICMS tax burdens to find the cheapest overall route."
+    description="Cross-references congestion delay penalties with regional ICMS tax burdens to find the cheapest overall route. **GP5 Enterprise only** — chave Pro recebe 403 com `upgrade_hint`.",
+    responses={
+        403: {
+            "description": "Enterprise plan required (fiscal routing / corridor arbitrage).",
+            "content": {"application/json": {"example": ERROR_403_EXAMPLE}},
+        },
+    },
 )
 def get_gp5_fiscal_routing(
     intended_port_id: str = Query(..., example="BRSSZ"),
@@ -1163,6 +1331,14 @@ def get_gp5_scdew(
             "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
             "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
         },
+        403: {
+            "description": "Plan tier below the endpoint requirement: upgrade to the plan named in `upgrade_hint` (slots and daily call quota are applied per plan).",
+            "content": {"application/json": {"example": ERROR_403_EXAMPLE}},
+        },
+        429: {
+            "description": "Concurrent integration slot limit or daily call quota exhausted for the current plan.",
+            "content": {"application/json": {"example": ERROR_429_EXAMPLE}},
+        },
         422: {
             "description": "Validation error: the port_id query parameter is required.",
             "content": {"application/json": {"example": ERROR_422_EXAMPLE}},
@@ -1207,6 +1383,14 @@ def get_port_risk(
             "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
             "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
         },
+        403: {
+            "description": "Plan tier below the endpoint requirement: upgrade to the plan named in `upgrade_hint` (slots and daily call quota are applied per plan).",
+            "content": {"application/json": {"example": ERROR_403_EXAMPLE}},
+        },
+        429: {
+            "description": "Concurrent integration slot limit or daily call quota exhausted for the current plan.",
+            "content": {"application/json": {"example": ERROR_429_EXAMPLE}},
+        },
         422: {
             "description": "Validation error: the port_id query parameter is required.",
             "content": {"application/json": {"example": ERROR_422_EXAMPLE}},
@@ -1222,6 +1406,55 @@ def get_port_trend(
 ):
     try:
         return calculate_port_trend(port_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/port-history",
+    response_model=PortHistoryResponse,
+    tags=["Port Risk"],
+    summary="Observed congestion history for a port (up to 90 days, Pro+)",
+    description=(
+        "Returns the OBSERVED historical series for a port from the persisted "
+        "snapshot history: `congestion_score`, `eta_delay_days`, `waiting_vessels`, "
+        "`freight_volatility_index` per `captured_at`. Coverage is explicit: "
+        "`observations`, `span_days`, `first_seen`, `last_seen` and `coverage_note` "
+        "declare the real coverage of the requested window (up to 90 days on Pro). "
+        "Where observations are missing there is NO interpolation — the gap is explicit. "
+        "This is history, not a forecast. Paid access: send `Authorization: "
+        "Bearer <chave paga>` or the `X-RapidAPI-Proxy-Secret` header."
+    ),
+    response_description="The observed history series and its explicit real coverage.",
+    responses={
+        401: {
+            "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
+            "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
+        },
+        403: {
+            "description": "Plan tier below the endpoint requirement: upgrade to the plan named in `upgrade_hint` (slots and daily call quota are applied per plan).",
+            "content": {"application/json": {"example": ERROR_403_EXAMPLE}},
+        },
+        429: {
+            "description": "Concurrent integration slot limit or daily call quota exhausted for the current plan.",
+            "content": {"application/json": {"example": ERROR_429_EXAMPLE}},
+        },
+        422: {
+            "description": "Validation error: the port_id query parameter is required.",
+            "content": {"application/json": {"example": ERROR_422_EXAMPLE}},
+        },
+    },
+)
+def get_port_history(
+    port_id: str = Query(
+        ...,
+        description="UN/LOCODE of the port, e.g. BRSSZ (Santos), CNSHA (Shanghai).",
+        examples=["BRSSZ"],
+    ),
+    days: int = Query(90, ge=1, le=90, description="History window in days (max 90)."),
+):
+    try:
+        return get_port_history_series(port_id, days)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

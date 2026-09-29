@@ -3,6 +3,50 @@
 Histórico de mudanças relevantes do **Aether-X Oracle Engine**. Formato baseado em
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.0] — 2026-09-29
+
+### Adicionado (controle de acesso por plano — engenharia de produto)
+- **Três níveis aplicados no servidor: Free/Trial, Pro e Enterprise.** A chave
+  carrega um nível persistido (`_KEY_LEVELS` em `m2m_keys_meta.json`) e cada
+  endpoint pago declara o nível mínimo em `MIN_LEVEL_BY_PATH`
+  (`src/runtime/access.py`). Antes, Pro e Enterprise recebiam a mesma chave com a
+  mesma permissão — não havia diferença de produto.
+- **Pro** = sinais dos 5 portos BR com fila de autoridade (`port-risk`,
+  `port-trend`, `ports-risk`, índice físico, charter/corridor risk, PCI/CDR/VQPM/
+  IRDI/SCDEW) **+ novo endpoint `/v1/port-history`** (série observada de até 90
+  dias, com cobertura real declarada: `observations`, `span_days`, `first_seen`,
+  `last_seen`, `coverage_note` — sem interpolação onde falta observação).
+- **Enterprise** = tudo do Pro + arbitragem (`routing-eval`, `fiscal-routing`) e
+  evidência validada (`verified-queue`/ANTAQ).
+- **Slots = integrações/consumidores simultâneos, não chamadas.** Limite de
+  concorrência por chave (`SLOT_LIMITS`: Pro 1, Enterprise 5) aplicado na REST
+  paga e liberado em `finally` (inclusive em erro de rota). As **quotas de
+  chamadas são independentes dos slots** (`DAILY_CALL_QUOTA`: Pro 5.000/dia,
+  Enterprise 50.000/dia, sobrescrevível por `GP5_DAILY_CALL_QUOTA_*`).
+- **Erros de plano são explícitos e acionáveis:** 403 `PLAN_REQUIRED` com
+  `required_plan`, `plan`, `feature` e `upgrade_hint`; 429 `SLOT_LIMIT_EXCEEDED` /
+  `CALL_QUOTA_EXCEEDED` (com `used`, `limit`, `quota_resets`). Sucesso devolve
+  `X-Plan`, `X-Slot-Limit` e `X-Call-Quota-{Used,Limit,Remaining}`.
+- **Medição por plano:** `ClientContext.plan` e `UsageEvent.plan` (nível no
+  registro de uso). Sem exposição de chave ou PII — o `client_id` segue
+  mascarado por sha256 no log.
+- **Chaves Pro emitidas com prefixo `gp5_pro_*`** (Enterprise segue
+  `gp5_enterprise_*`); fulfillment Stripe/webhook leem `metadata.plan`
+  (default `enterprise` para sessões legadas).
+- Testes: `tests/test_tier_restrictions.py` (16 casos — um por regra: trial não
+  abre REST, matriz de níveis, 403+upgrade_hint, slots por concorrência, quota
+  independente, proxy do marketplace, plano na medição, integridade do
+  histórico). Suíte: 137 testes passando.
+
+### Integridade comercial
+- Nenhum plano anuncia SLA: quotas e slots são **best-effort por instância de
+  deploy** (contadores em memória; reseta em restart), documentado aqui e no
+  `AGENTS.md`.
+- `/v1/port-history` retorna somente observações persistidas e declara a lacuna —
+  histórico nunca é apresentado como previsão nem como dado ao vivo.
+- O proxy do marketplace (rail ativo) segue passando como enterprise-equivalente:
+  o tier é aplicado no gateway do RapidAPI, preservando o fluxo de cobrança atual.
+
 ## [1.3.3] — 2026-09-29
 
 ### Alterado (pivô do Giovanni — bloqueio documental no Stripe)

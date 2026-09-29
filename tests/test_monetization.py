@@ -23,6 +23,7 @@ def _fresh_cofre(tmp_path, monkeypatch):
     monkeypatch.setattr(access, "_KEY_META", {})
     monkeypatch.setattr(access, "_KEY_PLANS", {})
     monkeypatch.setattr(access, "_PAYMENT_GRANTS", {})
+    monkeypatch.setattr(access, "_KEY_LEVELS", {})
     access.load_keys_from_disk()
 
 
@@ -274,6 +275,7 @@ def test_rest_product_with_paid_key_bearer_200(tmp_path, monkeypatch):
     monkeypatch.setattr(access, "_KEY_META", {})
     monkeypatch.setattr(access, "_KEY_PLANS", {})
     monkeypatch.setattr(access, "_PAYMENT_GRANTS", {})
+    monkeypatch.setattr(access, "_KEY_LEVELS", {})
     access.load_keys_from_disk()
 
     key = register_paid_m2m_key("Trader", "ceo@corp.com.br", "Acme", "evt_coexist_1")
@@ -297,6 +299,7 @@ def test_rest_product_with_trial_key_still_401(tmp_path, monkeypatch):
     monkeypatch.setattr(access, "_KEY_META", {})
     monkeypatch.setattr(access, "_KEY_PLANS", {})
     monkeypatch.setattr(access, "_PAYMENT_GRANTS", {})
+    monkeypatch.setattr(access, "_KEY_LEVELS", {})
     access.load_keys_from_disk()
 
     key = register_m2m_key("Agent", "agent@corp.com.br", "Acme")

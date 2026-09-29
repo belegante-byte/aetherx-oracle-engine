@@ -438,3 +438,74 @@ def calculate_port_trend(port_id: str, horizons: tuple = TREND_HORIZONS) -> dict
         "data_source": "predictive_ml_regression",
         "data_source_label": "Local ML Regression (Numpy) trained on historical telemetry.",
     }
+
+HISTORY_MAX_DAYS = 90  # contrato Pro: séries históricas de até 90 dias
+
+
+def get_port_history(port_id: str, days: int = HISTORY_MAX_DAYS) -> dict:
+    """Série histórica observada de um porto (contrato Pro: até 90 dias).
+
+    Integraidade (sem over-promise): devolve SOMENTE observações realmente
+    persistidas em `port_metrics_history` e declara a cobertura real
+    (`observations`, `first_seen`, `last_seen`, `span_days`, `days_requested`).
+    Um porto com histórico curto não é preenchido com dado sintético — o
+    cliente vê a lacuna.
+    """
+    days = max(1, min(int(days), HISTORY_MAX_DAYS))
+    upper = (port_id or "").strip().upper()
+    conn = _get_conn()
+    rows = conn.execute(
+        """
+        SELECT captured_at, congestion_score, eta_delay_days, waiting_vessels,
+               freight_volatility_index, data_source
+        FROM port_metrics_history
+        WHERE port_id = ?
+          AND captured_at >= current_timestamp - (? * interval '1 day')
+        ORDER BY captured_at ASC
+        """,
+        [upper, days],
+    ).fetchall()
+    series = [
+        {
+            "captured_at": r[0].isoformat() if hasattr(r[0], "isoformat") else str(r[0]),
+            "congestion_score": r[1],
+            "eta_delay_days": r[2],
+            "waiting_vessels": r[3],
+            "freight_volatility_index": r[4],
+            "data_source": r[5],
+        }
+        for r in rows
+    ]
+    first_seen = series[0]["captured_at"] if series else None
+    last_seen = series[-1]["captured_at"] if series else None
+    span_days = 0.0
+    if series:
+        try:
+            span_days = round(
+                (datetime.fromisoformat(last_seen) - datetime.fromisoformat(first_seen)).total_seconds()
+                / 86400.0,
+                2,
+            )
+        except Exception:
+            span_days = 0.0
+    return {
+        "port_id": upper,
+        "series": series,
+        "observations": len(series),
+        "days_requested": days,
+        "days_max": HISTORY_MAX_DAYS,
+        "span_days": span_days,
+        "first_seen": first_seen,
+        "last_seen": last_seen,
+        "data_source": "observed_history" if series else "no_history_observations",
+        "data_source_label": (
+            "Série de observações persistidas (snapshot history). Não é previsão."
+            if series
+            else "Sem observações históricas persistidas para a janela solicitada."
+        ),
+        "coverage_note": (
+            f"Série observada: {len(series)} ponto(s) em {span_days}d de uma janela "
+            f"contratada de até {days}d (máx {HISTORY_MAX_DAYS}d). Onde faltam "
+            "observações, não há interpolação — a lacuna é explícita."
+        ),
+    }

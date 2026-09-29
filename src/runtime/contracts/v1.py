@@ -54,9 +54,12 @@ class ClientContext(BaseModel):
     """Contexto de identidade e autorização do cliente M2M."""
     request_id: str = ""
     client_id: str
-    access_mode: str  # legacy | authenticated
+    access_mode: str  # legacy | authenticated | rapidapi_paid
     product: str = "gp5"
     permissions: List[str] = Field(default_factory=list)
+    # Plano contratado (trial | pro | enterprise | "" para anônimo/legado).
+    # Autoridade do nível; usado pelos gates de acesso da REST paga (AGENTS.md).
+    plan: str = ""
 
     def has_permission(self, permission: str) -> bool:
         """Verifica se o cliente possui uma permissão específica.
@@ -80,6 +83,8 @@ class UsageEvent(BaseModel):
     timestamp: str
     duration_ms: int
     status_code: int
+    # Nível de plano do cliente no momento do uso ("" se não se aplica).
+    plan: str = ""
 
 
 class DecisionResult(BaseModel):

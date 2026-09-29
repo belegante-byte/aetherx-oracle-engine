@@ -25,8 +25,25 @@ colateral".**
   <chave>` OU `X-RapidAPI-Proxy-Secret` (requests do proxy do marketplace — o
   **canal ativo hoje**). NÃO aceitar trial na REST paga.
 - Escada de preços (vive no `PLANS` de monetization.py e nos preços/planos do
-  dashboard Stripe): Pro US$ 499/mo (US$ 4.990/ano) e Enterprise US$ 5.000/mo
-  (US$ 50.000/ano); ambos concedem o mesmo nível de decisão (GP5_ENTERPRISE).
+   dashboard Stripe): Pro US$ 499/mo (US$ 4.990/ano) e Enterprise US$ 5.000/mo
+   (US$ 50.000/ano).
+- **Níveis de acessoapplied no servidor (1.4.0):** cada chave carrega um nível
+  (`trial` | `pro` | `enterprise`) persistido em `m2m_keys_meta.json`
+  (`_KEY_LEVELS`). O que cada nível entrega está em `MIN_LEVEL_BY_PATH`,
+  `SLOT_LIMITS` e `DAILY_CALL_QUOTA` em `src/runtime/access.py` — **esses mapas
+  são a referência única do contrato comercial**; mudou o que o cliente paga,
+  muda o mapa + teste em `tests/test_tier_restrictions.py`.
+  - `trial`: só MCP (funil free). NUNCA abre REST paga.
+  - `pro`: sinais dos 5 portos BR ao-vivo (`port-risk`, `port-trend`,
+    `ports-risk`, `port-history` até 90d observados, índice físico, charter/
+    corridor risk, PCI/CDR/VQPM/IRDI/SCDEW) + 1 slot + quota diária própria.
+  - `enterprise`: Pro + `routing-eval`/`fiscal-routing` (arbitragem) +
+    `verified-queue` (evidência ANTAQ) + até 5 slots + quota maior.
+  - Slots são **integrações simultâneas**, nunca quantidade de chamadas; a quota
+  de chamadas é independente. Ambos são best-effort POR INSTÂNCIA (memória,
+  reseta em restart) — **não anuncie SLA de cota**.
+  - Requests do proxy do marketplace (rail ativo) passam como
+    enterprise-equivalente: quem cobra e mede o tier é o RapidAPI.
 - Trial M2M (30 dias) é só lead-gen: `POST /v1/m2m/request-key` e o tool MCP
   `request_m2m_key` emitem APENAS trial, que dá acesso SÓ ao MCP. Nunca
   transforme trial em chave paga nem deixe trial abrir a REST paga.
@@ -50,7 +67,7 @@ colateral".**
   SEO/docs (`/docs`, `/redoc`, `/public/`, `/port-congestion-*`,
   `/arbitragem-logistica/*`, verificação Google/Bing, `/openapi*.json`).
 - REST pago NUNCA público: `/v1/port-risk`, `/v1/port-trend`, `/v1/ports-risk`,
-  `/v1/gp5/*`.
+  `/v1/port-history`, `/v1/verified-queue`, `/v1/gp5/*`.
 
 ## 3. Regras de commit
 
