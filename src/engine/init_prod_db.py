@@ -45,6 +45,7 @@ PORTS = [
     {"port_id": "USSEA", "port_name": "Seattle / Tacoma", "country": "EUA", "congestion_score": 0.46, "eta_delay_days": 0.9, "waiting_vessels": 6, "freight_volatility_index": 0.30},
     {"port_id": "CAVAN", "port_name": "Vancouver", "country": "Canadá", "congestion_score": 0.57, "eta_delay_days": 1.2, "waiting_vessels": 9, "freight_volatility_index": 0.37},
     # ── Europa & Oriente Médio ──
+    {"port_id": "NLAMS", "port_name": "Amsterdam", "country": "Holanda", "congestion_score": 0.38, "eta_delay_days": 0.6, "waiting_vessels": 4, "freight_volatility_index": 0.25},
     {"port_id": "NLRTM", "port_name": "Rotterdam", "country": "Holanda", "congestion_score": 0.40, "eta_delay_days": 0.8, "waiting_vessels": 6, "freight_volatility_index": 0.29},
     {"port_id": "DEHAM", "port_name": "Hamburg", "country": "Alemanha", "congestion_score": 0.44, "eta_delay_days": 0.9, "waiting_vessels": 7, "freight_volatility_index": 0.30},
     {"port_id": "BEANT", "port_name": "Antwerp", "country": "Bélgica", "congestion_score": 0.41, "eta_delay_days": 0.8, "waiting_vessels": 6, "freight_volatility_index": 0.28},
