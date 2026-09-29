@@ -13,6 +13,7 @@ from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 from src.products.gp5.fiscal import evaluate_fiscal_routing
 
 PRODUCTION_URL = "https://aetherx.aether-grid.io"
+RAPIDAPI_URL = "https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle"
 REGISTRY_URL = "io.github.belegante-byte/aetherx-mcp"
 PYPI_SDK = "https://pypi.org/project/aetherx-oracle/"
 PYPI_MCP = "https://pypi.org/project/aetherx-mcp/"
@@ -127,7 +128,7 @@ def _page(title: str, meta_description: str, h1: str, lede: str, body: str, cano
 <h1>{h1}</h1>
 <p class="lede muted">{lede}</p>
 {body}
-<div class="footer">Aether Grid Port Congestion Oracle &middot; Free trial 30 dias <a href="{PRODUCTION_URL}/m2m-keys">/m2m-keys</a> &middot; Pago via Stripe <a href="{PRODUCTION_URL}/checkout/gp5-pro">US$ 499/mês</a> &middot; <a href="{PYPI_SDK}">PyPI SDK</a> &middot; <a href="{PYPI_MCP}">MCP server</a> &middot; MCP Registry: {REGISTRY_URL}</div>
+<div class="footer">Aether Grid Port Congestion Oracle &middot; Free trial 30 dias <a href="{PRODUCTION_URL}/m2m-keys">/m2m-keys</a> &middot; <a href="{RAPIDAPI_URL}">RapidAPI</a> &middot; <a href="{PYPI_SDK}">PyPI SDK</a> &middot; <a href="{PYPI_MCP}">MCP server</a> &middot; MCP Registry: {REGISTRY_URL}</div>
 </div>
 </body>
 </html>"""
@@ -412,47 +413,18 @@ def m2m_keys_page_html() -> str:
     </div>
 
     
-    <div style="display:flex; flex-wrap:wrap; gap:1.5rem; justify-content:center; margin: 0 auto 3rem; max-width:1100px;">
-      <div class="card" style="flex:1 1 300px; margin:0; padding:2rem; border-color:#38bdf8; background: rgba(56, 189, 248, 0.05);">
-        <h2 style="font-size:1.3rem; margin-bottom:0.4rem; color:#38bdf8;">GP5 Pro</h2>
-        <div style="font-size:1.7rem; font-weight:bold; color:#f8fafc;">US$ 499<span style="font-size:0.9rem; color:#94a3b8; font-weight:normal;"> /mês</span></div>
-        <div style="color:#64748b; font-size:0.85rem; margin-bottom:1rem;">ou US$ 4.990/ano (2 meses grátis)</div>
-        <ul style="color:#cbd5e1; font-size:0.9rem; line-height:1.7; padding-left:1.1rem; margin-bottom:1.5rem;">
-          <li>Decision Tools (Arbitragem Fiscal + Risco de Fretamento)</li>
-          <li>REST paga + MCP com chave própria, cobrada pelo Stripe</li>
-          <li>Ideal para trading desks e agentes MCP single-tenant</li>
-        </ul>
-        <form method="GET" action="/checkout/gp5-pro">
-          <div style="margin-bottom:1rem;">
-            <label style="display:block; color:#cbd5e1; font-size:0.85rem; margin-bottom:0.3rem;">E-mail do Gestor da Conta *</label>
-            <input type="email" name="email" required placeholder="ceo@trading.com.br" style="width:100%; padding:0.75rem; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:6px;">
-          </div>
-          <button type="submit" style="width:100%; padding:0.85rem; background:#38bdf8; color:#082f49; border:none; font-weight:bold; font-size:1rem; border-radius:6px; cursor:pointer;">
-            Assinar GP5 Pro →
-          </button>
-        </form>
-      </div>
-
-      <div class="card" style="flex:1 1 300px; margin:0; padding:2rem; border-color:#f59e0b; background: rgba(245, 158, 11, 0.05);">
-        <div class="pill-amber">FLAGSHIP · Brasil</div>
-        <h2 style="font-size:1.3rem; margin-bottom:0.4rem; color:#f59e0b;">GP5 Enterprise</h2>
-        <div style="font-size:1.7rem; font-weight:bold; color:#f8fafc;">US$ 5.000<span style="font-size:0.9rem; color:#94a3b8; font-weight:normal;"> /mês</span></div>
-        <div style="color:#64748b; font-size:0.85rem; margin-bottom:1rem;">ou US$ 50.000/ano · multi-slot · SLA dedicado</div>
-        <ul style="color:#cbd5e1; font-size:0.9rem; line-height:1.7; padding-left:1.1rem; margin-bottom:1.5rem;">
-          <li>Tudo do GP5 Pro + uso estendido e prioridade</li>
-          <li>Parâmetros de demurrage por operação</li>
-          <li>Onboarding dedicado, topo da escada (quote-gated)</li>
-        </ul>
-        <form method="GET" action="/checkout/gp5-monthly">
-          <div style="margin-bottom:1rem;">
-            <label style="display:block; color:#cbd5e1; font-size:0.85rem; margin-bottom:0.3rem;">E-mail do Gestor da Conta *</label>
-            <input type="email" name="email" required placeholder="ceo@trading.com.br" style="width:100%; padding:0.75rem; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:6px;">
-          </div>
-          <button type="submit" style="width:100%; padding:0.85rem; background:#f59e0b; color:#1e293b; border:none; font-weight:bold; font-size:1rem; border-radius:6px; cursor:pointer;">
-            Assinar GP5 Enterprise →
-          </button>
-        </form>
-      </div>
+    <div class="card" style="max-width:650px; margin: 0 auto 3rem; padding: 2rem; border-color:#38bdf8; background: rgba(56, 189, 248, 0.05);">
+      <h2 style="font-size:1.4rem; margin-bottom:0.5rem; color:#38bdf8;">Acesso Pago via RapidAPI</h2>
+      <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:1rem;">Pagamento, assinatura e uso medido são operados pelo marketplace <strong>RapidAPI</strong> — merchant of record da API. Assine lá e suas chamadas REST às Decision Tools são autenticadas pelo proxy (<code>X-RapidAPI-Proxy-Secret</code>) e cobradas pelo seu plano.</p>
+      <ul style="color:#cbd5e1; font-size:0.9rem; line-height:1.7; padding-left:1.1rem; margin-bottom:1.5rem;">
+        <li>Planos em escada (free / metered / PRO) geridos pela RapidAPI</li>
+        <li>Sem chaves manuais: o proxy do marketplace autentica suas requisições</li>
+        <li>REST <code>/v1/port-risk</code>, <code>/v1/gp5/*</code> contadas por plano</li>
+      </ul>
+      <a href="https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle" target="_blank" rel="noopener" style="display:inline-block; padding:0.85rem 2rem; background:#38bdf8; color:#082f49; text-decoration:none; font-weight:bold; font-size:1rem; border-radius:6px;">
+        Assinar na RapidAPI →
+      </a>
+      <p style="color:#64748b; font-size:0.85rem; margin-top:1rem;">Migração futura: assinatura direta via Stripe (em verificação da conta). Quando ativada, o checkout nos emite chave <code>gp5_enterprise_*</code> aceita na REST e no MCP.</p>
     </div>
 
     <div class="card" style="max-width:650px; margin: 0 auto 3rem; padding: 2rem;">
@@ -810,7 +782,7 @@ def fiscal_demo_page(intended_port: str = "BRSSZ", commodity: str = "FERTILIZANT
             <h3 style="color: white; font-size: 1.8rem; margin-bottom: 15px;">Quer plugar essa inteligência no ERP da sua empresa?</h3>
             <p style="color: #9ca3af; font-size: 1.1rem; margin-bottom: 30px;">O Motor GP5 toma essas decisões sozinho (M2M) para todos os navios que você opera.</p>
             <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-                <a href="/checkout/gp5-pro" style="display: inline-block; padding: 15px 35px; background: #10b981; color: #000; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 1.1rem;">Adquirir Licença M2M (a partir de US$ 499/mês)</a>
+                <a href="https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle" target="_blank" rel="noopener" style="display: inline-block; padding: 15px 35px; background: #10b981; color: #000; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 1.1rem;">Adquirir Acesso Pago (RapidAPI) →</a>
             </div>
         </div>
     </div>

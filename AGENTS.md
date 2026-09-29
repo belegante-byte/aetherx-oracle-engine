@@ -8,24 +8,32 @@ colateral".**
 
 ## 1. Modelo de monetização (IMPORTANTE — não inventar outro)
 
-- **Stripe é o ÚNICO merchant-of-record (cobrança) da API** — decisão de
-  Giovanni em 2026-09-29. O pagamento de produto é assinatura Stripe
-  (`/checkout/gp5-pro` e `/checkout/gp5-monthly`); ao confirmar o checkout, o
-  sistema emite uma **chave paga** `gp5_enterprise_*` (entrega idempotente via
-  `/m2m-keys/fulfillment` e `/webhook/stripe`).
+- **RapidAPI é o merchant-of-record ATIVO (cobrança) da API** — decisão de
+  Giovanni em 2026-09-29 (pivô por bloqueio documental do Stripe; reverteu a
+  decisão anterior de Stripe-solo). A listing RapidAPI é quem cobra/mede o uso;
+  requests do proxy autenticam a REST paga via `X-RapidAPI-Proxy-Secret`.
+- **Stripe está CONGELADO (aguardando verificação da conta)** — o fluxo inteiro
+  (checkout `/checkout/gp5-pro` e `/checkout/gp5-monthly`, fulfillment
+  `/m2m-keys/fulfillment`, webhook `/webhook/stripe`, chave paga
+  `gp5_enterprise_*` entregue idempotentemente) está pronto e wireado, mas NÃO é
+  o canal ativo. Quando Giovanni confirmar que a conta Stripe passou na
+  verificação, reativamos o funil (migração) — não antes. Chaves
+  `gp5_enterprise_*` já são aceitas pela REST, então a migração é só mudar os
+  CTAs/funil.
 - **Credenciais da REST paga** (`/v1/port-risk`, `/v1/port-trend`,
   `/v1/ports-risk`, `/v1/gp5/*`): chave paga via `Authorization: Bearer
-  <chave>` OU `X-RapidAPI-Proxy-Secret` (requests que ainda chegam pelo proxy
-  do marketplace — a listing RapidAPI segue apenas como vitrine que direciona
-  para o checkout Stripe). NÃO aceitar trial na REST paga.
+  <chave>` OU `X-RapidAPI-Proxy-Secret` (requests do proxy do marketplace — o
+  **canal ativo hoje**). NÃO aceitar trial na REST paga.
 - Escada de preços (vive no `PLANS` de monetization.py e nos preços/planos do
   dashboard Stripe): Pro US$ 499/mo (US$ 4.990/ano) e Enterprise US$ 5.000/mo
   (US$ 50.000/ano); ambos concedem o mesmo nível de decisão (GP5_ENTERPRISE).
 - Trial M2M (30 dias) é só lead-gen: `POST /v1/m2m/request-key` e o tool MCP
   `request_m2m_key` emitem APENAS trial, que dá acesso SÓ ao MCP. Nunca
   transforme trial em chave paga nem deixe trial abrir a REST paga.
-- NÃO reintroduza outro rail de pagamento (Pix, gateways, moedas) nem torne a
-  RapidAPI merchant-of-record de novo, sem aprovação explícita do Giovanni.
+- A migração Stripe-solo SÓ acontece depois que a verificação da conta Stripe
+  passar (aprovação expressa do Giovanni) — não troque o rail antes. Também não
+  reintroduza outro rail de pagamento (Pix, gateways, moedas) sem aprovação
+  explícita.
 
 ## 2. Fronteiras de segurança/monetização (não mexer de passagem)
 

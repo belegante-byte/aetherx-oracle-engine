@@ -316,8 +316,7 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
     <a class="link-card" href="/mcp-page"><strong>Free · Observation</strong><br><span style="color:#8b949e">REST + MCP data tools with a daily free quota. $0.00, no credit card.</span></a>
     <a class="link-card" href="/m2m-keys"><strong>M2M · Decision tools</strong><br><span style="color:#8b949e">Free 30-day trial key unlocks demurrage / routing / corridor risk. Self-serve.</span></a>
     <a class="link-card" href="/demo"><strong>Interactive simulator</strong><br><span style="color:#8b949e">Try demurrage, total cycle days and SCDEW risk in the browser.</span></a>
-    <a class="link-card" href="/checkout/gp5-pro"><strong>GP5 Pro · US$ 499/mês</strong><br><span style="color:#8b949e">Assinatura paga no Stripe desbloqueia REST paga + MCP. Cobrança direta.</span></a>
-    <a class="link-card" href="/checkout/gp5-monthly"><strong>GP5 Enterprise · US$ 5.000/mês</strong><br><span style="color:#8b949e">Multi-slot, parâmetros de demurrage por operação, SLA dedicado (quote-gated).</span></a>
+    <a class="link-card" href="https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle"><strong>RapidAPI · Pay-as-you-go</strong><br><span style="color:#8b949e">REST paga /v1/* cobrada pelo marketplace (merchant-of-record).</span></a>
   </div>
 
   <div class="footer">
@@ -706,12 +705,12 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
 
 
 
-# Canais de monetização (governança, 2026-09-29): Stripe = ÚNICO
-# merchant-of-record (checkout/fulfillment/webhook emite chave paga
-# `gp5_enterprise_*`, aceita na REST de produto e no MCP). O guard também
-# aceita X-RapidAPI-Proxy-Secret para requests vindos do proxy do marketplace
-# (listing mantida só como vitrine/direcionamento → checkout Stripe).
-# Trial M2M (30 dias) NUNCA abre a REST paga (só MCP). Ver AGENTS.md.
+# Canais de monetização (governança, 2026-09-29): RapidAPI = merchant-of-record
+# ATIVO (cobrança pelo marketplace via X-RapidAPI-Proxy-Secret). O fluxo Stripe
+# (checkout/fulfillment/webhook) está CONGELADO aguardando verificação da conta
+# do Giovanni — já emite chave `gp5_enterprise_*` aceita na REST e no MCP, então
+# a migração futura é só ligar as envs ativas. Trial M2M (30 dias) NUNCA abre a
+# REST paga (só MCP). Ver AGENTS.md.
 app.include_router(monetization_router)
 
 app.add_middleware(M2MGatewayMiddleware)

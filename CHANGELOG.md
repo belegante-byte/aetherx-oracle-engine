@@ -3,6 +3,22 @@
 Histórico de mudanças relevantes do **Aether-X Oracle Engine**. Formato baseado em
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.3.3] — 2026-09-29
+
+### Alterado (pivô do Giovanni — bloqueio documental no Stripe)
+- **RapidAPI volta como merchant-of-record ATIVO.** O Stripe travou na verificação
+  da conta (giro de documentação de comprovante de endereço). Giovanni decidiu
+  operar na RapidAPI até a conta liberar e então migrar. Restaurados o card
+  "Acesso Pago via RapidAPI" no `/m2m-keys`, CTA do fiscal-demo e o card
+  Pay-as-you-go da landing apontando para a listing
+  (`https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle`).
+- **Stripe é mantido CONGELADO (migração futura):** checkout/fulfillment/webhook e
+  as chaves `gp5_enterprise_*` continuam wireados e aceitos pela REST, só não são
+  mais o funil. Migração = trocar CTAs quando a verificação passar.
+- **Governança** atualizada no `AGENTS.md` (RapidAPI ativo, Stripe congelado até
+  verificação; não trocar rail antes). Constante `RAPIDAPI_URL` restaurada em
+  `content_pages.py`; `docs/llms.txt` reescrito para refletir o pipeline atual.
+
 ## [1.3.2] — 2026-09-29
 
 ### Alterado (decisão do Giovanni — Stripe é o ÚNICO merchant-of-record)
