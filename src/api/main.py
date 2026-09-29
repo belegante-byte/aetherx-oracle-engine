@@ -974,14 +974,6 @@ def get_gp5_corridor_eval(
 
 
 @app.get(
-    "/v1/gp5/pci",
-    tags=["GP5 High-Value Inferences"],
-    summary="Get Port Congestion Index (PCI, 0-100)",
-    description="Calculates composite Port Congestion Index (0-100) with financial impact estimates."
-)
-
-
-@app.get(
     "/v1/gp5/fiscal-routing",
     tags=["GP5 Fiscal"],
     summary="Evaluate fiscal and logistical arbitrage across alternative ports",
@@ -999,6 +991,12 @@ def get_gp5_fiscal_routing(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get(
+    "/v1/gp5/pci",
+    tags=["GP5 High-Value Inferences"],
+    summary="Get Port Congestion Index (PCI, 0-100)",
+    description="Calculates composite Port Congestion Index (0-100) with financial impact estimates."
+)
 def get_gp5_pci(port_id: str = Query(..., example="SGSIN")):
     try:
         return calculate_pci(port_id)
