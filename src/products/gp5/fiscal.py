@@ -139,12 +139,33 @@ def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_u
     
     if intended_option and best_option and intended_option.port_id != best_option.port_id:
         savings = intended_option.total_cost_usd - best_option.total_cost_usd
-        summary = (
+        d_icms = intended_option.icms_cost_usd - best_option.icms_cost_usd
+        d_freight = intended_option.inland_freight_cost_usd - best_option.inland_freight_cost_usd
+        d_demurrage = intended_option.demurrage_cost_usd - best_option.demurrage_cost_usd
+
+        # ICMS é apurado pelo estado de destino (inland_uf) — idêntico entre as
+        # opções — então só entra na prosa se realmente variar. Os drivers reais
+        # são frete terrestre e fila/demurrage, ordenados por contribuição.
+        notes = []
+        if abs(d_icms) >= 1:
+            notes.append((abs(d_icms), f"ICMS de {best_option.icms_rate_pct:g}% vs {intended_option.icms_rate_pct:g}%"))
+        if abs(d_freight) >= 1:
+            notes.append((abs(d_freight), f"frete terrestre de US$ {best_option.inland_freight_cost_usd:,.0f} vs US$ {intended_option.inland_freight_cost_usd:,.0f}"))
+        if abs(d_demurrage) >= 1:
+            notes.append((abs(d_demurrage), f"fila/demurrage de US$ {best_option.demurrage_cost_usd:,.0f} em {best_option.delay_days:g} dias vs US$ {intended_option.demurrage_cost_usd:,.0f} em {intended_option.delay_days:g} dias"))
+
+        opening = (
             f"Alerta de Arbitragem: Redirecionar carga de {intended_option.port_name} ({intended_option.state_code}) "
-            f"para {best_option.port_name} ({best_option.state_code}) economiza US$ {savings:,.2f}. "
-            f"Motivo principal: ICMS de {best_option.icms_rate_pct}% vs {intended_option.icms_rate_pct}%, e Frete Terrestre de US$ {best_option.inland_freight_cost_usd:,.0f} vs US$ {intended_option.inland_freight_cost_usd:,.0f} "
-            f"e fila de {best_option.delay_days} dias vs {intended_option.delay_days} dias."
+            f"para {best_option.port_name} ({best_option.state_code}) economiza US$ {savings:,.2f}."
         )
+        if notes:
+            notes.sort(key=lambda item: item[0], reverse=True)
+            if len(notes) == 1:
+                summary = f"{opening} Motivo principal: {notes[0][1]}."
+            else:
+                summary = f"{opening} Motivo principal: {notes[0][1]}. Fator adicional: {', '.join(n for _, n in notes[1:])}."
+        else:
+            summary = opening
     elif intended_option and best_option and intended_option.port_id == best_option.port_id:
         summary = f"A rota originalmente pretendida ({intended_option.port_name}) já é a opção de menor custo logístico-tributário atual."
     else:
