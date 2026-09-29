@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.belegante-byte/aetherx-mcp",
   "title": "Aether-X Port Congestion Oracle",
-"description": "Live port congestion for 5 Brazilian ports (4 validated), 14 global ports as reference seed.",
-  "version": "0.4.3",
+"description": "Live port congestion for 5 Brazilian ports (official-authority line-ups), global coverage as reference seed. REST, SDK e MCP.",
+  "version": "0.2.4",
   "websiteUrl": "https://aetherx.aether-grid.io",
   "repository": {
     "url": "https://github.com/belegante-byte/aetherx-oracle-engine",

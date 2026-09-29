@@ -83,11 +83,12 @@ class RapidAPIGuard:
     @staticmethod
     def is_public_path(path: str) -> bool:
         import re as _re
-        # Governança (2026-09-29, decisão do Giovanni): Stripe é o ÚNICO
-        # merchant-of-record. REST de produto NÃO é caminho público. Acesso com
-        # (a) chave paga Stripe (`Bearer gp5_enterprise_*`, ver _has_paid_bearer)
-        # ou (b) X-RapidAPI-Proxy-Secret (requests que ainda vêm do proxy do
-        # marketplace). Trial M2M (30 dias) NÃO abre a REST paga.
+        # Governança (2026-09-29, decisão do Giovanni): RapidAPI é o
+        # merchant-of-record ATIVO (canal de cobrança); Stripe está CONGELADO
+        # (verificação da conta) e será a migração futura. REST de produto NÃO é
+        # caminho público. Acesso com (a) chave paga (`Bearer gp5_*`, _has_paid_bearer)
+        # ou (b) X-RapidAPI-Proxy-Secret (requests do proxy do marketplace).
+        # Trial M2M (30 dias) NÃO abre a REST paga.
         # Ficam públicos: vitrine/SEO, docs/interativos, funnel M2M e o servidor
         # MCP (/mcp) — que precisa ficar acessível para distribuição em
         # diretórios MCP e self-serve de trial (request_m2m_key).
@@ -179,9 +180,9 @@ LANDING_HTML = """<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aether-X Port Congestion Oracle</title>
-<meta name="description" content="Port congestion signal for 35 ports & global chokepoints: 5 Brazilian ports with live official-authority line-ups, 12 global ports live when the AIS sensor delivers, the rest calibrated/static reference seed. Port congestion API, vessel queue API, port delay risk API. REST API, Python SDK and MCP server.">
-<meta property="og:title" content="Aether-X Port Congestion Oracle">
-<meta property="og:description" content="Port congestion for 35 global ports & chokepoints (5 Brazilian ports with live authority line-ups; the rest calibrated/static reference seed). Port congestion API / vessel queue API / demurrage risk signal.">
+<meta name="description" content="Port congestion signal for 35 ports & global chokepoints: 5 Brazilian ports with LIVE official-authority line-ups (Santos, Paranaguá, Rio, Itaguaí, Niterói) and global coverage as calibrated/static reference seed. Port congestion API, vessel queue API, port delay/demurrage risk API. REST, Python SDK e MCP server.">
+ <meta property="og:title" content="Aether-X Port Congestion Oracle — Live Brasil (autoridade) + cobertura global de referência">
+ <meta property="og:description" content="Sinais de congestionamento portuário: 5 portos brasileiros com fila REAL de autoridade (ao-largo, esperados, atracados) + cobertura global de referência. Vessel queue / demurrage risk / corridor risk. REST API, SDK e MCP.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://aetherx.aether-grid.io/">
 <meta name="twitter:card" content="summary">
@@ -235,7 +236,7 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
   </div>
 
   <h1>Aether-X Port Congestion Oracle</h1>
-  <p class="subtitle">MCP &amp; REST Engine &mdash; congestion signals for 17 global ports. <strong>BR ports feed live line-ups; others use a reference seed.</strong></p>
+  <p class="subtitle">MCP &amp; REST Engine &mdash; congestion &amp; demurrage risk. <strong>5 portos BR com fila ao-vivo de autoridade</strong> (Santos, Paranaguá, Rio/Itaguaí/Niterói); cobertura global como referência calibrada.</p>
 
   <p class="section-title">Connect in 5 seconds</p>
 
@@ -441,7 +442,7 @@ real-time field data.
 - Python SDK: `pip install aetherx-oracle`
 - MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) — tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`
 
-**Coverage** — 35 ports & global chokepoints. **Live hoje (fila real de autoridades/ AIS):** BRSSZ, BRPNG, BRRIO, BRNIT, BRITG — e portos globais recebem `live:shipinfo_ais` quando o sensor AIS entrega dados no ciclo (12 portos mapeados: NLRTM, DEHAM, KRPUS, CNSHA, SGSIN, USLAX, USNYC, AEDXB, CNTAO, CNNGB, GBLGP, ZACPT). Demais portos: referência calibrada/estática (`calibrated_reference_seed`/`static_reference_seed`) — nenhuma resposta finge ser telemetria viva (ver `decision_grade` e `data_source`). Unknown ports return a global statistical estimate (`country="Global"`).
+**Coverage** — Brasil como produto principal (5 portos com fila REAL de autoridade: BRSSZ, BRPNG, BRRIO, BRNIT, BRITG — `live:appa+santos+lachmann` / `live:portosrio_silog`, calibrados contra a série ANTAQ) + 31 portos globais como cobertura de **referência calibrada/estática** (`calibrated_reference_seed`/`static_reference_seed`) — nenhuma resposta finge ser telemetria viva (ver `decision_grade` e `data_source`). A integração AIS-ShipInfo existe no engine e entra como live no ciclo quando o sensor entrega dado consistente. Unknown ports return a global statistical estimate (`country="Global"`).
 
 Signals are provided "AS IS" and do not constitute investment advice.
 """
@@ -1144,10 +1145,9 @@ def get_gp5_scdew(
         "Returns the current congestion signal for a port: "
         "`congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, "
         "`freight_volatility_index`, demurrage exposure and `decision_grade`. "
-        "Every response includes `data_source` and `as_of`. Coverage: 35 ports & global chokepoints — "
-        "**5 Brazilian ports LIVE** (official-authority line-ups), **12 mapped global ports live whenever "
-        "the AIS sensor delivers**, the rest a **calibrated/static reference seed** "
-        "(`static_reference_seed`). Unknown ports fall back "
+        "Every response includes `data_source` and `as_of`. Coverage: 35 ports & chokepoints — "
+        "**5 portos brasileiros com fila LIVE de autoridade** (Santos, Paranaguá, Rio/Itaguaí/Niterói), "
+        "demais portos como **referência calibrada/estática** (`reference_seed`, nunca finge telemetria). Unknown ports fall back "
         'to a global statistical estimate with `country="Global"`. Paid access: '
         "send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the "
         "`X-RapidAPI-Proxy-Secret` header."
@@ -1188,7 +1188,7 @@ def get_port_risk(
     tags=["Port Risk"],
     summary="Get port risk trend",
     description=(
-        "Returns the 24h, 48h and 72h congestion projections for a single global port, "
+        "Returns the 24h, 48h and 72h congestion projections for a single port, "
         "with a `trend` label (`acelerando`, `estável` or `descongestionando`). Each "
         "projection point includes `congestion_score`, `eta_delay_days` and the estimated "
         "`estimated_daily_demurrage_usd`. NOTE: the projection is `synthetic_projection` "
