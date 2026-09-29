@@ -178,6 +178,83 @@ def seed_port_metrics(force: bool = False):
     )
 
     conn.execute("""
+        CREATE TABLE IF NOT EXISTS freight_rates (
+            origin_uf VARCHAR,
+            port_id VARCHAR,
+            rate_brl_per_ton DOUBLE,
+            mode VARCHAR,
+            source VARCHAR,
+            reference_date VARCHAR,
+            is_estimate BOOLEAN,
+            PRIMARY KEY (origin_uf, port_id)
+        )
+    """)
+
+    # FASE 2 (Fretes Reais): tarifas de corredores rodoviários de grãos em R$/t,
+    # convertidas a USD/t em tempo de execução via USD_BRL_FX (default 5,22 —
+    # dólar comercial 28/09/2026). Corredores publicados pela CONAB Boletim
+    # Logístico (07/2026) e Sifreca/ESALQ-USP vêm com is_estimate=FALSE e fonte
+    # citada; corredores sem tarifa publicada recebem estimativa calibrada e
+    # explicitamente marcada (is_estimate=TRUE) — nada é vendido como "live" sem ser.
+    _FREIGHT_ROWS = [
+        # MT (praça Sorriso/Rondonópolis) — documentado pela CONAB 07/2026
+        ("MT", "BRSSZ", 510.0, "rodoviário", "CONAB Boletim Logístico 07/2026 (Sorriso-Santos)", "2026-07", False),
+        ("MT", "BRPNG", 500.0, "rodoviário", "CONAB Boletim Logístico 07/2026 (Sorriso-Paranaguá)", "2026-07", False),
+        ("MT", "BRMAO", 400.0, "rodoviário", "Proxy Arco Norte (Santarém 420 / Itaituba 315, Sifreca) - sem rota própria publicada p/ Itaqui", "2026-07", True),
+        ("MT", "BRRIO", 650.0, "rodoviário", "Estimativa Sifreca R$/t.km (sem corredor de grãos publicado MT-RJ)", "2026-07", True),
+        ("MT", "BRRGD", 700.0, "rodoviário", "Estimativa Sifreca R$/t.km (sem corredor de grãos publicado MT-RS)", "2026-07", True),
+        # GO (praça Rio Verde)
+        ("GO", "BRSSZ", 350.0, "rodoviário", "CONAB Boletim Logístico 07/2026 (Rio Verde-Santos)", "2026-07", False),
+        ("GO", "BRPNG", 300.0, "rodoviário", "CONAB Boletim Logístico (Rio Verde-Paranaguá)", "2026-07", False),
+        ("GO", "BRMAO", 450.0, "rodoviário", "Estimativa Sifreca R$/t.km (sem rota publicada GO-Itaqui)", "2026-07", True),
+        ("GO", "BRRIO", 400.0, "rodoviário", "Estimativa Sifreca R$/t.km (sem rota publicada GO-RJ)", "2026-07", True),
+        ("GO", "BRRGD", 450.0, "rodoviário", "Estimativa Sifreca R$/t.km (sem rota publicada GO-RS)", "2026-07", True),
+        # MS (praça Dourados/Chapadão) — CONAB reporta alta generalizada em MS
+        ("MS", "BRSSZ", 300.0, "rodoviário", "CONAB Boletim Logístico 07/2026 (MS-Santos)", "2026-07", False),
+        ("MS", "BRPNG", 280.0, "rodoviário", "CONAB Boletim Logístico 07/2026 (MS-Paranaguá)", "2026-07", False),
+        ("MS", "BRRGD", 250.0, "rodoviário", "Estimativa Sifreca R$/t.km (sem rota publicada MS-Rio Grande)", "2026-07", True),
+        ("MS", "BRMAO", 1000.0, "rodoviário", "Estimativa Sifreca R$/t.km (sem rota publicada MS-Itaqui)", "2026-07", True),
+        ("MS", "BRRIO", 400.0, "rodoviário", "Estimativa Sifreca R$/t.km (sem rota publicada MS-RJ)", "2026-07", True),
+        # PR (praça Londrina/Campo Mourão/Maringá)
+        ("PR", "BRPNG", 190.0, "rodoviário", "CONAB Boletim Logístico 07/2026 (Campo Mourão-Paranaguá)", "2026-07", False),
+        ("PR", "BRSSZ", 230.0, "rodoviário", "Estimativa Sifreca R$/t.km (PR-Santos)", "2026-07", True),
+        ("PR", "BRRIO", 250.0, "rodoviário", "Estimativa Sifreca R$/t.km (PR-RJ)", "2026-07", True),
+        ("PR", "BRRGD", 260.0, "rodoviário", "Estimativa Sifreca R$/t.km (PR-Rio Grande)", "2026-07", True),
+        ("PR", "BRMAO", 1100.0, "rodoviário", "Estimativa Sifreca R$/t.km (sem rota publicada PR-Itaqui)", "2026-07", True),
+        # SP (interior paulista)
+        ("SP", "BRSSZ", 90.0, "rodoviário", "CONAB Boletim Logístico 07/2026 (praças SP estáveis, interior-Santos)", "2026-07", False),
+        ("SP", "BRRIO", 150.0, "rodoviário", "Estimativa Sifreca R$/t.km (interior SP-RJ)", "2026-07", True),
+        ("SP", "BRPNG", 200.0, "rodoviário", "Estimativa Sifreca R$/t.km (SP-Paranaguá)", "2026-07", True),
+        ("SP", "BRRGD", 400.0, "rodoviário", "Estimativa Sifreca R$/t.km (SP-Rio Grande)", "2026-07", True),
+        ("SP", "BRMAO", 1200.0, "rodoviário", "Estimativa Sifreca R$/t.km (sem rota publicada SP-Itaqui)", "2026-07", True),
+        # MG (praça Uberaba/Araguari)
+        ("MG", "BRSSZ", 200.0, "rodoviário", "CONAB Boletim Logístico 07/2026 (MG-Santos)", "2026-07", False),
+        ("MG", "BRRIO", 140.0, "rodoviário", "Estimativa Sifreca R$/t.km (MG-RJ)", "2026-07", True),
+        ("MG", "BRPNG", 260.0, "rodoviário", "Estimativa Sifreca R$/t.km (MG-Paranaguá)", "2026-07", True),
+        ("MG", "BRRGD", 300.0, "rodoviário", "Estimativa Sifreca R$/t.km (MG-Rio Grande)", "2026-07", True),
+        ("MG", "BRMAO", 1100.0, "rodoviário", "Estimativa Sifreca R$/t.km (sem rota publicada MG-Itaqui)", "2026-07", True),
+        # RS (praça Porto Alegre/Pelotas)
+        ("RS", "BRRGD", 60.0, "rodoviário", "CONAB Boletim Logístico 07/2026 (RS-Rio Grande)", "2026-07", False),
+        ("RS", "BRPNG", 180.0, "rodoviário", "Estimativa Sifreca R$/t.km (RS-Paranaguá)", "2026-07", True),
+        ("RS", "BRSSZ", 220.0, "rodoviário", "Estimativa Sifreca R$/t.km (RS-Santos)", "2026-07", True),
+        ("RS", "BRRIO", 250.0, "rodoviário", "Estimativa Sifreca R$/t.km (RS-RJ)", "2026-07", True),
+        ("RS", "BRMAO", 1300.0, "rodoviário", "Estimativa Sifreca R$/t.km (sem rota publicada RS-Itaqui)", "2026-07", True),
+    ]
+    conn.executemany(
+        """
+        INSERT INTO freight_rates (origin_uf, port_id, rate_brl_per_ton, mode, source, reference_date, is_estimate)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (origin_uf, port_id) DO UPDATE SET
+            rate_brl_per_ton = EXCLUDED.rate_brl_per_ton,
+            mode = EXCLUDED.mode,
+            source = EXCLUDED.source,
+            reference_date = EXCLUDED.reference_date,
+            is_estimate = EXCLUDED.is_estimate
+        """,
+        _FREIGHT_ROWS,
+    )
+
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS port_metrics (
             port_id VARCHAR PRIMARY KEY,
             port_name VARCHAR,

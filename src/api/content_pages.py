@@ -786,6 +786,8 @@ def fiscal_demo_page(intended_port: str = "BRSSZ", commodity: str = "FERTILIZANT
             <p style="color: #e5e7eb; font-size: 1.2rem; font-weight: 500; line-height: 1.5; margin-bottom: 0;">{summary}</p>
         </div>
 
+        <p style="color: #6b7280; font-size: 0.8rem; margin-bottom: 30px;">Fretes rodoviários de grãos em R$/t convertidos em USD (câmbio US$ 1,00 = R$ 5,22, 28/09/2026) — fonte: CONAB Boletim Logístico 07/2026 e Sifreca/ESALQ-USP. Corredores sem tarifa publicada são estimativas calibradas e marcadas.</p>
+
         <div style="overflow-x: auto; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);">
             <table style="width: 100%; text-align: left; border-collapse: collapse; background: #1f2937; border-radius: 12px; overflow: hidden; min-width: 800px;">
                 <thead>

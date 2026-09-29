@@ -16,6 +16,10 @@ class PortRouteOption(BaseModel):
     icms_rate_pct: float
     icms_cost_usd: float
     inland_freight_cost_usd: float
+    inland_freight_rate_usd_per_ton: float
+    inland_freight_source: str
+    inland_freight_as_of: str
+    inland_freight_is_real: bool
     exemption_note: Optional[str]
     total_cost_usd: float
     is_recommended: bool
@@ -48,16 +52,71 @@ def get_state_from_port(port_id: str) -> str:
     return mapping.get(port_id.upper(), "UNKNOWN")
 
 
-def estimate_inland_freight_usd(port_id: str, inland_uf: str, cargo_tons: float) -> float:
-    # MVP: Mock de frete terrestre (US$ por tonelada) do porto até o estado de destino/origem
-    matrix = {
-        "MT": {"BRSSZ": 45.0, "BRPNG": 50.0, "BRMAO": 35.0, "BRRIO": 55.0, "BRRGD": 65.0},
-        "GO": {"BRSSZ": 40.0, "BRPNG": 45.0, "BRMAO": 50.0, "BRRIO": 50.0, "BRRGD": 60.0},
-        "PR": {"BRSSZ": 25.0, "BRPNG": 10.0, "BRMAO": 70.0, "BRRIO": 35.0, "BRRGD": 30.0},
-        "SP": {"BRSSZ": 10.0, "BRPNG": 25.0, "BRMAO": 80.0, "BRRIO": 20.0, "BRRGD": 45.0},
+# Câmbio de referência: dólar comercial fechamento 28/09/2026 em R$ 5,22
+# (Agência Brasil / Reuters), sobrescrevível via USD_BRL_FX.
+USD_BRL_FX_DEFAULT = 5.22
+FREIGHT_DEFAULT_AS_OF = "2026-07"  # Boletim Logístico Conab (última referência publicada)
+
+
+def _usd_brl_fx() -> float:
+    try:
+        val = float(os.getenv("USD_BRL_FX", str(USD_BRL_FX_DEFAULT)))
+        return val if val > 0 else USD_BRL_FX_DEFAULT
+    except ValueError:
+        return USD_BRL_FX_DEFAULT
+
+
+# Matriz LEGACY (mock) que o produto usava antes da Fase 2. Ainda é usada como
+# fallback EXPLÍCITO quando a tabela `freight_rates` (corredores reais, semeada
+# no boot por init_prod_db) não existe — ex.: snapshot binário antigo. O flag
+# `is_real=False` e a source "LEGACY_MOCK_FALLBACK" tornam a degradação visível.
+_LEGACY_FREIGHT_MATRIX = {
+    "MT": {"BRSSZ": 45.0, "BRPNG": 50.0, "BRMAO": 35.0, "BRRIO": 55.0, "BRRGD": 65.0},
+    "GO": {"BRSSZ": 40.0, "BRPNG": 45.0, "BRMAO": 50.0, "BRRIO": 50.0, "BRRGD": 60.0},
+    "PR": {"BRSSZ": 25.0, "BRPNG": 10.0, "BRMAO": 70.0, "BRRIO": 35.0, "BRRGD": 30.0},
+    "SP": {"BRSSZ": 10.0, "BRPNG": 25.0, "BRMAO": 80.0, "BRRIO": 20.0, "BRRGD": 45.0},
+}
+
+
+def estimate_inland_freight_usd(port_id: str, inland_uf: str, cargo_tons: float, conn=None) -> dict:
+    """Custo de frete terrestre (USD) + metadados de fonte.
+
+    Fase 2 (Fretes Reais): prioriza a tabela `freight_rates`, semeada no boot
+    com tarifas reais de corredores de grãos (CONAB Boletim Logístico 07/2026,
+    Sifreca/ESALQ) em R$/t convertidos a USD/t via USD_BRL_FX. Corridors sem
+    tarifa publicada levam estimativa calibrada e marcada `is_real=False`.
+
+    Degrada para LEGACY_MOCK_FALLBACK (explícito) se a tabela não existir.
+    """
+    fx = _usd_brl_fx()
+    if conn:
+        try:
+            row = conn.execute(
+                "SELECT rate_brl_per_ton, source, reference_date, is_estimate "
+                "FROM freight_rates WHERE origin_uf = ? AND port_id = ?",
+                [inland_uf.upper(), port_id.upper()],
+            ).fetchone()
+            if row:
+                rate_brl = float(row[0])
+                rate_usd = round(rate_brl / fx, 4)
+                return {
+                    "cost_usd": round(cargo_tons * rate_usd, 2),
+                    "rate_usd_per_ton": rate_usd,
+                    "source": str(row[1]),
+                    "as_of": str(row[2] if row[2] else FREIGHT_DEFAULT_AS_OF),
+                    "is_real": not bool(row[3]),
+                }
+        except duckdb.CatalogException:
+            pass  # tabela freight_rates ausente -> fallback legacy abaixo
+
+    rate_per_ton = _LEGACY_FREIGHT_MATRIX.get(inland_uf.upper(), {}).get(port_id.upper(), 60.0)
+    return {
+        "cost_usd": round(cargo_tons * rate_per_ton, 2),
+        "rate_usd_per_ton": rate_per_ton,
+        "source": "LEGACY_MOCK_FALLBACK (sem tabela freight_rates)",
+        "as_of": "n/a",
+        "is_real": False,
     }
-    rate_per_ton = matrix.get(inland_uf.upper(), {}).get(port_id.upper(), 60.0)
-    return cargo_tons * rate_per_ton
 
 def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_usd: float = 10000000.0, inland_uf: str = 'MT', cargo_tons: float = 60000.0) -> FiscalRoutingResponse:
 
@@ -112,8 +171,8 @@ def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_u
                 exemption = None
                 
         icms_cost = cargo_value_usd * (icms_pct / 100.0)
-        freight_cost = estimate_inland_freight_usd(pid, inland_uf, cargo_tons)
-        total_cost = round(demurrage + icms_cost + freight_cost, 2)
+        freight = estimate_inland_freight_usd(pid, inland_uf, cargo_tons, conn=conn)
+        total_cost = round(demurrage + icms_cost + freight["cost_usd"], 2)
         
         options.append(PortRouteOption(
             port_id=pid,
@@ -124,7 +183,11 @@ def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_u
             demurrage_cost_usd=demurrage,
             icms_rate_pct=icms_pct,
             icms_cost_usd=round(icms_cost, 2),
-            inland_freight_cost_usd=freight_cost,
+            inland_freight_cost_usd=freight["cost_usd"],
+            inland_freight_rate_usd_per_ton=freight["rate_usd_per_ton"],
+            inland_freight_source=freight["source"],
+            inland_freight_as_of=freight["as_of"],
+            inland_freight_is_real=freight["is_real"],
             exemption_note=exemption,
             total_cost_usd=round(total_cost, 2),
             is_recommended=False,
