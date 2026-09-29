@@ -701,46 +701,73 @@ def fiscal_demo_page(intended_port: str = "BRSSZ", commodity: str = "FERTILIZANT
         """
 
     body = f"""
-    <div style="max-width: 1200px; margin: 0 auto; font-family: monospace;">
-        <h2 style="color: #60a5fa;">Aether Grid: Motor de Arbitragem Logístico-Tributária</h2>
-        <p style="color: #9ca3af; font-size: 1.1rem; line-height: 1.6;">
-            Esta ferramenta simula o custo total de importação/exportação cruzando o <strong>Congestionamento do Porto (Mar)</strong>, 
-            a <strong>Alíquota de ICMS (Imposto)</strong> e o <strong>Frete Terrestre (Terra)</strong>.
+
+    <div style="max-width: 1200px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <h2 style="color: #60a5fa; text-align: center; font-size: 2.2rem; margin-bottom: 10px;">Aether Grid GP5: Simulador de Arbitragem Logística</h2>
+        <p style="color: #9ca3af; font-size: 1.1rem; line-height: 1.6; text-align: center; max-width: 800px; margin: 0 auto 30px auto;">
+            Simule ao vivo o custo real de roteamento. Cruzamos o <strong>Congestionamento Portuário (Demurrage)</strong>, 
+            a <strong>Guerra Fiscal (ICMS)</strong> e o <strong>Frete Rodoviário</strong> para encontrar a rota mais lucrativa.
         </p>
-
-        <div style="background: #1f2937; padding: 20px; border-radius: 8px; border: 1px solid #374151; margin-bottom: 30px;">
-            <h3 style="color: #f3f4f6; margin-top: 0;">Parâmetros da Simulação</h3>
-            <p style="color: #d1d5db; margin: 5px 0;"><strong>Mercadoria:</strong> {commodity} | <strong>Valor da Carga:</strong> US$ {cargo_value:,.2f} | <strong>Volume:</strong> {cargo_tons:,.0f} Tons</p>
-            <p style="color: #d1d5db; margin: 5px 0;"><strong>Destino Terrestre (Inland):</strong> {inland_uf} | <strong>Porto Planejado:</strong> {intended_port}</p>
+        
+        <div style="background: #1f2937; padding: 25px; border-radius: 12px; border: 1px solid #374151; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+            <form action="/fiscal-demo" method="GET" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+                <div style="display: flex; flex-direction: column; flex: 1; min-width: 150px;">
+                    <label style="color: #9ca3af; font-size: 0.9rem; margin-bottom: 5px; font-weight: bold;">Produto</label>
+                    <input type="text" name="commodity" value="{commodity}" style="padding: 12px; background: #111827; border: 1px solid #4b5563; color: white; border-radius: 6px; font-size: 1rem;">
+                </div>
+                <div style="display: flex; flex-direction: column; flex: 1; min-width: 150px;">
+                    <label style="color: #9ca3af; font-size: 0.9rem; margin-bottom: 5px; font-weight: bold;">Porto Desejado</label>
+                    <input type="text" name="intended_port" value="{intended_port}" style="padding: 12px; background: #111827; border: 1px solid #4b5563; color: white; border-radius: 6px; font-size: 1rem;">
+                </div>
+                <div style="display: flex; flex-direction: column; flex: 1; min-width: 150px;">
+                    <label style="color: #9ca3af; font-size: 0.9rem; margin-bottom: 5px; font-weight: bold;">Estado (Origem/Destino)</label>
+                    <input type="text" name="inland_uf" value="{inland_uf}" style="padding: 12px; background: #111827; border: 1px solid #4b5563; color: white; border-radius: 6px; font-size: 1rem;">
+                </div>
+                <div style="display: flex; flex-direction: column; flex: 1; min-width: 150px;">
+                    <label style="color: #9ca3af; font-size: 0.9rem; margin-bottom: 5px; font-weight: bold;">Volume (Tons)</label>
+                    <input type="number" name="cargo_tons" value="{cargo_tons}" style="padding: 12px; background: #111827; border: 1px solid #4b5563; color: white; border-radius: 6px; font-size: 1rem;">
+                </div>
+                <div style="display: flex; flex-direction: column; flex: 1; min-width: 150px;">
+                    <label style="color: #9ca3af; font-size: 0.9rem; margin-bottom: 5px; font-weight: bold;">Valor (US$)</label>
+                    <input type="number" name="cargo_value" value="{cargo_value}" style="padding: 12px; background: #111827; border: 1px solid #4b5563; color: white; border-radius: 6px; font-size: 1rem;">
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <button type="submit" style="width: 100%; padding: 12px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer;">⚡ Simular Rota</button>
+                </div>
+            </form>
         </div>
 
-        <div style="background: #052e16; padding: 20px; border-radius: 8px; border: 1px solid #10b981; margin-bottom: 30px;">
-            <h3 style="color: #34d399; margin-top: 0; font-size: 1.5rem;">Veredito da Inteligência Artificial</h3>
-            <p style="color: #a7f3d0; font-size: 1.2rem; margin-bottom: 0;">{summary}</p>
+        <div style="background: #111827; padding: 25px; border-radius: 12px; border: 1px solid #3b82f6; margin-bottom: 30px; border-left: 5px solid #3b82f6;">
+            <h3 style="color: #60a5fa; margin-top: 0; font-size: 1.3rem;">Veredito da Aether Grid (IA)</h3>
+            <p style="color: #e5e7eb; font-size: 1.2rem; font-weight: 500; line-height: 1.5; margin-bottom: 0;">{summary}</p>
         </div>
 
-        <h3 style="color: #f3f4f6;">Análise Comparativa de Rotas</h3>
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left; background: #111827; border-radius: 8px; overflow: hidden;">
-                <thead style="background: #1f2937; color: #d1d5db;">
-                    <tr>
-                        <th style="padding: 1rem;">Porto (UF)</th>
-                        <th style="padding: 1rem;">Fila Estimada</th>
-                        <th style="padding: 1rem;">Custo Fila (Demurrage)</th>
-                        <th style="padding: 1rem;">ICMS (%)</th>
-                        <th style="padding: 1rem;">Custo ICMS</th>
-                        <th style="padding: 1rem;">Frete P/ {inland_uf}</th>
-                        <th style="padding: 1rem;">Custo Total Operação</th>
-                        <th style="padding: 1rem;">Status</th>
+        <div style="overflow-x: auto; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);">
+            <table style="width: 100%; text-align: left; border-collapse: collapse; background: #1f2937; border-radius: 12px; overflow: hidden; min-width: 800px;">
+                <thead>
+                    <tr style="background: #111827; border-bottom: 2px solid #374151; color: #9ca3af; text-transform: uppercase; font-size: 0.85rem;">
+                        <th style="padding: 1.2rem;">Porto</th>
+                        <th style="padding: 1.2rem;">Fila (Dias)</th>
+                        <th style="padding: 1.2rem;">Demurrage</th>
+                        <th style="padding: 1.2rem;">ICMS</th>
+                        <th style="padding: 1.2rem;">Frete Inland</th>
+                        <th style="padding: 1.2rem; color: white;">Custo Total (TCO)</th>
+                        <th style="padding: 1.2rem;">Status</th>
                     </tr>
                 </thead>
-                <tbody style="color: #9ca3af;">
+                <tbody>
                     {rows}
                 </tbody>
             </table>
         </div>
         
-        <p style="text-align: center; color: #6b7280; margin-top: 50px;">Aether Grid Oracle &copy; 2026. Powered by DuckDB & FastAPI.</p>
+        <div style="margin-top: 60px; text-align: center; border-top: 1px solid #374151; padding-top: 40px; padding-bottom: 40px;">
+            <h3 style="color: white; font-size: 1.8rem; margin-bottom: 15px;">Quer plugar essa inteligência no ERP da sua empresa?</h3>
+            <p style="color: #9ca3af; font-size: 1.1rem; margin-bottom: 30px;">O Motor GP5 toma essas decisões sozinho (M2M) para todos os navios que você opera.</p>
+            <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+                <a href="/checkout/gp5-monthly" style="display: inline-block; padding: 15px 35px; background: #10b981; color: #000; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 1.1rem;">Adquirir Licença M2M (US$ 5k/mês)</a>
+            </div>
+        </div>
     </div>
     """
     return _page(
