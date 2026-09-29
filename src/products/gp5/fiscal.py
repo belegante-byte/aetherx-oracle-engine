@@ -1,7 +1,6 @@
 import os
 import duckdb
 from pydantic import BaseModel, Field
-import functools
 from typing import List, Optional
 from src.engine.risk_model import calculate_port_risk
 
@@ -60,7 +59,6 @@ def estimate_inland_freight_usd(port_id: str, inland_uf: str, cargo_tons: float)
     rate_per_ton = matrix.get(inland_uf.upper(), {}).get(port_id.upper(), 60.0)
     return cargo_tons * rate_per_ton
 
-@functools.lru_cache(maxsize=1024)
 def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_usd: float = 10000000.0, inland_uf: str = 'MT', cargo_tons: float = 60000.0) -> FiscalRoutingResponse:
 
     if cargo_value_usd <= 0 or cargo_tons <= 0:
@@ -108,7 +106,7 @@ def evaluate_fiscal_routing(intended_port_id: str, commodity: str, cargo_value_u
                 
         icms_cost = cargo_value_usd * (icms_pct / 100.0)
         freight_cost = estimate_inland_freight_usd(pid, inland_uf, cargo_tons)
-        total_cost = demurrage + icms_cost + freight_cost
+        total_cost = round(demurrage + icms_cost + freight_cost, 2)
         
         options.append(PortRouteOption(
             port_id=pid,

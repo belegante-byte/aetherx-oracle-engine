@@ -412,6 +412,22 @@ def m2m_keys_page_html() -> str:
       </div>
     </div>
 
+    
+    <div class="card" style="max-width:650px; margin: 0 auto 3rem; padding: 2rem; border-color:#f59e0b; background: rgba(245, 158, 11, 0.05);">
+      <h2 style="font-size:1.4rem; margin-bottom:1rem; color:#f59e0b;">Assinatura Enterprise (Acesso M2M Ilimitado)</h2>
+      <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:1.5rem;">Cancele a qualquer momento. Acesso total à infraestrutura GP5, Decision Tools, e SLAs dedicados. Valor: <strong>US$ 5.000 / mês</strong>.</p>
+      
+      <form method="GET" action="/checkout/gp5-monthly">
+        <div style="margin-bottom:1rem;">
+          <label style="display:block; color:#cbd5e1; font-size:0.85rem; margin-bottom:0.3rem;">E-mail do Gestor da Conta *</label>
+          <input type="email" name="email" required placeholder="ceo@trading.com.br" style="width:100%; padding:0.75rem; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:6px;">
+        </div>
+        <button type="submit" style="width:100%; padding:0.85rem; background:#f59e0b; color:#1e293b; border:none; font-weight:bold; font-size:1rem; border-radius:6px; cursor:pointer;">
+          Assinar Plano Enterprise (Redirecionamento Seguro) →
+        </button>
+      </form>
+    </div>
+
     <div class="card" style="max-width:650px; margin: 0 auto 3rem; padding: 2rem;">
       <h2 style="font-size:1.4rem; margin-bottom:1rem; color:#f8fafc;">Solicitar Chave M2M (7 Dias Grátis)</h2>
       <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:1.5rem;">Preencha os dados abaixo para gerar instantaneamente a sua credencial M2M para teste empresarial.</p>
