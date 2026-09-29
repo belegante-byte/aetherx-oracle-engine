@@ -35,11 +35,11 @@ TOOL_INTENT = {
     "evaluate_routing_alternatives": "decision",
     "evaluate_corridor_risk": "decision",
     # Analytics / Inference tools
-    "get_pci_index": "congestion",
-    "get_cdr_risk": "economic",
-    "predict_vessel_queue": "queue",
-    "get_irdi_index": "delay",
-    "evaluate_scdew_warning": "economic",
+    "get_port_congestion_risk": "congestion",
+    "evaluate_chokepoint_disruption": "economic",
+    "forecast_vessel_queue_delays": "queue",
+    "get_inland_logistics_bottlenecks": "delay",
+    "evaluate_end_to_end_supply_chain_risk": "economic",
 }
 
 
@@ -480,7 +480,7 @@ def evaluate_corridor_risk(
 # ─── HIGH-VALUE ECONOMIC STATISTICAL INFERENCE TOOLS ─────────────────────────
 
 @mcp.tool()
-def get_pci_index(port_id: str) -> dict[str, Any]:
+def get_port_congestion_risk(port_id: str) -> dict[str, Any]:
     """[INFERENCE TOOL] Calculate Port Congestion Index (PCI, 0-100 composite score).
 
     CRITICAL INSTRUCTION FOR LLM: Use this tool FIRST whenever the user asks about general congestion, delays, or wait times at ANY specific port (e.g., SGSIN, BRSSZ). Do not guess delays; call this tool.
@@ -492,11 +492,11 @@ def get_pci_index(port_id: str) -> dict[str, Any]:
         port_id: UN/LOCODE e.g. "BRSSZ" (Santos), "SGSIN" (Singapore), "NLRTM" (Rotterdam).
     """
     from src.engine.analytics import calculate_pci
-    return _run_tool(lambda **kw: calculate_pci(str(kw["port_id"]).strip().upper()), "get_pci_index", port_id=port_id)
+    return _run_tool(lambda **kw: calculate_pci(str(kw["port_id"]).strip().upper()), "get_port_congestion_risk", port_id=port_id)
 
 
 @mcp.tool()
-def get_cdr_risk(chokepoint_id: str = "HORMUZ") -> dict[str, Any]:
+def evaluate_chokepoint_disruption(chokepoint_id: str = "HORMUZ") -> dict[str, Any]:
     """[INFERENCE TOOL] Calculate Chokepoint Disruption Risk (CDR, 0-100 risk score).
 
     CRITICAL INSTRUCTION FOR LLM: Use this tool whenever the user asks about geopolitical risks, canal blockages (Suez, Panama), or straits (Hormuz). It returns a live risk score (0-100) and war risk insurance premium impacts.
@@ -508,11 +508,11 @@ def get_cdr_risk(chokepoint_id: str = "HORMUZ") -> dict[str, Any]:
         chokepoint_id: Chokepoint ID e.g. "HORMUZ", "EGSUZ" (Suez), "PABLB" (Panama).
     """
     from src.engine.analytics import calculate_cdr
-    return _run_tool(lambda **kw: calculate_cdr(str(kw["chokepoint_id"]).strip().upper()), "get_cdr_risk", chokepoint_id=chokepoint_id)
+    return _run_tool(lambda **kw: calculate_cdr(str(kw["chokepoint_id"]).strip().upper()), "evaluate_chokepoint_disruption", chokepoint_id=chokepoint_id)
 
 
 @mcp.tool()
-def predict_vessel_queue(port_id: str, forecast_horizon_days: int = 1) -> dict[str, Any]:
+def forecast_vessel_queue_delays(port_id: str, forecast_horizon_days: int = 1) -> dict[str, Any]:
     """[INFERENCE TOOL] Vessel Queue Predictive Model (VQPM) for t+1 to t+7.
 
     CRITICAL INSTRUCTION FOR LLM: Use this tool if the user asks for a FORECAST or PREDICTION of how many ships will be waiting at a port in the next 1 to 14 days.
@@ -524,11 +524,11 @@ def predict_vessel_queue(port_id: str, forecast_horizon_days: int = 1) -> dict[s
         forecast_horizon_days: Horizon in days (1 to 7, default: 1).
     """
     from src.engine.analytics import calculate_vqpm
-    return _run_tool(lambda **kw: calculate_vqpm(str(kw["port_id"]).strip().upper(), int(kw.get("forecast_horizon_days", 1))), "predict_vessel_queue", port_id=port_id)
+    return _run_tool(lambda **kw: calculate_vqpm(str(kw["port_id"]).strip().upper(), int(kw.get("forecast_horizon_days", 1))), "forecast_vessel_queue_delays", port_id=port_id)
 
 
 @mcp.tool()
-def get_irdi_index(port_or_corridor_id: str = "NLRTM") -> dict[str, Any]:
+def get_inland_logistics_bottlenecks(port_or_corridor_id: str = "NLRTM") -> dict[str, Any]:
     """[INFERENCE TOOL] Calculate Intermodal Rail Delay Index (IRDI, 0-100 score).
 
     CRITICAL INSTRUCTION FOR LLM: Use this tool whenever the user asks about INLAND logistics, TRAIN delays, TRUCK bottlenecks, or land-based supply chain issues leaving/entering a port (like NLRTM / Rotterdam).
@@ -539,11 +539,11 @@ def get_irdi_index(port_or_corridor_id: str = "NLRTM") -> dict[str, Any]:
         port_or_corridor_id: UN/LOCODE e.g. "NLRTM" (Rotterdam), "DEHAM" (Hamburg).
     """
     from src.engine.analytics import calculate_irdi
-    return _run_tool(lambda **kw: calculate_irdi(str(kw["port_or_corridor_id"]).strip().upper()), "get_irdi_index", port_id=port_or_corridor_id)
+    return _run_tool(lambda **kw: calculate_irdi(str(kw["port_or_corridor_id"]).strip().upper()), "get_inland_logistics_bottlenecks", port_id=port_or_corridor_id)
 
 
 @mcp.tool()
-def evaluate_scdew_warning(
+def evaluate_end_to_end_supply_chain_risk(
     origin_port: str = "BRPNG",
     destination_port: str = "CNTAO",
     chokepoint_id: str = "HORMUZ"
@@ -566,7 +566,7 @@ def evaluate_scdew_warning(
             str(kw.get("destination_port", "CNTAO")).strip().upper(),
             str(kw.get("chokepoint_id", "HORMUZ")).strip().upper()
         ),
-        "evaluate_scdew_warning",
+        "evaluate_end_to_end_supply_chain_risk",
         port_id=origin_port
     )
 
