@@ -112,6 +112,7 @@ _MACHINE_FIRST = {}     # {ip_hash: int}  ts do primeiro contato
 _MACHINE_LAST = {}      # {ip_hash: int}  ts do último contato
 _MACHINE_CALLS = {}     # {ip_hash: int}  total de chamadas (qualquer canal)
 _MACHINE_TOOL_TS = {}   # {ip_hash: list[int]}  timestamps de tools executadas
+_MACHINE_TOOL_NAMES = {} # {ip_hash: Counter[tool_name]} counts of tools called
 _MACHINE_TOOL_PORTS = {}  # {ip_hash: Counter[port]}  portos consultados via tool
 _MACHINE_INTENT = {}    # {ip_hash: Counter[intent]}  famílias de intenção por tool_call
 
@@ -268,6 +269,9 @@ def record_tool_call(tool: str, port_id: str | None = None, ok: bool = True, lat
     if mid:
         _mark_stage(mid, "tool_call")
         _record_tool_ts(mid, port_id)
+        _MACHINE_TOOL_NAMES.setdefault(mid, collections.Counter())[tool] += 1
+        if _MACHINE_TOOL_NAMES[mid][tool] >= 2:
+            _mark_stage(mid, "repeat_tool")
         if intent:
             _MACHINE_INTENT.setdefault(mid, collections.Counter())[intent] += 1
     with _lock:
@@ -649,6 +653,7 @@ def _persist_now() -> None:
                 "machine_last": dict(_MACHINE_LAST),
                 "machine_calls": dict(_MACHINE_CALLS),
                 "machine_tool_ts": {k: list(v) for k, v in _MACHINE_TOOL_TS.items()},
+                "machine_tool_names": {k: dict(v) for k, v in _MACHINE_TOOL_NAMES.items()},
                 "machine_tool_ports": {k: dict(v) for k, v in _MACHINE_TOOL_PORTS.items()},
                 "machine_intent": {k: dict(v) for k, v in _MACHINE_INTENT.items()},
                 "machine_role": dict(_MACHINE_ROLE),
@@ -665,51 +670,109 @@ def _persist_now() -> None:
 
 
 def _load_state() -> None:
-    """Recarrega o estado persistido no boot (se existir)."""
-    global _mcp_total, _mcp_errors, _errors_total, _last_tool_call
+    """Recarrega o estado persistido no boot (se existir).
+
+    POLÍTICA DE SNAPSHOTS INCOMPLETOS:
+    1. Chaves não encontradas no arquivo JSON preservam o estado que já estiver
+       na memória. Nenhuma estrutura é zerada a menos que a chave conste no snapshot.
+    2. Valores numéricos opcionais como `last_tool_call` mantêm seu estado
+       atual se não forem enviados ou se retornarem None no fallback.
+    """
+    global _mcp_total, _mcp_errors, _errors_total, _last_tool_call, _decision_denials, _quota_denials, _trial_keys_issued
     try:
         import os
         if not os.path.exists(_STATE_PATH):
             return
         with open(_STATE_PATH, "r", encoding="utf-8") as f:
             state = json.load(f)
+
+        if not isinstance(state, dict):
+            raise ValueError("Snapshot is not a JSON object")
+
+        # 1. Validar e construir o estado em variáveis temporárias
+        # Dicts
+        n_counts = dict(state.get("counts", {}))
+        n_paths = dict(state.get("paths", {}))
+        n_tools = dict(state.get("tools", {}))
+        n_ports = dict(state.get("ports", {}))
+        n_paid_plans = dict(state.get("paid_plans", {}))
+        n_mcp_consumers = dict(state.get("mcp_consumers", {}))
+        n_machine_first = dict(state.get("machine_first", {}))
+        n_machine_last = dict(state.get("machine_last", {}))
+        n_machine_calls = dict(state.get("machine_calls", {}))
+        n_machine_role = dict(state.get("machine_role", {}))
+        n_machine_ua = dict(state.get("machine_ua", {}))
+
+        # Sets
+        n_uniq = {k: set(v) for k, v in state.get("uniq", {}).items()}
+        n_machine_stages = {k: set(v) for k, v in state.get("machine_stages", {}).items()}
+        n_paid_users = set(state.get("paid_users", []))
+        n_mcp_consumer_ips = set(state.get("mcp_consumer_ips", []))
+
+        # Counters
+        n_machines = {k: collections.Counter(v) for k, v in state.get("machines", {}).items()}
+        n_machine_tool_names = {k: collections.Counter(v) for k, v in state.get("machine_tool_names", {}).items()}
+        n_machine_tool_ports = {k: collections.Counter(v) for k, v in state.get("machine_tool_ports", {}).items()}
+        n_machine_intent = {k: collections.Counter(v) for k, v in state.get("machine_intent", {}).items()}
+
+        # Lists
+        n_machine_tool_ts = {k: list(v) for k, v in state.get("machine_tool_ts", {}).items()}
+        n_tool_errors = list(state.get("tool_errors", []) or [])
+        events = list(state.get("events", []))
+        n_recent_events = events[-100:] if events else []
+
+        # Scalars
+        n_mcp_total = int(state.get("mcp_total", _mcp_total))
+        n_mcp_errors = int(state.get("mcp_errors", _mcp_errors))
+        n_errors_total = int(state.get("errors_total", _errors_total))
+        n_decision_denials = int(state.get("decision_denials", _decision_denials))
+        n_quota_denials = int(state.get("quota_denials", _quota_denials))
+        n_trial_keys_issued = int(state.get("trial_keys_issued", _trial_keys_issued))
+        n_last_tool_call = state.get("last_tool_call", _last_tool_call)
+
+        # 2. Substituir o estado global de maneira consistente (Atomic Replacement)
         with _lock:
-            _counts.update(state.get("counts", {}))
-            for k, v in state.get("uniq", {}).items():
-                _uniq.setdefault(k, set()).update(v)
-            for k, v in state.get("machines", {}).items():
-                _machines.setdefault(k, collections.Counter()).update(v)
-            _paths.update(state.get("paths", {}))
-            _tools.update(state.get("tools", {}))
-            _ports.update(state.get("ports", {}))
-            _mcp_total = state.get("mcp_total", _mcp_total)
-            _mcp_errors = state.get("mcp_errors", _mcp_errors)
-            _errors_total = state.get("errors_total", _errors_total)
-            _paid_plans.update(state.get("paid_plans", {}))
-            _paid_users.update(state.get("paid_users", []))
-            _decision_denials = state.get("decision_denials", _decision_denials)
-            _quota_denials = state.get("quota_denials", _quota_denials)
-            _trial_keys_issued = state.get("trial_keys_issued", _trial_keys_issued)
-            _mcp_consumers.update(state.get("mcp_consumers", {}))
-            _mcp_consumer_ips.update(state.get("mcp_consumer_ips", []))
-            for k, v in state.get("machine_stages", {}).items():
-                _MACHINE_STAGES.setdefault(k, set()).update(v)
-            _MACHINE_FIRST.update(state.get("machine_first", {}))
-            _MACHINE_LAST.update(state.get("machine_last", {}))
-            _MACHINE_CALLS.update(state.get("machine_calls", {}))
-            _MACHINE_TOOL_TS.update(state.get("machine_tool_ts", {}))
-            for k, v in state.get("machine_tool_ports", {}).items():
-                _MACHINE_TOOL_PORTS.setdefault(k, collections.Counter()).update(v)
-            for k, v in state.get("machine_intent", {}).items():
-                _MACHINE_INTENT.setdefault(k, collections.Counter()).update(v)
-            _MACHINE_ROLE.update(state.get("machine_role", {}))
-            _MACHINE_UA.update(state.get("machine_ua", {}))
+            if "counts" in state: _counts.clear(); _counts.update(n_counts)
+            if "paths" in state: _paths.clear(); _paths.update(n_paths)
+            if "tools" in state: _tools.clear(); _tools.update(n_tools)
+            if "ports" in state: _ports.clear(); _ports.update(n_ports)
+            if "paid_plans" in state: _paid_plans.clear(); _paid_plans.update(n_paid_plans)
+            if "mcp_consumers" in state: _mcp_consumers.clear(); _mcp_consumers.update(n_mcp_consumers)
+            if "machine_first" in state: _MACHINE_FIRST.clear(); _MACHINE_FIRST.update(n_machine_first)
+            if "machine_last" in state: _MACHINE_LAST.clear(); _MACHINE_LAST.update(n_machine_last)
+            if "machine_calls" in state: _MACHINE_CALLS.clear(); _MACHINE_CALLS.update(n_machine_calls)
+            if "machine_role" in state: _MACHINE_ROLE.clear(); _MACHINE_ROLE.update(n_machine_role)
+            if "machine_ua" in state: _MACHINE_UA.clear(); _MACHINE_UA.update(n_machine_ua)
+
+            if "uniq" in state: _uniq.clear(); _uniq.update(n_uniq)
+            if "machine_stages" in state: _MACHINE_STAGES.clear(); _MACHINE_STAGES.update(n_machine_stages)
+            if "paid_users" in state: _paid_users.clear(); _paid_users.update(n_paid_users)
+            if "mcp_consumer_ips" in state: _mcp_consumer_ips.clear(); _mcp_consumer_ips.update(n_mcp_consumer_ips)
+
+            if "machines" in state: _machines.clear(); _machines.update(n_machines)
+            if "machine_tool_names" in state: _MACHINE_TOOL_NAMES.clear(); _MACHINE_TOOL_NAMES.update(n_machine_tool_names)
+            if "machine_tool_ports" in state: _MACHINE_TOOL_PORTS.clear(); _MACHINE_TOOL_PORTS.update(n_machine_tool_ports)
+            if "machine_intent" in state: _MACHINE_INTENT.clear(); _MACHINE_INTENT.update(n_machine_intent)
+
+            if "machine_tool_ts" in state: _MACHINE_TOOL_TS.clear(); _MACHINE_TOOL_TS.update(n_machine_tool_ts)
+
+            # For lists that we maintain globally
+            if "tool_errors" in state:
+                _tool_errors.clear()
+                _tool_errors.extend(n_tool_errors)
+            if "events" in state:
+                _recent_events.clear()
+                _recent_events.extend(n_recent_events)
+
+            _mcp_total = n_mcp_total
+            _mcp_errors = n_mcp_errors
+            _errors_total = n_errors_total
+            _decision_denials = n_decision_denials
+            _quota_denials = n_quota_denials
+            _trial_keys_issued = n_trial_keys_issued
             if _last_tool_call is None:
-                _last_tool_call = state.get("last_tool_call")
-            _tool_errors.extend(state.get("tool_errors", []) or [])
-            events = state.get("events", [])
-            if events:
-                _recent_events.extend(events[-100:])
+                _last_tool_call = n_last_tool_call
+
         logger.info("metrics state loaded from %s", _STATE_PATH)
     except Exception as e:
         logger.warning("metrics state load failed: %s", e)

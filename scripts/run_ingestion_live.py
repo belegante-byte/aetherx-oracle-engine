@@ -40,7 +40,14 @@ from src.engine.init_prod_db import PORTS
 load_dotenv("config/.env")
 RAW_DB = os.getenv("RAW_DATABASE_PATH", "data/processed/aether_oracle.duckdb")
 _raw_oracle_db = os.getenv("DATABASE_PATH", "data/oracle.duckdb")
-ORACLE_DB = _raw_oracle_db if os.path.exists(_raw_oracle_db) else "data/oracle.duckdb"
+_raw_oracle_db = os.getenv("DATABASE_PATH")
+if _raw_oracle_db:
+    if not os.path.exists(_raw_oracle_db) and os.getenv("AETHERX_ALLOW_DB_CREATION") != "1":
+        raise RuntimeError(f"Configured DATABASE_PATH does not exist: {_raw_oracle_db}")
+    ORACLE_DB = _raw_oracle_db
+else:
+    ORACLE_DB = "data/oracle.duckdb"
+
 
 # Port metadata mapping for all ports
 PORT_META_MAP = {p["port_id"]: p for p in PORTS}

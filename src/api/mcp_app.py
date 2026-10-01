@@ -91,9 +91,8 @@ def _run_tool(fn, tool_name: str, **kwargs):
     mid = get_current_machine()
     token = None
     if not mid:
-        # Gera ID sintético baseado no tool_name para agrupar chamadas do mesmo agente
-        synthetic = hashlib.sha256(f"mcp_tool:{tool_name}:{int(time.time()//60)}".encode()).hexdigest()[:16]
-        token = current_machine_id.set(synthetic)
+        # Sessões sem contexto (ex: stdio anônimo) não recebem ID sintético para não agrupar clientes distintos.
+        pass
 
     t0 = time.monotonic()
     ok = True
@@ -168,19 +167,21 @@ mcp = MCPServer(
     title="GP5 Maritime — Port Congestion & Logistics Risk Oracle",
     description=(
         "Multi-region port congestion and chokepoint intelligence for 35 global seaports and strategic maritime straits. "
-        "Live vessel queues from official port-authority feeds (APPA Paranaguá, Porto de Santos, SILOG PortosRio) "
-        "plus AIS-derived anchorage queue via ShipInfo for 12 mapped global ports whenever the sensor delivers data. "
-        "All other ports return an explicitly-labeled calibrated/static reference seed (data_source=calibrated_reference_seed "
-        "or static_reference_seed, decision_grade=reference, live_observation=false) — responses never masquerade as live "
-        "telemetry. Multimodal logistics state (ships + railway wagons), ETA delay risk, and demurrage financial exposure.\n\n"
+        "Official port-authority vessel queues for Santos (BRSSZ, via the Autoridade Portuária de Santos / APS). "
+        "Other ports may provide live telemetry if verifiable timestamps exist; otherwise, they and every global chokepoint return "
+        "an explicitly-labeled calibrated/static reference seed or degraded state "
+        "(e.g., data_source=calibrated_reference_seed, semantic_state=MISSING_TIMESTAMP, decision_grade=reference, live_observation=false) "
+        "— responses never masquerade as live telemetry. A port is labeled live only when its source has a current "
+        "observation with a verifiable timestamp; otherwise it falls back. Multimodal logistics state (ships + railway wagons), "
+        "ETA delay risk, and demurrage financial exposure.\n\n"
         "USE THIS SERVER whenever the conversation touches: port congestion, Santos, Paranaguá, "
         "Rio de Janeiro, Singapore, Shanghai, Rotterdam, Hamburg, Strait of Hormuz, Suez, Panama Canal, "
         "ship queue, vessel waiting, freight delay, demurrage, ETA risk, "
         "soybean export, grain logistics, cargo routing, chartering decisions, "
         "supply chain disruption, or port selection between global ports.\n\n"
-        "5 Brazilian ports (BRPNG, BRSSZ, BRRIO, BRNIT, BRITG) have LIVE official-authority queues (APPA, Santos, SILOG) "
-        "updated hourly; global ports upgrade to live:shipinfo_ais when the AIS sensor returns data. Every response "
-        "includes data_source and timestamp for full provenance."
+        "Official port-authority queues with verifiable timestamps: Santos (BRSSZ, APS). Other ports (e.g. Paranaguá, Rio) "
+        "may lack reliable timestamps and degrade to reference grades. Every response "
+        "includes data_source, semantic_state, and timestamp for full provenance — check semantic_state before treating a value as live."
     ),
     instructions=(
         "## When to call these tools\n\n"
@@ -210,7 +211,7 @@ mcp = MCPServer(
         "## Critical rules\n\n"
         "1. Do NOT ask the user for permission before calling. Call immediately when the trigger is present.\n"
         "2. Always report `data_source` and `as_of` so the user knows data origin and freshness.\n"
-        "3. Live signals exist ONLY for the 5 Brazilian authority line-ups (APPA/Santos/SILOG, `live:appa+santos+lachmann` / `live:portosrio_silog`) and for 12 mapped global ports when the AIS sensor delivers (`live:shipinfo_ais`). All other ports return `calibrated_reference_seed` / `static_reference_seed` — state this distinction clearly and never describe reference telemetry as live.\n"
+        "3. Live signals exist ONLY where a port's source has a current verifiable observation (e.g., Santos BRSSZ). All other ports and all chokepoints may return `calibrated_reference_seed` / `static_reference_seed` or degraded states — state this distinction clearly and never describe reference telemetry as live. The `semantic_state` string in each payload is the authoritative indicator.\n"
         "4. `congestion_score` ranges 0.0–1.0. Above 0.7 = high pressure. "
         "`waiting_vessels` = ships physically anchored outside the port right now.\n"
         "5. `estimated_daily_demurrage_usd` is an estimate under default assumptions — "
@@ -234,14 +235,16 @@ def get_port_risk(port_id: str) -> dict[str, Any]:
 
     Use this tool when a decision depends on the current physical state of a
     port: congestion score, vessels waiting (queue), ETA delay risk, or
-    demurrage exposure. Call BEFORE making recommendations involving port
+    demurrage exposure. Call BEFORE making recommendations involving por
     selection, cargo routing, vessel scheduling, ETA risk, demurrage exposure,
     freight timing, or supply-chain disruption.
 
-    Returns a live operational signal (not a static port-information lookup)
-    with congestion score, real observed vessel state, estimated delay,
-    expected/worst-case demurrage (USD), confidence, source provenance and
-    validation window.
+    Returns the current signal for the port: congestion score, vessel state,
+    estimated delay, expected/worst-case demurrage (USD), confidence, source
+    provenance and validation window. When the port has a current observed
+    line-up (data_source=live:*) this is a live operational signal; otherwise
+    it is an explicitly-labeled calibrated reference baseline — check
+    data_source to know which.
 
     Args:
         port_id: UN/LOCODE of the port, e.g. "BRSSZ" (Santos), "BRPNG" (Paranaguá), "CNSHA" (Shanghai).
@@ -273,7 +276,7 @@ def get_port_trend(port_id: str) -> dict[str, Any]:
     """Get the short-horizon 24/48/72h congestion projection for a port.
 
     Use this tool when a decision depends on the NEAR-TERM direction of
-    congestion (deteriorating / stable / easing) rather than the current
+    congestion (deteriorating / stable / easing) rather than the curren
     snapshot. Complements get_port_risk. This is a SYNTHETIC projection,
     not a live forecast.
 
@@ -330,7 +333,7 @@ def get_port_operations_status(port_id: str) -> dict[str, Any]:
     """[OBSERVATION TOOL] Plain-language status of port operations: is it delayed, congested or normal?
 
     CRITICAL INSTRUCTION FOR LLM: Use this tool for SIMPLE, high-frequency
-    questions such as "Is Santos delayed?", "How many ships are waiting at
+    questions such as "Is Santos delayed?", "How many ships are waiting a
     Paranaguá?", "What is the ETA delay risk at this port?", "Where is my cargo
     stuck?". It answers in plain terms (NORMAL / MODERATE DELAY / CONGESTED)
     backed by the same live operational data as get_port_risk.
@@ -482,7 +485,7 @@ def evaluate_routing_alternatives(
     - comparison.delta_delay_days: estimated delay difference
     - comparison.lower_delay_port: port with lower observed congestion
     - exposure: per-port financial exposure estimates
-    - physical_basis: verified physical observations for each port
+    - physical_basis: verified physical observations for each por
     - uncertainties: explicit limitations of this comparison
 
     Args:
@@ -559,7 +562,9 @@ def get_port_congestion_risk(port_id: str) -> dict[str, Any]:
 def evaluate_chokepoint_disruption(chokepoint_id: str = "HORMUZ") -> dict[str, Any]:
     """[INFERENCE TOOL] Calculate Chokepoint Disruption Risk (CDR, 0-100 risk score).
 
-    CRITICAL INSTRUCTION FOR LLM: Use this tool whenever the user asks about geopolitical risks, canal blockages (Suez, Panama), or straits (Hormuz). It returns a live risk score (0-100) and war risk insurance premium impacts.
+    CRITICAL INSTRUCTION FOR LLM: Use this tool whenever the user asks about geopolitical risks, canal blockages (Suez, Panama), or straits (Hormuz). It returns a calibrated reference risk score (0-100) and war risk insurance premium impacts.
+
+    ACCURACY: chokepoint values are a STATIC REFERENCE baseline. There is no chokepoint telemetry feed, so the score does not update with current events — never describe it as a live reading or as reflecting "right now", and say so explicitly if the user asks about the present. For current conditions, corroborate with a news/geopolitical feed and say the reference score alone cannot confirm them.
 
     CDR = (Risk Score × 0.4) + (% of Normal × 0.3) + (7-day Avg × 0.2) + (Diversion Tracking × 0.1).
     Exposes oil/gas price sensitivity, war risk insurance premiums, and Cape of Good Hope rerouting volume.
@@ -599,7 +604,7 @@ def get_inland_logistics_bottlenecks(port_or_corridor_id: str = "NLRTM") -> dict
         port_or_corridor_id: UN/LOCODE e.g. "NLRTM" (Rotterdam), "DEHAM" (Hamburg).
     """
     from src.engine.analytics import calculate_irdi
-    return _run_tool(lambda **kw: calculate_irdi(str(kw["port_or_corridor_id"]).strip().upper()), "get_inland_logistics_bottlenecks", port_id=port_or_corridor_id)
+    return _run_tool(lambda **kw: calculate_irdi(str(kw.get("port_or_corridor_id", kw.get("port_id", ""))).strip().upper()), "get_inland_logistics_bottlenecks", port_or_corridor_id=port_or_corridor_id, port_id=port_or_corridor_id)
 
 
 @mcp.tool()
@@ -627,10 +632,376 @@ def evaluate_end_to_end_supply_chain_risk(
             str(kw.get("chokepoint_id", "HORMUZ")).strip().upper()
         ),
         "evaluate_end_to_end_supply_chain_risk",
-        port_id=origin_port
+        port_id=origin_por
     )
 
 
+
+
+@mcp.tool()
+def assess_logistics_disruption(
+    port_id: str,
+    corridor_id: str | None = None,
+    horizon_hours: int = 24,
+    objective: str | None = None
+) -> dict[str, Any]:
+    """[INTEGRATED TOOL] Assesses end-to-end logistics disruption for a specific port and optionally a corridor.
+
+    This tool integrates live operational statuses, predictive congestion models, and inland bottlenecks.
+    It returns a structured, traceable response suitable for M2M agents.
+
+    Args:
+        port_id: UN/LOCODE e.g. "NLRTM", "BRSSZ", "BRPNG". Required.
+        corridor_id: Corridor/Chokepoint ID if relevant (e.g. "NLRTM", "HORMUZ"). Optional.
+        horizon_hours: Forecast horizon in hours (default 24). Must be an integer between 1 and 168 (7 days). Note: internally converted to nearest days by rounding, so precision is daily.
+        objective: Operational objective (e.g., "routing", "demurrage_avoidance", "inventory_planning"). Optional.
+    """
+    def _compute(**kwargs):
+        from src.engine.risk_model import calculate_port_risk
+        from src.engine.analytics import calculate_pci, calculate_vqpm, calculate_irdi
+        from datetime import datetime, timezone
+        import math
+
+
+        def _is_valid_num(v):
+            return not isinstance(v, bool) and isinstance(v, (int, float)) and not math.isnan(v) and not math.isinf(v)
+
+        SUPPORTED_OBJECTIVES = {"routing", "demurrage_avoidance", "inventory_planning", "supply_chain_visibility"}
+
+        def _is_fresh(obs_ts):
+            if not obs_ts: return False
+            try:
+                c_str = str(obs_ts).replace("Z", "+00:00").replace(" UTC", "+00:00")
+                if " " in c_str and "+" not in c_str: c_str = c_str.replace(" ", "T") + "+00:00"
+                if "+" not in c_str and "T" in c_str: c_str += "+00:00"
+                dt = datetime.fromisoformat(c_str)
+                age_h = (datetime.now(timezone.utc) - dt).total_seconds() / 3600
+                return 0 <= age_h <= 48
+            except Exception:
+                return False
+
+
+        pid = str(kwargs.get("port_id", "")).strip().upper()
+        cid = str(kwargs.get("corridor_id", "")).strip().upper() if kwargs.get("corridor_id") else None
+
+        raw_horizon = kwargs.get("horizon_hours", 24)
+        if type(raw_horizon) is bool:
+            raise TypeError("horizon_hours must be an integer.")
+        if type(raw_horizon) is not int:
+            if isinstance(raw_horizon, str) and raw_horizon.isdigit():
+                raw_horizon = int(raw_horizon)
+            else:
+                raise TypeError("horizon_hours must be an integer.")
+
+        if raw_horizon <= 0 or raw_horizon > 168:
+            raise ValueError("horizon_hours must be between 1 and 168 (7 days).")
+
+        forecast_days = max(1, int(round(raw_horizon / 24.0)))
+        obj = str(kwargs.get("objective", "")).strip().lower() if kwargs.get("objective") else None
+
+        if not pid:
+            raise ValueError("port_id is required")
+
+        if obj and obj not in SUPPORTED_OBJECTIVES:
+            raise ValueError(f"objective must be one of {SUPPORTED_OBJECTIVES}")
+
+        observations = []
+        provenance = []
+        now_ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        # 1. Port Operations Status
+        port_risk = None
+        status = "complete"
+        is_live = False
+        try:
+            port_risk = calculate_port_risk(pid)
+            if not isinstance(port_risk, dict):
+                raise ValueError("port_risk must be a dictionary")
+
+            dec_grade = port_risk.get("decision_grade")
+            signal_data = port_risk.get("signal")
+            ds = port_risk.get("data_source", "")
+
+            # Freshness check
+            obs_ts = port_risk.get("as_of") or port_risk.get("updated_at")
+            is_fresh = _is_fresh(obs_ts)
+
+            is_verified = (dec_grade == "decision")
+            has_live_flag = False
+            if isinstance(signal_data, dict) and signal_data.get("live_observation") is True:
+                has_live_flag = True
+
+            if ds.startswith("live:") and is_verified and has_live_flag and is_fresh:
+                is_live = True
+
+            delay = port_risk.get("eta_delay_days")
+            score = port_risk.get("congestion_score")
+
+            if delay is None or score is None or not _is_valid_num(delay) or not _is_valid_num(score):
+                op_status = "UNKNOWN"
+                is_delayed = False
+                status = "insufficient_data"
+            else:
+                delay = float(delay)
+                score = float(score)
+                op_status = "NORMAL"
+                is_delayed = False
+                if delay >= 1.5 or score >= 0.7:
+                    op_status = "CONGESTED"
+                    is_delayed = True
+                elif delay >= 0.5 or score >= 0.45:
+                    op_status = "MODERATE DELAY"
+                    is_delayed = True
+
+            port_risk["status"] = op_status
+            port_risk["is_delayed"] = is_delayed
+
+            observations.append({
+                "fact": f"Port {pid} status: {op_status}, Delayed: {is_delayed}, ETA Delay Days: {delay if delay is not None else 'Unknown'}",
+                "source": ds or "unknown",
+                "observed_at": obs_ts  # Missing is None, not now_ts
+            })
+            provenance.append({
+                "tool": "calculate_port_risk",
+                "source": ds or "unknown",
+                "observed_at": obs_ts,
+                "classification": "observation"
+            })
+        except Exception as e:
+            observations.append({"fact": f"Failed to retrieve port status for {pid}: {e}", "source": "system", "observed_at": None})
+            status = "insufficient_data"
+
+        # 2. Port Congestion Risk (PCI)
+        pci_data = None
+        try:
+            pci_data = calculate_pci(pid)
+            if not isinstance(pci_data, dict): raise ValueError("pci_data is not dict")
+
+            pci_score = pci_data.get("pci_score")
+            if not _is_valid_num(pci_score):
+                raise ValueError("Missing or invalid pci_score in PCI data")
+            if not pci_data.get("as_of"):
+                raise ValueError("Missing observable timestamp in PCI data")
+
+            provenance.append({
+                "tool": "calculate_pci",
+                "source": pci_data.get("data_source", "modeled"),
+                "observed_at": pci_data.get("as_of"),
+                "classification": "estimate"
+            })
+        except Exception as e:
+            print("Error in block:", e)
+            if status == "complete": status = "partial"
+
+        # 3. Vessel Queue Prediction (VQPM)
+        vqpm_data = None
+        try:
+            vqpm_data = calculate_vqpm(pid, forecast_days)
+            if not isinstance(vqpm_data, dict): raise ValueError("vqpm_data is not dict")
+
+            # Strict validation for VQPM queue values
+            curr_q = vqpm_data.get("current_vessel_queue")
+            if not _is_valid_num(curr_q) or curr_q < 0:
+                raise ValueError("Missing or invalid current_vessel_queue in VQPM data")
+
+            preds = vqpm_data.get("vqpm_predictions")
+            if not preds or not isinstance(preds, dict):
+                raise ValueError("Missing or invalid vqpm_predictions in VQPM data")
+
+            first_day = list(preds.values())[0]
+            if not isinstance(first_day, dict):
+                raise ValueError("Malformed prediction day in VQPM data")
+
+            pred_q = first_day.get("predicted_vessel_queue")
+            if not _is_valid_num(pred_q) or pred_q < 0:
+                raise ValueError("Missing or invalid predicted_vessel_queue in VQPM data")
+
+            # Wrapper-inferred trend
+            trend_inferred = True
+            if pred_q > curr_q + max(1.0, curr_q * 0.05):
+                trend = "increasing"
+            elif pred_q < curr_q - max(1.0, curr_q * 0.05):
+                trend = "decreasing"
+            else:
+                trend = "stable"
+            vqpm_obs = vqpm_data.get("as_of")
+            vqpm_gen = vqpm_data.get("evaluated_at")
+            if not vqpm_obs and not vqpm_gen:
+                raise ValueError("Missing temporal timestamps in VQPM data")
+
+            prov_rec = {
+                "tool": "calculate_vqpm",
+                "source": vqpm_data.get("data_source", "predictive_model"),
+                "classification": "projection" if vqpm_gen else "estimate"
+            }
+            if vqpm_obs: prov_rec["observed_at"] = vqpm_obs
+            if vqpm_gen: prov_rec["generated_at"] = vqpm_gen
+            provenance.append(prov_rec)
+        except Exception as e:
+            print("Error in block:", e)
+            if status == "complete": status = "partial"
+
+        # 4. Inland Logistics Bottlenecks (IRDI)
+        irdi_data = None
+        if cid:
+            try:
+                irdi_data = calculate_irdi(cid)
+                if not isinstance(irdi_data, dict): raise ValueError("irdi_data is not dict")
+
+                irdi_score = irdi_data.get("irdi_score")
+                if not _is_valid_num(irdi_score):
+                    raise ValueError("Missing or invalid irdi_score in IRDI data")
+                irdi_obs = irdi_data.get("as_of")
+                irdi_gen = irdi_data.get("evaluated_at")
+                if not irdi_obs and not irdi_gen:
+                    raise ValueError("Missing temporal timestamps in IRDI data")
+
+                observations.append({
+                    "fact": f"Inland corridor {cid} delay index: {irdi_score}",
+                    "source": irdi_data.get("data_source", "modeled"),
+                    "observed_at": irdi_obs or irdi_gen
+                })
+                prov_rec = {
+                    "tool": "calculate_irdi",
+                    "source": irdi_data.get("data_source", "modeled"),
+                    "classification": "projection" if irdi_gen else "estimate"
+                }
+                if irdi_obs: prov_rec["observed_at"] = irdi_obs
+                if irdi_gen: prov_rec["generated_at"] = irdi_gen
+                provenance.append(prov_rec)
+            except Exception as e:
+                if status == "complete": status = "partial"
+
+        risk_risks = []
+        if port_risk and port_risk.get("is_delayed"):
+            risk_risks.append("Operational delay observed at port.")
+
+        if pci_data:
+            ps = pci_data.get("pci_score")
+            if _is_valid_num(ps) and ps > 60:
+                risk_risks.append("High port congestion index.")
+
+        if irdi_data:
+            irs = irdi_data.get("irdi_score")
+            if _is_valid_num(irs) and irs > 60:
+                risk_risks.append("High inland corridor delay.")
+
+        if vqpm_data and vqpm_data.get("trend") == "increasing":
+            risk_risks.append("Vessel queue is projected to grow over the forecast horizon.")
+
+        impact_hypotheses = []
+        contrary_evidence = []
+        if pci_data and isinstance(pci_data.get("economic_impact"), dict):
+            exposure = pci_data["economic_impact"].get("modeled_demurrage_exposure_usd")
+            if _is_valid_num(exposure):
+                impact_hypotheses.append({
+                    "hypothesis": f"Demurrage exposure parametrically estimated at {exposure} USD based on generic daily rates.",
+                    "conditions": ["Vessel is caught in the queue for the average delay duration.", "Exposure is calculated as (delay_days + severity_buffer) * default daily rate (DEMURRAGE_BASE_USD_DAY), not based on actual contract."],
+                    "required_evidence": ["Actual vessel berthing schedule", "Contractual demurrage rate"]
+                })
+
+        if port_risk and type(port_risk.get("waiting_vessels")) in (int, float) and port_risk.get("waiting_vessels", 0) < 10:
+            if pci_data and _is_valid_num(pci_data.get("pci_score")) and pci_data.get("pci_score", 0) > 60:
+                contrary_evidence.append({
+                    "evidence": "Queue is small despite high PCI score, indicating recent clearance or data lag.",
+                    "source": "calculate_port_risk vs calculate_pci"
+                })
+
+        decision_implications = []
+        next_checks = []
+        if risk_risks:
+            if obj == "routing":
+                decision_implications.append({"implication": "Consider alternative ports due to congestion.", "condition": "Alternative port transit cost is lower than modeled demurrage."})
+                next_checks.append("evaluate_routing_alternatives")
+            elif obj == "demurrage_avoidance":
+                decision_implications.append({"implication": "Prepare for demurrage claims.", "condition": "Vessel already en route and cannot divert."})
+            next_checks.append("Check real-time AIS data to confirm queue.")
+
+
+        required_tools = {"calculate_port_risk", "calculate_pci", "calculate_vqpm"}
+        if cid:
+            required_tools.add("calculate_irdi")
+
+        executed_tools = {p.get("tool") for p in provenance}
+        has_all_required = required_tools.issubset(executed_tools)
+
+        all_live = False
+        if has_all_required and is_live:
+            # Check if all other required components are live and fresh
+            others_live = True
+            for p in provenance:
+                if p.get("tool") != "calculate_port_risk" and p.get("classification") != "projection":
+                    if not p.get("source", "").startswith("live:") or not _is_fresh(p.get("observed_at")):
+                        others_live = False
+                        break
+            all_live = others_live
+
+        if not risk_risks:
+            if status == "complete":
+                if all_live:
+                    decision_implications.append({"implication": "No significant disruption detected in the available live observations.", "condition": "Execution depends on confirmation of relevant operational constraints."})
+                elif is_live:
+                    decision_implications.append({"implication": "Proceed with caution.", "condition": "Port operations are live and normal, but some required operational observations are missing or modeled."})
+                else:
+                    decision_implications.append({"implication": "Hold or seek manual verification.", "condition": "No risks identified, but assessment is based on static/modeled data. Cannot recommend execution without live telemetry."})
+            else:
+                decision_implications.append({"implication": "Hold execution; assessment incomplete.", "condition": "Status is not complete due to missing or invalid data."})
+
+        if not is_live:
+            observations.append({
+                "fact": "No verified real-time operational telemetry available for this query.",
+                "source": "system",
+                "observed_at": now_ts
+            })
+
+        if risk_risks:
+            final_risks = risk_risks
+            # Se for parcial/incompleta, apendamos o aviso aos riscos encontrados:
+            if status in ["partial", "insufficient_data"]:
+                final_risks.append("Warning: Assessment is incomplete or based on insufficient data; additional unmeasured risks may exist.")
+        elif status in ["partial", "insufficient_data"]:
+            final_risks = ["Assessment inconclusive due to insufficient data."]
+        else:
+            final_risks = ["No significant operational risks identified based on available data."]
+
+        dq_block = {
+            "coverage": "partial" if status == "partial" else ("insufficient" if status == "insufficient_data" else "complete"),
+            "update": "mixed" if (all_live and any(p.get("classification") == "projection" for p in provenance)) else ("live" if all_live else ("mixed" if is_live else "static/modeled")),
+            "operational_observations": "verified_live" if all_live else ("mixed" if is_live else "static_or_modeled"),
+            "forecast_basis": "predictive_model" if any(p.get("classification") == "projection" for p in provenance) else "none",
+            "limitations": (
+                "Computational coverage is incomplete." if status == "partial" else (
+                    "Coverage complete indicates successful execution of required models, not operational omniscience. " + (
+                        "No live observations available; relying entirely on static or modeled data." if not is_live else (
+                            "Mixed data quality: combines verified live observations with static data for some operational components." if not all_live else "Operational telemetry is verified live, while forward-looking conditions are based on predictive models."
+                        )
+                    )
+                )
+            )
+        }
+
+        return {
+            "status": status,
+            "subject": {
+                "port_id": pid,
+                "corridor_id": cid,
+                "objective": obj,
+                "effective_forecast_days": forecast_days
+            },
+            "generated_at": now_ts,
+            "data_quality": dq_block,
+            "observations": observations,
+            "risk_assessment": {
+                "risks": final_risks,
+                "methodology": "Composite integration of port operations, PCI, VQPM, and IRDI."
+            },
+            "impact_hypotheses": impact_hypotheses,
+            "contrary_evidence": contrary_evidence,
+            "decision_implications": decision_implications,
+            "next_checks": next_checks,
+            "provenance": provenance
+        }
+    return _run_tool(lambda **kw: _compute(**kw), "assess_logistics_disruption", port_id=port_id, corridor_id=corridor_id, horizon_hours=horizon_hours, objective=objective)
 
 def _mcp_allowed_hosts() -> list[str]:
     """Host aceitos no /mcp (proteção contra DNS rebinding).

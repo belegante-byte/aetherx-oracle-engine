@@ -3,6 +3,64 @@
 Histórico de mudanças relevantes do **Aether-X Oracle Engine**. Formato baseado em
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.0] — 2026-09-29
+
+### Corrigido (ingestão real do Porto de Santos — a fonte oficial funciona)
+- **TLS sem fallback inseguro.** `src/ingestion/live_sources.py` tinha
+  `ALLOW_INSECURE_TLS=1` como **default** e, em qualquer `ssl.SSLError`,
+  refazia a requisição com `ssl._create_unverified_context()` — para qualquer
+  fonte, não só Santos. Removido: `_fetch` agora delega a
+  `src/ingestion/tls_chain.py` (trust store do sistema, `check_hostname=True`,
+  `CERT_REQUIRED`), e uma falha de cadeia registra `failed` em vez de produzir
+  leitura "viva".
+- **Cadeia da APS completada pela via oficial, sem mexer no trust store global.**
+  `www.portodesantos.com.br` envia só o leaf e omite a
+  `Sectigo Public Server Authentication CA OV R36`. A intermediaria oficial
+  (`certs/sectigo_ovr36.pem`, sha256 DER `6542d176…78530`, AKI do leaf = SKI da
+  intermediaria `E3:66:…:92`, raiz R46 no trust store) é carregada **em cima**
+  das raízes do sistema, num contexto **próprio por fonte** — carregar no
+  contexto padrão cacheado vazaria a CA da APS para as outras fontes.
+  `scripts/capture_aps_fixtures.py` reproduz a captura com proveniência.
+- **Parser semântico por página** (`src/ingestion/aps_santos.py`), a partir das
+  respostas reais: `atracados-porto-terminais` → `ATRACADO` (45),
+  `navios-fundeados` → `AO_LARGO` (86: 52 na fila, 34 com chegada antiga),
+  `navios-esperados-carga` → `ESPERADO` (286: 213 agendados, 73 antigos),
+  `navios-esperados-passageiros` → `ESPERADO` (32 agendados). Antes,
+  `atracacoes-programadas` era lido como se fosse o line-up e as quatro páginas
+  se confundiam.
+- **Barreira de promoção a `live:*`.** O coletor marcava `ok: True` mesmo com
+  zero linhas e o runner rotulava o porto como `live:` a partir dessa flag.
+  Agora: sem linha real (`rows > 0`) **e** sem observação utilizável, o porto
+  **não** vira live; `stale` nunca entra no cálculo; fonte oficial do porto tem
+  precedência sobre coletor legado do mesmo porto (misturar os dois contava o
+  mesmo navio duas vezes — 27 `EM_OPERACAO` + 45 `ATRACADO` inflavam o berço e
+  subestimavam a congestão); porto com `live:*` sem observação há mais de
+  `LIVE_FRESH_HOURS` (6h) é rebaixado à referência calibrada, registrando em
+  `live_detail` quando foi a última observação real.
+- **Persistência não destrutiva.** `gravar_raw` fazia
+  `DROP TABLE IF EXISTS raw_port_lineup` a cada execução, destruindo o
+  histórico. Agora a tabela é criada se faltar, colunas novas entram de forma
+  aditiva (`run_id`, `page`, `source_timestamp`, `observed_at`, `fetched_at`,
+  `observation_state`, `terminal`, `berth`, `cargo_group`, `peso_t`) e as linhas
+  são **acumuladas**. Fonte legada grava `observation_state='unspecified'` em vez
+  de fingir leitura atual.
+- **`ingestion_runs`:** uma linha por fonte por execução com url, status HTTP,
+  `Date` do servidor, versão de TLS, fingerprint do leaf, emissor, fingerprint da
+  intermediaria, `tls_chain_verified`, contagem de linhas por estado
+  (`current`/`scheduled`/`stale`), IMOs distintos e `state`
+  (`ok`/`empty`/`failed`/`unverified`). `empty` = HTTP 200 sem linha, que antes
+  contava como sucesso.
+- **Corrigido no caminho:** `DATABASE_PATH` explícito era ignorado quando o
+  arquivo ainda não existia, e o script caía no `data/oracle.duckdb` do
+  repositório; o IMO da APS vem com 8 dígitos (zero à esquerda) e quebrava a
+  deduplicação; `_fetch` aceitava HTTP 404/500 como se fosse conteúdo.
+- Testes: `tests/test_aps_santos.py` (20 casos: semântica das 4 páginas, IMO,
+  `stale` contra a data do servidor, pin da intermediaria, contexto APS sem
+  contaminar o padrão, falha fechada, ausência de `verify=False` verificada na
+  AST) e `tests/test_ingestion_promotion_gate.py` (11 casos: zero linhas não é
+  evidência, `stale`, precedência da autoridade, acúmulo de histórico,
+  `ingestion_runs`, rebaixada). Suíte: **176 testes passando**.
+
 ## [1.4.1] — 2026-09-29
 
 ### Corrigido (integridade do banco de produção — a descoberta do dia)

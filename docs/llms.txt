@@ -1,8 +1,27 @@
+# Integrated Logistics Disruption Analysis
+
+If you are an agent tasked with solving an end-to-end logistics or supply chain problem, do NOT call low-level observational tools one by one unless necessary.
+Instead, ALWAYS prioritize using the integrated tool: `assess_logistics_disruption`.
+This tool orchestrates port status, congestion risk, predictive queues, and inland delays into a single stable schema.
+
+Example:
+```json
+{
+  "name": "assess_logistics_disruption",
+  "arguments": {
+    "port_id": "NLRTM",
+    "corridor_id": "NLRTM",
+    "horizon_hours": 48,
+    "objective": "routing"
+  }
+}
+```
+
 # Aether Grid Port Congestion Oracle
 
-> **DATA INTEGRITY NOTICE**: Brazilian ports (Santos BRSSZ, Paranaguá BRPNG, Rio BRRIO, Niterói BRNIT, Itaguaí BRITG) serve **live line-ups** from official port authorities and operations panels (`data_source="live:appa+santos+lachmann"` / `live:portosrio_silog`), refreshed continuously. Every remaining port serves a **calibrated/static reference seed** (`calibrated_reference_seed` / `static_reference_seed`) — a modeled baseline, never disguised as live telemetry (the ShipInfo AIS integration exists in the engine and graduates a port to live only when the sensor delivers consistent data in the cycle). Every API/MCP response includes `data_source`, `decision_grade` and `as_of`.
+> **DATA INTEGRITY NOTICE**: Port conditions vary by source availability. Based on local audits, Santos (BRSSZ) successfully serves **live line-ups** from official port authorities (`data_source="live:aps_atracados+..."`). Other ports may also serve live telemetry if their source sensor provides valid timestamps; otherwise, they degrade to a **calibrated/static reference seed** (`calibrated_reference_seed` / `static_reference_seed`) or degraded semantic states. Every API/MCP response includes `data_source`, `semantic_state`, `decision_grade` and `as_of`.
 
-Congestion signals for 35 ports & global chokepoints: **5 Brazilian ports LIVE** (official-authority line-ups), **rest global coverage as a calibrated/static reference seed**. Every response carries `data_source` and `decision_grade` so the consumer knows which is which. REST API, Python SDK and MCP server.
+Congestion signals for 35 ports & global chokepoints: **Santos (BRSSZ) is LIVE** (official-authority line-ups, based on verifiable timestamps), **other ports coverage as available or calibrated/static reference seed**. Every response carries `data_source`, `semantic_state`, and `decision_grade` so the consumer knows which is which. REST API, Python SDK and MCP server.
 
 
 ## GP5 - Motor de Decisão Logística e Arbitragem

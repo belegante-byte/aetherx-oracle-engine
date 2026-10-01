@@ -10,7 +10,14 @@ from dotenv import load_dotenv
 
 load_dotenv("config/.env")
 _raw_db_path = os.getenv("DATABASE_PATH", "data/oracle.duckdb")
-DB_PATH = _raw_db_path if os.path.exists(_raw_db_path) else "data/oracle.duckdb"
+_raw_db_path = os.getenv("DATABASE_PATH")
+if _raw_db_path:
+    if not os.path.exists(_raw_db_path) and os.getenv("AETHERX_ALLOW_DB_CREATION") != "1":
+        raise RuntimeError(f"Configured DATABASE_PATH does not exist and DB creation not allowed: {_raw_db_path}")
+    DB_PATH = _raw_db_path
+else:
+    DB_PATH = "data/oracle.duckdb"
+
 
 _CONN: "duckdb.DuckDBPyConnection | None" = None
 

@@ -1538,17 +1538,18 @@ def get_ports_risk(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/{filename}", include_in_schema=False)
-def verification_file(filename: str):
-    """Serve arquivos de verificação de propriedade do Google/Bing.
+@app.get("/BingSiteAuth.xml", include_in_schema=False)
+def verification_bing():
+    path = Path(__file__).resolve().parent.parent.parent / "data" / "verification" / "BingSiteAuth.xml"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Not found")
+    return HTMLResponse(path.read_text(encoding="utf-8"))
 
-    Google Search Console / Bing Webmaster exigem um arquivo `google<Token>.html`
-    (ou `BingSiteAuth.xml`) na raiz do domínio. Se o arquivo existir em
-    `data/verification/`, servimos em texto HTML; caso contrário 404.
-    Registrada antes do mount do MCP para não ser capturada por ele.
-    """
+@app.get("/google{token_with_ext}", include_in_schema=False)
+def verification_google(token_with_ext: str):
+    filename = f"google{token_with_ext}"
     import re as _re
-    if not (_re.fullmatch(r"(google[0-9a-f]{10,}\.html)|(BingSiteAuth\.xml)", filename)):
+    if not (_re.fullmatch(r"google[0-9a-f]{10,}\.html", filename)):
         raise HTTPException(status_code=404, detail="Not found")
     path = Path(__file__).resolve().parent.parent.parent / "data" / "verification" / filename
     if not path.exists():

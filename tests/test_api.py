@@ -401,6 +401,8 @@ def test_record_tool_call_populates_tower():
         _tools.clear()
         _ports.clear()
         _recent_events.clear()
+        import src.api.metrics as metrics
+        metrics._mcp_errors = 0
     record_tool_call("get_port_risk", port_id="BRPNG", ok=True, latency_ms=5)
     s = metrics_snapshot()
     assert s["mcp_calls"] >= 1
@@ -417,6 +419,8 @@ def test_record_tool_call_tracks_error():
         _tools.clear()
         _ports.clear()
         _recent_events.clear()
+        import src.api.metrics as metrics
+        metrics._mcp_errors = 0
         _tool_errors.clear()
     before_errors = metrics_snapshot()["mcp_errors"]
     record_tool_call(
@@ -500,6 +504,7 @@ def test_funnel_tracks_machine_stages():
     from src.api.metrics import _MACHINE_STAGES, _MACHINE_CALLS, _MACHINE_FIRST, _MACHINE_LAST, _lock
     with _lock:
         _MACHINE_STAGES.clear(); _MACHINE_CALLS.clear(); _MACHINE_FIRST.clear(); _MACHINE_LAST.clear()
+        if hasattr(m, '_MACHINE_TOOL_NAMES'): m._MACHINE_TOOL_NAMES.clear()
     m._mark_stage("faaa11", "discovery")
     m._mark_stage("faaa11", "mcp_connect")
     m.set_current_machine("faaa11")
@@ -522,9 +527,9 @@ def test_funnel_tracks_machine_stages():
 
 def test_repeat_tool_detects_product_retention():
     from src.api import metrics as m
-    from src.api.metrics import _MACHINE_STAGES, _MACHINE_TOOL_TS, _MACHINE_TOOL_PORTS, _lock
+    from src.api.metrics import _MACHINE_STAGES, _MACHINE_TOOL_TS, _MACHINE_TOOL_NAMES, _lock
     with _lock:
-        _MACHINE_STAGES.clear(); _MACHINE_TOOL_TS.clear(); _MACHINE_TOOL_PORTS.clear()
+        _MACHINE_STAGES.clear(); _MACHINE_TOOL_TS.clear(); _MACHINE_TOOL_NAMES.clear()
     # executa tool agora
     m.set_current_machine("rpt1111")
     m.record_tool_call("get_port_risk", port_id="BRPNG", ok=True)
@@ -679,3 +684,31 @@ def test_metrics_gates_block_present():
     s = metrics_snapshot()
     for field in ("decision_denied", "quota_exceeded", "trial_keys_issued"):
         assert field in s["gates"]
+
+def test_metrics_lifecycle_persistence(tmp_path, monkeypatch):
+    import src.api.metrics as metrics
+    import os
+    import collections
+    import copy
+
+    temp_state = tmp_path / "test_state.json"
+    monkeypatch.setattr(metrics, "_STATE_PATH", str(temp_state))
+
+    backup_names = copy.deepcopy(metrics._MACHINE_TOOL_NAMES)
+
+    try:
+        metrics._MACHINE_TOOL_NAMES.clear()
+        mid = "lifecycle_test_machine"
+        metrics._MACHINE_TOOL_NAMES.setdefault(mid, collections.Counter())["calculate_vqpm"] = 3
+
+        metrics._persist_now()
+
+        metrics._MACHINE_TOOL_NAMES.clear()
+        assert len(metrics._MACHINE_TOOL_NAMES) == 0
+
+        metrics._load_state()
+
+        assert metrics._MACHINE_TOOL_NAMES[mid]["calculate_vqpm"] == 3
+    finally:
+        metrics._MACHINE_TOOL_NAMES.clear()
+        metrics._MACHINE_TOOL_NAMES.update(backup_names)

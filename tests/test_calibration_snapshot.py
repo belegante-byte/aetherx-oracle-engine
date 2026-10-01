@@ -32,7 +32,7 @@ def _env_raw(tmp_path):
 
 
 def _env_oracle(tmp_path):
-    oracle = tmp_path / "oracle.duckdb"
+    oracle = tmp_path / "test_disposable_oracle.duckdb"
     c = duckdb.connect(str(oracle))
     c.execute("""
         CREATE TABLE antaq_validation (

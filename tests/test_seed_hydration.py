@@ -45,7 +45,7 @@ def _seed_counts():
 
 @needs_seed
 def test_hydrates_empty_db_with_all_reference_tables(tmp_path):
-    db = _mkdb(tmp_path / "oracle.duckdb")
+    db = _mkdb(tmp_path / "test_disposable_oracle.duckdb")
     report = hydrate_from_seed(db)
     assert report["status"] == "ok"
     assert _counts(db) == _seed_counts()
@@ -54,7 +54,7 @@ def test_hydrates_empty_db_with_all_reference_tables(tmp_path):
 
 @needs_seed
 def test_second_run_inserts_nothing(tmp_path):
-    db = _mkdb(tmp_path / "oracle.duckdb")
+    db = _mkdb(tmp_path / "test_disposable_oracle.duckdb")
     hydrate_from_seed(db)
     first = _counts(db)
     report = hydrate_from_seed(db)
@@ -66,7 +66,7 @@ def test_second_run_inserts_nothing(tmp_path):
 @needs_seed
 def test_never_overwrites_existing_observation(tmp_path):
     """Linha existente (mesmo que seja mais velha) NÃO é sobrescrita nem duplicada."""
-    db = _mkdb(tmp_path / "oracle.duckdb")
+    db = _mkdb(tmp_path / "test_disposable_oracle.duckdb")
     hydrate_from_seed(db)
     pid = db.execute("SELECT port_id FROM port_metrics ORDER BY port_id LIMIT 1").fetchone()[0]
     db.execute(
@@ -85,7 +85,7 @@ def test_never_overwrites_existing_observation(tmp_path):
 @needs_seed
 def test_never_resurrects_dead_sensor_rows(tmp_path):
     """Mesmo que o seed traga live:*, a hidratação não pode inserir leitura velha."""
-    conn = _mkdb(tmp_path / "oracle.duckdb")
+    conn = _mkdb(tmp_path / "test_disposable_oracle.duckdb")
     seed_path = str(tmp_path / "seed.duckdb")
     seed = _mkdb(seed_path)
     seed.execute(
@@ -104,7 +104,7 @@ def test_never_resurrects_dead_sensor_rows(tmp_path):
 
 @needs_seed
 def test_missing_seed_is_noop_and_logged(tmp_path):
-    db = _mkdb(tmp_path / "oracle.duckdb")
+    db = _mkdb(tmp_path / "test_disposable_oracle.duckdb")
     db.execute("CREATE TABLE port_metrics(port_id VARCHAR)")
     db.execute("INSERT INTO port_metrics VALUES ('BRSSZ')")
     report = hydrate_from_seed(db, str(tmp_path / "nao_existe.duckdb"))
@@ -118,7 +118,7 @@ def test_missing_seed_is_noop_and_logged(tmp_path):
 @needs_seed
 def test_adds_missing_column_without_dropping_table(tmp_path):
     """Migração aditiva: coluna que falta é criada, dados existentes ficam."""
-    db = _mkdb(tmp_path / "oracle.duckdb")
+    db = _mkdb(tmp_path / "test_disposable_oracle.duckdb")
     hydrate_from_seed(db)
     cols = {
         r[0]
@@ -141,7 +141,7 @@ def test_adds_missing_column_without_dropping_table(tmp_path):
 
 @needs_seed
 def test_log_records_seed_provenance(tmp_path):
-    db = _mkdb(tmp_path / "oracle.duckdb")
+    db = _mkdb(tmp_path / "test_disposable_oracle.duckdb")
     hydrate_from_seed(db)
     row = db.execute(
         "SELECT status, seed_sha256, seed_built_at FROM seed_hydration_log"
