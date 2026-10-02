@@ -190,6 +190,11 @@ def aplicar_no_oracle(por_porto: dict, resumos: dict | None = None) -> dict:
     from src.engine.risk_model import close_conn
     close_conn()
     conn = duckdb.connect(ORACLE_DB)
+    # Schema migration: add provenance column if not yet present (idempotent)
+    try:
+        conn.execute("ALTER TABLE port_metrics ADD COLUMN provenance JSON;")
+    except Exception:
+        pass  # column already exists
     now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     atualizados = {}
     for pid, met in por_porto.items():
@@ -216,8 +221,8 @@ def aplicar_no_oracle(por_porto: dict, resumos: dict | None = None) -> dict:
             INSERT INTO port_metrics (
                 port_id, port_name, country, congestion_score,
                 eta_delay_days, waiting_vessels, freight_volatility_index, updated_at,
-                data_source, data_source_label, live_detail
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                data_source, data_source_label, live_detail, provenance
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (port_id) DO UPDATE SET
                 port_name = EXCLUDED.port_name,
                 country = EXCLUDED.country,
@@ -228,13 +233,14 @@ def aplicar_no_oracle(por_porto: dict, resumos: dict | None = None) -> dict:
                 updated_at = EXCLUDED.updated_at,
                 data_source = EXCLUDED.data_source,
                 data_source_label = EXCLUDED.data_source_label,
-                live_detail = EXCLUDED.live_detail
+                live_detail = EXCLUDED.live_detail,
+                provenance = EXCLUDED.provenance
         """, (
             pid, meta["port_name"], meta["country"],
             met["congestion_score"], met["eta_delay_days"],
             met["waiting_vessels"], met.get("freight_volatility_index", 0.35), now,
             met["data_source"], met["data_source_label"],
-            live_detail
+            live_detail, json.dumps(met.get("provenance", []))
         ))
         atualizados[pid] = met
     conn.close()
@@ -251,6 +257,17 @@ def main() -> dict:
     print(f"Coletadas {len(linhas)} linhas reais. Fontes: {json.dumps(fontes_status)}")
 
     # 1. Deriva métricas para portos BR com line-up vivo
+
+    # Aggregate provenance per port
+    port_provenances = {}
+    for r in linhas:
+        pid = r["port_id"]
+        prov = r.get("provenance")
+        if not prov: continue
+        if pid not in port_provenances: port_provenances[pid] = []
+        if prov not in port_provenances[pid]:
+            port_provenances[pid].append(prov)
+
     por_porto = {}
     for pid, meta in GRID.items():
         resumo = resumos.get(pid)
@@ -265,6 +282,7 @@ def main() -> dict:
         met["data_source_label"] = (
             "Live line-up from " + " + ".join(nomes) + "."
         )
+        met["provenance"] = port_provenances.get(pid, [])
         por_porto[pid] = met
 
     # 2. Registra referência calibrada para demais portos globais (sem passar falsa impressão de live scraper)
@@ -288,7 +306,8 @@ def main() -> dict:
                 "data_source_label": "Calibrated reference seed baseline (static model, not live network scraper).",
                 "sources_list": ["static_reference_seed"],
                 "live_detail": tdata,
-            }
+                "provenance": [{"source": "seed", "source_url": None, "source_observed_at": None, "retrieved_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "source_timestamp_quality": "unknown"}],
+                }
 
     # 2b. Intel viva de sensores AIS/API (ex: ShipInfo) tem PRIORIDADE sobre a
     # referência calibrada — mas só quando a fonte entregou registros reais
@@ -306,6 +325,7 @@ def main() -> dict:
             )
             met["port_name"] = ref["port_name"]
             met["country"] = ref["country"]
+            met["provenance"] = port_provenances.get(pid, [])
             por_porto[pid] = met
         else:
             por_porto[pid] = ref

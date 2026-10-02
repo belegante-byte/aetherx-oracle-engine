@@ -964,21 +964,78 @@ def assess_logistics_disruption(
         else:
             final_risks = ["No significant operational risks identified based on available data."]
 
+
+        # --- NEW DATA QUALITY LOGIC ---
+        db_prov = port_risk.get("provenance") if port_risk else None
+        if isinstance(db_prov, str):
+            import json
+            try:
+                db_prov = json.loads(db_prov)
+            except Exception:
+                db_prov = []
+
         dq_block = {
-            "coverage": "partial" if status == "partial" else ("insufficient" if status == "insufficient_data" else "complete"),
-            "update": "mixed" if (all_live and any(p.get("classification") == "projection" for p in provenance)) else ("live" if all_live else ("mixed" if is_live else "static/modeled")),
-            "operational_observations": "verified_live" if all_live else ("mixed" if is_live else "static_or_modeled"),
-            "forecast_basis": "predictive_model" if any(p.get("classification") == "projection" for p in provenance) else "none",
-            "limitations": (
-                "Computational coverage is incomplete." if status == "partial" else (
-                    "Coverage complete indicates successful execution of required models, not operational omniscience. " + (
-                        "No live observations available; relying entirely on static or modeled data." if not is_live else (
-                            "Mixed data quality: combines verified live observations with static data for some operational components." if not all_live else "Operational telemetry is verified live, while forward-looking conditions are based on predictive models."
-                        )
-                    )
-                )
-            )
+            "classification": "reference",
+            "source": "unknown",
+            "source_observed_at": None,
+            "retrieved_at": None,
+            "age_seconds": None,
+            "provenance": "unknown",
+            "freshness": "unknown"
         }
+
+        if db_prov and isinstance(db_prov, list) and len(db_prov) > 0:
+            # Pick best provenance
+            best_p = db_prov[0]
+            for p in db_prov:
+                if p.get("source_timestamp_quality") == "explicit":
+                    best_p = p
+                    break
+
+            src = best_p.get("source", "unknown")
+            obs_at = best_p.get("source_observed_at")
+            ret_at = best_p.get("retrieved_at")
+            q = best_p.get("source_timestamp_quality", "unknown")
+
+            dq_block["source"] = src
+            dq_block["source_observed_at"] = obs_at
+            dq_block["retrieved_at"] = ret_at
+            dq_block["provenance"] = q
+
+            if src == "seed":
+                dq_block["classification"] = "reference"
+            else:
+                if q == "explicit" and obs_at:
+                    # check if stale
+                    try:
+                        # Normalize: 'YYYY-MM-DD HH:MM:SS' → 'YYYY-MM-DDTHH:MM:SS+00:00'
+                        ts = str(obs_at).strip()
+                        ts = ts.replace("Z", "+00:00").replace(" UTC", "+00:00")
+                        if "T" not in ts:
+                            ts = ts.replace(" ", "T")
+                        if "+" not in ts and ts.count("-") <= 2:
+                            ts += "+00:00"
+                        dt = datetime.fromisoformat(ts)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        age = (datetime.now(timezone.utc) - dt).total_seconds()
+                        dq_block["age_seconds"] = int(age)
+                        if age > 48 * 3600:
+                            dq_block["classification"] = "live_stale"
+                            dq_block["freshness"] = "stale"
+                        else:
+                            dq_block["classification"] = "live_verified"
+                            dq_block["freshness"] = "fresh"
+                    except Exception:
+                        dq_block["classification"] = "live_unverified_time"
+                        dq_block["freshness"] = "unknown"
+                else:
+                    dq_block["classification"] = "live_unverified_time"
+                    dq_block["freshness"] = "unknown"
+        elif not port_risk or port_risk.get("status") == "insufficient_data":
+            dq_block["classification"] = "modeled"
+
+
 
         return {
             "status": status,

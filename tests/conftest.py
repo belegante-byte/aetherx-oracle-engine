@@ -54,9 +54,18 @@ try:
     # INJECT CONTROLLED TEST DATA
     conn = duckdb.connect(_disposable_db)
     try:
+        # Ensure provenance column exists (schema introduced in feature/provenance-schema)
+        try:
+            conn.execute("ALTER TABLE port_metrics ADD COLUMN provenance JSON;")
+        except Exception:
+            pass
         # Injetar BRPNG e BRSSZ como live (test_tier_restrictions exige isso)
         conn.execute("""
-            UPDATE port_metrics SET data_source = 'live:mock', live_detail = '{"ao_largo": 1, "atracados": 2}', waiting_vessels = 1
+            UPDATE port_metrics SET
+                data_source = 'live:mock',
+                live_detail = '{"ao_largo": 1, "atracados": 2}',
+                waiting_vessels = 1,
+                provenance = '[{"source": "mock_live", "source_url": "https://mock.local", "source_observed_at": null, "retrieved_at": "2026-10-01T00:00:00Z", "source_timestamp_quality": "unknown"}]'
             WHERE port_id IN ('BRPNG', 'BRSSZ', 'BRRIO', 'BRNIT', 'BRITG')
         """)
 

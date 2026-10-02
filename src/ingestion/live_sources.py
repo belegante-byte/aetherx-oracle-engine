@@ -542,6 +542,7 @@ def fetch_appa_lineup(timeout: int = 30) -> dict:
                 nome = colunas[i] if i < len(colunas) else f"col_{i}"
                 registro[nome] = v
             if registro:
+                registro["provenance"] = {"source": "APPA", "source_url": APPA_URL, "source_observed_at": None, "source_timestamp_quality": "unknown"}
                 registros.append(registro)
         resultado[chave] = registros
     return resultado
@@ -643,6 +644,7 @@ def fetch_lachmann_schedule(timeout: int = 60) -> list:
             "agency": "LACHMANN",
             "dwt": 0.0,
             "eta": eta,
+            "provenance": {"source": "Lachmann", "source_url": LACHMANN_URL, "source_observed_at": None, "source_timestamp_quality": "unknown"},
             "raw": {f"c{i}": val[i] for i in range(len(val))},
         })
     return navios
@@ -705,6 +707,7 @@ def fetch_santos_atracacoes(timeout: int = 30) -> list:
                 "agency": "NÃO CONFIRMADO",
                 "dwt": 0.0,
                 "eta": eta,
+                "provenance": {"source": "Lachmann", "source_url": LACHMANN_URL, "source_observed_at": None, "source_timestamp_quality": "unknown"},
                 "raw": reg,
             })
     return linhas
@@ -819,6 +822,7 @@ def fetch_santos_painel(timeout: int = 30) -> list:
                 "agency": (reg.get("Agente") or "NÃO CONFIRMADO").upper(),
                 "dwt": 0.0,
                 "eta": None,
+                "provenance": {"source": "Santos_Painel", "source_url": SANTOS_PAINEL_URL, "source_observed_at": None, "source_timestamp_quality": "unknown"},
                 "raw": reg,
             })
     return linhas
@@ -905,6 +909,7 @@ def fetch_silog_pre_pauta(dominio: int, timeout: int = 30) -> list:
                 "agency": cells[6].upper() if len(cells) > 6 and cells[6] else "PORTOSRIO",
                 "dwt": 0.0,
                 "eta": eta,
+                "provenance": {"source": "Lachmann", "source_url": LACHMANN_URL, "source_observed_at": None, "source_timestamp_quality": "unknown"},
                 "raw": {"tipo": tipo, "de": cells[4] if len(cells) > 4 else "", "para": cells[5] if len(cells) > 5 else ""},
             })
     return linhas
@@ -1340,6 +1345,7 @@ def fetch_shipinfo_congestion(timeout: int = 30) -> list:
                     "agency": "SHIPINFO",
                     "dwt": 0.0,
                     "eta": last.get("snapshot_ts"),
+                    "provenance": {"source": "ShipInfo", "source_url": SHIPINFO_BASE + "/ports/" + str(pid) + "/congestion", "source_observed_at": last.get("snapshot_ts"), "source_timestamp_quality": "explicit"},
                     "raw": {"anchored_count": anchored, "snapshot_ts": last.get("snapshot_ts"),
                             "congestion_score": last.get("congestion_score"),
                             "inflow_count": last.get("inflow_count"), "outflow_count": last.get("outflow_count")},
@@ -1377,6 +1383,8 @@ def coletar_tudo(timeout: int = 30) -> dict:
             resultados["fontes"][nome] = {"rows": len(rows), "ok": True}
             for r in rows:
                 r["ingested_at"] = resultados["inicio"]
+                if "provenance" in r:
+                    r["provenance"]["retrieved_at"] = resultados["inicio"] + "Z"
             resultados.setdefault("linhas", []).extend(rows)
             resultados["total_rows"] += len(rows)
         except Exception as e:

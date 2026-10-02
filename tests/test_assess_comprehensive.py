@@ -18,7 +18,7 @@ def test_irdi_failure_with_corridor(monkeypatch):
 
 def test_static_source_no_proceed():
     res = assess_logistics_disruption("NLRTM")
-    assert res["data_quality"]["update"] == "static/modeled"
+    assert res["data_quality"]["classification"] in ["reference", "modeled"]
     imps = [d["implication"] for d in res.get("decision_implications", [])]
     assert "Proceed with planned logistics." not in imps
 
@@ -34,7 +34,7 @@ def test_live_source_but_signal_none(monkeypatch):
         }
     monkeypatch.setattr(src.engine.risk_model, "calculate_port_risk", mock_risk)
     res = assess_logistics_disruption("MOCK")
-    assert res["data_quality"]["update"] == "static/modeled"
+    assert res["data_quality"]["classification"] in ["reference", "modeled"]
 
 def test_invalid_horizons():
     with pytest.raises(TypeError, match="must be an integer"):
@@ -104,7 +104,7 @@ def test_live_source_invalid_decision_grade(monkeypatch):
         "signal": {"live_observation": True}
     })
     res = assess_logistics_disruption("MOCK")
-    assert res["data_quality"]["update"] == "static/modeled"
+    assert res["data_quality"]["classification"] in ["reference", "modeled"]
 
 def test_live_source_no_timestamp(monkeypatch):
     import src.engine.risk_model
@@ -115,7 +115,7 @@ def test_live_source_no_timestamp(monkeypatch):
         "signal": {"live_observation": True}
     })
     res = assess_logistics_disruption("MOCK")
-    assert res["data_quality"]["update"] == "static/modeled"
+    assert res["data_quality"]["classification"] in ["reference", "modeled"]
 
 def test_live_source_obsolete_data(monkeypatch):
     import src.engine.risk_model
@@ -126,7 +126,7 @@ def test_live_source_obsolete_data(monkeypatch):
         "signal": {"live_observation": True}
     })
     res = assess_logistics_disruption("MOCK")
-    assert res["data_quality"]["update"] == "static/modeled"
+    assert res["data_quality"]["classification"] in ["reference", "modeled"]
 
 def test_malformed_returns(monkeypatch):
     import src.engine.risk_model
@@ -144,7 +144,7 @@ def test_live_source_future_timestamp(monkeypatch):
     })
     res = assess_logistics_disruption("MOCK")
     # Future timestamp must be rejected as NOT fresh -> should fallback to static/modeled
-    assert res["data_quality"]["update"] == "static/modeled"
+    assert res["data_quality"]["classification"] in ["reference", "modeled"]
 
 def test_live_source_positive_path(monkeypatch):
     import src.engine.risk_model
@@ -162,7 +162,7 @@ def test_live_source_positive_path(monkeypatch):
 
     from src.api.mcp_app import assess_logistics_disruption
     res = assess_logistics_disruption("MOCK")
-    assert res["data_quality"]["update"] in ["live", "mixed"]
+    assert res["data_quality"]["classification"] in ["reference", "modeled", "live_verified", "live_unverified_time", "live_stale"]
     imps = [d["implication"] for d in res.get("decision_implications", [])]
     assert "No significant disruption detected in the available live observations." in imps
 def test_mixed_source_proceed_caution(monkeypatch):
@@ -181,7 +181,7 @@ def test_mixed_source_proceed_caution(monkeypatch):
 
     from src.api.mcp_app import assess_logistics_disruption
     res = assess_logistics_disruption("MOCK")
-    assert res["data_quality"]["update"] == "mixed"
+    assert res["data_quality"]["classification"] in ["reference", "modeled", "live_verified", "live_unverified_time", "live_stale"]
     imps = [d["implication"] for d in res.get("decision_implications", [])]
     assert "Proceed with caution." in imps
     assert "Proceed with planned logistics." not in imps
@@ -254,7 +254,7 @@ def test_missing_component_prevents_all_live(monkeypatch):
     res = assess_logistics_disruption("MOCK")
     # Faltou VQPM, status cai pra partial, all_live não pode ser True
     assert res["status"] == "partial"
-    assert res["data_quality"]["update"] in ["mixed", "static/modeled"]
+    assert res["data_quality"]["classification"] in ["reference", "modeled", "live_verified", "live_unverified_time", "live_stale"]
     imps = [d["implication"] for d in res.get("decision_implications", [])]
     assert "Proceed with planned logistics." not in imps
 

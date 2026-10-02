@@ -167,7 +167,8 @@ def calculate_port_risk(port_id: str) -> dict:
             SELECT port_id, port_name, country, congestion_score,
                    eta_delay_days, waiting_vessels, freight_volatility_index,
                    CAST(updated_at AS VARCHAR) AS updated_at,
-                   data_source, data_source_label, live_detail
+                   data_source, data_source_label, live_detail,
+                   CAST(provenance AS VARCHAR) AS provenance
             FROM port_metrics
             WHERE port_id = ?
         """, [port_id]).fetchone()
@@ -298,6 +299,7 @@ def calculate_port_risk(port_id: str) -> dict:
     data_source = row[8] or "static_reference_seed"
     data_source_label = row[9] or "Static reference seed (not live telemetry)."
     live_detail = row[10]
+    provenance_raw = row[11] if len(row) > 11 else None
 
     # Dados vivos trazem detalhe de fila real; exporta quando presente.
     extra = {}
@@ -329,6 +331,7 @@ def calculate_port_risk(port_id: str) -> dict:
         "data_source": data_source,
         "data_source_label": data_source_label,
         "live_detail": live_detail,
+        "provenance": provenance_raw,
         "validation": load_antaq_validation(port_id),
         **extra,
     }
