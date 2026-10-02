@@ -73,7 +73,8 @@ def _estimate_demurrage(congestion_score: float) -> int:
 def invalidate_cache():
     try:
         from src.products.gp5.fiscal import evaluate_fiscal_routing
-        evaluate_fiscal_routing.cache_clear()
+        if hasattr(evaluate_fiscal_routing, 'cache_clear'):
+            evaluate_fiscal_routing.cache_clear()
     except ImportError:
         pass
     """Limpa os caches LRU após uma ingestão viva para que a API sirva dados frescos."""
