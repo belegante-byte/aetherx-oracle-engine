@@ -108,6 +108,8 @@ def gravar_raw_land() -> int:
 
 
 def gravar_raw(linhas: list) -> int:
+    import pathlib
+    pathlib.Path(RAW_DB).parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(RAW_DB)
     conn.execute("DROP TABLE IF EXISTS raw_port_lineup")
     conn.execute("""
