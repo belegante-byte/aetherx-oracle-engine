@@ -25,3 +25,21 @@ scratch/
 AETHER-X*.md
 
 
+
+# Executor artifacts
+fix_*.py
+audit_*.txt
+patch_*.py
+patch_*.patch
+diff_*.txt
+status*.txt
+test_routes*.py
+test_500.py
+smoke_test.py
+inspect_db.py
+run_operational_homologation.py
+homologation_results.json
+uvicorn.log
+oracle_hash_before.txt
+data/*.duckdb.bak
+m2m_experiments/
