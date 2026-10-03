@@ -49,6 +49,32 @@ class ShadowStore:
         """)
         self._restore_metrics()
 
+        # Ledger durável: compartilha a conexão do store para que evidências,
+        # entidades, port calls e shipments sobrevivam além da instância.
+        from src.reconstruction.persistence.repository import ReconstructionRepository
+        self._repository = ReconstructionRepository(self.conn)
+
+    def _persist(self, fn, *args):
+        # DuckDB: uma conexão não é thread-safe; serializa com o lock do store.
+        with self._lock:
+            return fn(*args)
+
+    def persist_evidence(self, ev) -> str:
+        return self._persist(self._repository.save_evidence, ev)
+
+    def persist_vessel(self, vessel) -> None:
+        self._persist(self._repository.save_vessel, vessel)
+
+    def persist_port_call(self, pc) -> None:
+        self._persist(self._repository.save_port_call, pc)
+
+    def persist_shipment(self, shipment) -> None:
+        self._persist(self._repository.save_shipment, shipment)
+
+    def load_shipment(self, stable_id):
+        with self._lock:
+            return self._repository.load_shipment(stable_id)
+
     def _restore_metrics(self):
         # Contadores sobrevivem a restart somente com SHADOW_DB_PATH real;
         # ":memory:" é por instância e recomeça zerado.
@@ -86,5 +112,16 @@ class ShadowStore:
             self.vessels.clear()
             self.portcalls.clear()
             self.evidences.clear()
+            # O store agora possui o ledger durável: resetar sem limpá-lo
+            # deixaria evidências antigas deduplicando cargas novas. A guarda
+            # :memory: impede que este hook de teste apague um banco real.
+            if os.getenv("SHADOW_DB_PATH", ":memory:") == ":memory:":
+                for table in (
+                    "evidence_ledger",
+                    "shipment_reconstructions",
+                    "entities_vessel",
+                    "entities_port_call",
+                ):
+                    self.conn.execute(f"DELETE FROM {table}")
             
 shadow_store = ShadowStore()

@@ -19,7 +19,7 @@ def run_shadow_pipeline(port_id: str, objective: str, mcp_result: Dict[str, Any]
     """
     try:
         shadow_store.increment("orders_processed")
-        
+
         # 1. Generate Order
         order_id = f"ord_shadow_{uuid.uuid4().hex[:8]}"
         order = OperationalOrder(
@@ -29,17 +29,19 @@ def run_shadow_pipeline(port_id: str, objective: str, mcp_result: Dict[str, Any]
             objective=objective or "unknown",
             parameters={"port_id": port_id}
         )
-        
+
         # 2. Extract Evidence
         evidences = OrderExtractor.extract_from_assess_logistics(order, mcp_result)
-        
+
         for ev in evidences:
-            if ev.logical_id in shadow_store.evidences:
+            # Ledger append-only: dedup por logical_id é o INSERT, nunca UPDATE.
+            result = shadow_store.persist_evidence(ev)
+            if result == "DEDUPLICATED":
                 shadow_store.increment("deduplicated_evidence")
             else:
-                shadow_store.evidences[ev.logical_id] = ev
                 shadow_store.increment("new_evidence")
-                
+            shadow_store.evidences[ev.logical_id] = ev
+
         # 3. Resolve Entities
         vessel = None
         for ev in evidences:
@@ -55,6 +57,7 @@ def run_shadow_pipeline(port_id: str, objective: str, mcp_result: Dict[str, Any]
                     vessel = VesselEntity(identity_state=IdentityState.CANDIDATE, name=ev.entity.raw_name)
                     shadow_store.vessels[v_stable_id] = vessel
                     shadow_store.increment("new_entities")
+                    shadow_store.persist_vessel(vessel)
             elif ev.entity.type == "port":
                 p_stable_id = f"urn:port:{ev.entity.id}"
                 if p_stable_id not in shadow_store.vessels:
@@ -69,6 +72,7 @@ def run_shadow_pipeline(port_id: str, objective: str, mcp_result: Dict[str, Any]
         else:
             shadow_store.portcalls[pc.stable_id] = pc
             shadow_store.increment("new_portcalls")
+        shadow_store.persist_port_call(pc)
 
         # 5. ShipmentReconstruction
         # A shipment is tied to the portcall in this simplified scope
@@ -80,24 +84,28 @@ def run_shadow_pipeline(port_id: str, objective: str, mcp_result: Dict[str, Any]
             is_new_shipment = True
         else:
             shadow_store.increment("updated_shipments")
-            
+
         shipment = shadow_store.shipments[shipment_key]
-        
+
         engine = ReconstructionEngine()
         for ev in evidences:
             engine.apply_evidence(shipment, ev)
-            
+
+        # Snapshot durável da reconstrução mutável (append-only é só o ledger).
+        shadow_store.persist_shipment(shipment)
+
         # 6. Apply Hypothesis Engine
         h_engine = HypothesisEngine()
         hyp = h_engine.evaluate_cargo(shipment)
         if hyp:
             if hyp.epistemic_state == EpistemicState.CONTRADICTION:
                 shadow_store.increment("contradictions")
-            
+
             if hyp.stable_id not in shipment.hypotheses:
                 h_engine.apply_hypothesis(shipment, hyp)
                 shadow_store.increment("new_hypotheses")
-            
+            shadow_store.persist_shipment(shipment)
+
     except Exception as e:
         logger.error(f"Shadow pipeline failed: {e}")
         shadow_store.increment("pipeline_failures")

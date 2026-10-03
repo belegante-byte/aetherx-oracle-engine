@@ -3,6 +3,29 @@
 Histórico de mudanças relevantes do **Aether-X Oracle Engine**. Formato baseado em
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [Não lançado] — 2026-10-03 (Fase 1)
+
+### Adicionado (Fase 1 — persistência durável da reconstrução)
+- **Shadow pipeline agora escreve no ledger durável.** `shadow_pipeline.py`
+  passa a usar `ReconstructionRepository` via métodos serializados pelo lock
+  do `ShadowStore` (`persist_evidence`, `persist_vessel`, `persist_port_call`,
+  `persist_shipment`). Evidências, entidades, port calls e snapshots de
+  shipment sobrevivem a restart quando `SHADOW_DB_PATH` aponta para arquivo
+  (volume Railway `data/`). Em `:memory:` o comportamento é idêntico ao
+  anterior, mas o ledger agora existe também em memória.
+- **Gate 1A — teste de durabilidade obrigatório antes de F1=DONE.**
+  `tests/test_gate1a_durability.py`: write → restart do singleton → recuperação
+  completa da reconstrução (evidências, campos, hipóteses); idempotência após
+  restart (reaplicar mesma carga não duplica ledger); tombstone append-only
+  sobrevive a restart e rebaixa campo na leitura ativa; regressão específica
+  garantindo que `reset_state()` limpe o ledger em `:memory:` (sem isso,
+  evidências de um teste deduplicavam a carga do seguinte sob ordenação
+  aleatória).
+- **Thread-safety no write-through.** `_persist()` serializa todas as chamadas
+  ao repositório com o mesmo lock usado por `increment()`, já que a conexão
+  DuckDB não é thread-safe.
+- Suíte: **297 testes passando** (4 novos em `test_gate1a_durability.py`).
+
 ## [Não lançado] — 2026-10-03 (Fase 0)
 
 ### Corrigido / Alterado (Fase 0 — higiene e medição durável)
