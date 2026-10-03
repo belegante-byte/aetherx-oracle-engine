@@ -1,9 +1,0 @@
-surface,type,url,submitted_at,first_calls,repeat_calls,notes
-MCP Registry,registry,https://registry.modelcontextprotocol.io,,,,
-Glama,marketplace,https://glama.ai/mcp/servers,,,,
-Smithery,marketplace,https://smithery.ai,,,,
-PulseMCP,marketplace,https://www.pulsemcp.com,,,,
-mcp.so,directory,https://mcp.so,,,,
-PyPI (aetherx-mcp),package,https://pypi.org/project/aetherx-mcp/,,,61/sem,
-PyPI (aetherx-oracle),package,https://pypi.org/project/aetherx-oracle/,,,25/sem,
-RapidAPI,marketplace,https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle,,,,

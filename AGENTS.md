@@ -12,21 +12,19 @@ colateral".**
   Giovanni em 2026-09-29 (pivô por bloqueio documental do Stripe; reverteu a
   decisão anterior de Stripe-solo). A listing RapidAPI é quem cobra/mede o uso;
   requests do proxy autenticam a REST paga via `X-RapidAPI-Proxy-Secret`.
-- **Stripe está CONGELADO (aguardando verificação da conta)** — o fluxo inteiro
-  (checkout `/checkout/gp5-pro` e `/checkout/gp5-monthly`, fulfillment
-  `/m2m-keys/fulfillment`, webhook `/webhook/stripe`, chave paga
-  `gp5_enterprise_*` entregue idempotentemente) está pronto e wireado, mas NÃO é
-  o canal ativo. Quando Giovanni confirmar que a conta Stripe passou na
-  verificação, reativamos o funil (migração) — não antes. Chaves
-  `gp5_enterprise_*` já são aceitas pela REST, então a migração é só mudar os
-  CTAs/funil.
+- **Stripe está FORA do produto.** Não é canal ativo nem "congelado aguardando
+  verificação" — está fora. RapidAPI é o ÚNICO merchant-of-record ativo. Não
+  implementar, reativar, migrar ou preparar fluxo Stripe (checkout, fulfillment,
+  webhook) sem nova decisão explícita do Giovanni. Chaves `gp5_enterprise_*`
+  já emitidas continuam aceitas pela REST (compatibilidade de credencial), mas
+  nenhum fluxo novo de emissão via Stripe existe ou deve ser criado.
 - **Credenciais da REST paga** (`/v1/port-risk`, `/v1/port-trend`,
   `/v1/ports-risk`, `/v1/gp5/*`): chave paga via `Authorization: Bearer
   <chave>` OU `X-RapidAPI-Proxy-Secret` (requests do proxy do marketplace — o
   **canal ativo hoje**). NÃO aceitar trial na REST paga.
-- Escada de preços (vive no `PLANS` de monetization.py e nos preços/planos do
-   dashboard Stripe): Pro US$ 499/mo (US$ 4.990/ano) e Enterprise US$ 5.000/mo
-   (US$ 50.000/ano).
+- Escada de preços (vive no `PLANS` de monetization.py; o canal de cobrança
+   é a listing RapidAPI): Pro US$ 499/mo (US$ 4.990/ano) e Enterprise
+   US$ 5.000/mo (US$ 50.000/ano).
 - **Níveis de acessoapplied no servidor (1.4.0):** cada chave carrega um nível
   (`trial` | `pro` | `enterprise`) persistido em `m2m_keys_meta.json`
   (`_KEY_LEVELS`). O que cada nível entrega está em `MIN_LEVEL_BY_PATH`,
@@ -44,13 +42,11 @@ colateral".**
   reseta em restart) — **não anuncie SLA de cota**.
   - Requests do proxy do marketplace (rail ativo) passam como
     enterprise-equivalente: quem cobra e mede o tier é o RapidAPI.
-- Trial M2M (30 dias) é só lead-gen: `POST /v1/m2m/request-key` e o tool MCP
+- Trial M2M (30 dias) é só lead-gen: `POST /m2m-keys` e o tool MCP
   `request_m2m_key` emitem APENAS trial, que dá acesso SÓ ao MCP. Nunca
   transforme trial em chave paga nem deixe trial abrir a REST paga.
-- A migração Stripe-solo SÓ acontece depois que a verificação da conta Stripe
-  passar (aprovação expressa do Giovanni) — não troque o rail antes. Também não
-  reintroduza outro rail de pagamento (Pix, gateways, moedas) sem aprovação
-  explícita.
+- **Não reintroduza nenhum rail de pagamento** (Stripe, Pix, gateways, moedas)
+  sem aprovação explícita do Giovanni. O rail ativo é RapidAPI e só.
 
 ## 2. Fronteiras de segurança/monetização (não mexer de passagem)
 

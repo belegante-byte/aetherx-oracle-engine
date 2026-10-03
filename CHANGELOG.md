@@ -3,6 +3,33 @@
 Histórico de mudanças relevantes do **Aether-X Oracle Engine**. Formato baseado em
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [Não lançado] — 2026-10-03 (Fase 0)
+
+### Corrigido / Alterado (Fase 0 — higiene e medição durável)
+- **Rota de trial corrigida na governança:** `AGENTS.md` citava
+  `POST /v1/m2m/request-key` para o trial; a rota real é `POST /m2m-keys`
+  (o tool MCP `request_m2m_key` permanece). Divergência de documentação, não de código.
+- **Stripe removido da governança como ambiguidade.** `AGENTS.md` dizia que
+  Stripe estava "congelado aguardando verificação da conta" e que o funil seria
+  reativado após aprovação. A regra agora é inequívoca: **RapidAPI é o único
+  merchant-of-record ativo; Stripe está FORA do produto** — não implementar,
+  reativar, migrar ou preparar fluxo Stripe sem nova decisão explícita. A escada
+  de preços deixou de referenciar "dashboard Stripe". Nenhum código de
+  `monetization.py` foi alterado (as rotas continuam inertes quando não
+  configuradas); é saneamento de instrução para agentes.
+- **`shadow_store` restaura contadores no boot** (`src/reconstruction/shadow_store.py`):
+  `_restore_metrics()` lê a tabela `shadow_metrics` quando `SHADOW_DB_PATH`
+  aponta para um arquivo real. Com `:memory:` (default) o comportamento não muda —
+  cada instância recomeça zerada, e os 13 testes de shadow seguem passando.
+- **Duplicata `m2m/` removida.** O diretório `m2m/` na raiz (versionado em
+  `fd3b3b1`) era uma reescrita obsoleta: seu README ainda dizia "trial 7 dias" e
+  a rota antiga. `docs/m2m/` é o canônico (superset com `submissions.md`, e é
+  para onde `docs/funnel.md` aponta). Removidos: `m2m/README.md`,
+  `m2m/ritual-7d.md`, `m2m/surfaces.csv`.
+- Verificação: `example=` → `examples=` já havia sido corrigido em `fd3b3b1`;
+  confirmado zero ocorrências singulares em `src/api/main.py`.
+- Suíte: 293 passed.
+
 ## [1.5.0] — 2026-09-29
 
 ### Corrigido (ingestão real do Porto de Santos — a fonte oficial funciona)

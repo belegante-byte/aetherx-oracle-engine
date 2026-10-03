@@ -47,6 +47,22 @@ class ShadowStore:
                 metric_value INTEGER
             )
         """)
+        self._restore_metrics()
+
+    def _restore_metrics(self):
+        # Contadores sobrevivem a restart somente com SHADOW_DB_PATH real;
+        # ":memory:" é por instância e recomeça zerado.
+        if os.getenv("SHADOW_DB_PATH", ":memory:") == ":memory:":
+            return
+        try:
+            rows = self.conn.execute(
+                "SELECT metric_name, metric_value FROM shadow_metrics"
+            ).fetchall()
+            for name, value in rows:
+                if name in self.metrics:
+                    self.metrics[name] = int(value)
+        except Exception:
+            pass
         
     def increment(self, metric: str, count: int = 1):
         with self._lock:
