@@ -24,17 +24,34 @@ A cada **7 dias**, preencher a tabela abaixo e guardar o snapshot. Fonte de cada
 | **M2M surfaces** | submissões por superfície → first/repeat calls | [`m2m/surfaces.csv`](m2m/surfaces.csv) (colunas `first_calls`/`repeat_calls`) |
 | **Marketplaces MCP** | Glama, Smithery, PulseMCP, mcp.so | painéis de cada plataforma |
 
-## Tabela semanal (copiar)
+## Tabela semanal
+
+### Snapshot 2026-10-03 (semana 27/09–03/10) — baseline pós-deploy `9f9ee7c1`
+
+Fontes: logs Railway `AETHERX_METRIC` (janela ~46 min pós-boot: 88 eventos, 12 máquinas únicas) + pypistats.org API. Bots/crawlers excluídos do funil por política (`mcpbeat` 30, `SentinelOracle` 12, `Golemreach` 4, `agent-market-probe` 3, `Googlebot` 2 = 5 máquinas, 51 eventos).
 
 | Canal | Visitors | Installs | First Call | Repeat (≥2/7d) | Paid |
 |---|---:|---:|---:|---:|---:|
-| RapidAPI | | | | | |
-| PyPI SDK | | | | | |
-| PyPI MCP | | | | | |
-| MCP remote | | | | | |
-| SEO | | | | | |
-| GitHub | | | | | |
-| Outbound | | | | | |
+| RapidAPI | n/d¹ | n/d¹ | n/d¹ | n/d¹ | 0 |
+| PyPI SDK (`aetherx-oracle`) | — | 25² | — | — | 0 |
+| PyPI MCP (`aetherx-mcp`) | — | 61² | — | — | 0 |
+| MCP remote (`/mcp`) | 4³ | — | 4³ | n/d⁴ | 0 |
+| SEO | 2⁵ | — | 7⁶ | n/d⁴ | 0 |
+| GitHub | n/d⁷ | — | — | — | — |
+| Outbound | 0 | — | 0 | — | 0 |
+
+Notas de fonte:
+- ¹ RapidAPI contabiliza no painel do listing (page views / impressions / subscribes / chamadas / keys ativas); não acessível por CLI — preencher manualmente.
+- ² `pypistats.org/api/packages/<pkg>/recent` → `last_week`. `aetherx-oracle`=25 (last_day=1, last_month=426); `aetherx-mcp`=61 (last_day=4, last_month=776).
+- ³ Máquinas MCP distintas não-bot: `node`(1), `capdiff`-observatory(1), `python-sdk/aiohttp`(1), `curl`(1).
+- ⁴ Janela de ~46 min insuficiente para repeat de 7d; contadores `/internal/metrics` resetaram no deploy de hoje. Re-medir em **2026-10-10** com log contínuo.
+- ⁵ Visitantes humanos reais por UA de browser: Chrome/Windows(1) + Safari/Mac(1).
+- ⁶ Eventos `channel=seo`: landing `/`(2), `/port-congestion-ningbo-zhoushan`(1), `/port-congestion-singapore`(1), `/robots.txt`(1), `/sitemap.xml`(1), google-verification(1 → **404, bug P1-novo**).
+- ⁷ GitHub Insights por repo — preencher do painel.
+
+### Snapshots anteriores
+
+_(nenhum — este é o primeiro preenchimento; a tabela estava vazia desde a criação do arquivo)_
 
 ## Heurística de decisão (depois de ~30 dias)
 - Canal com ≥10 usuários e ≥30% de repeat → **dobrar esforço**.
