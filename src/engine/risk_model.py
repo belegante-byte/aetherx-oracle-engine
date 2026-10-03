@@ -58,8 +58,17 @@ GLOBAL_ESTIMATE = {
     "freight_volatility_index": 0.35,
 }
 
-# Base sintética de demurrage: média ponderada da categoria de navio na fila
-# (Panamax ~US$25k/dia, Capesize ~US$50k/dia). Escala com o nível de congestão.
+# EPISTEMIC STATE: HYPOTHESIS / EXTERNAL DOMAIN PARAMETER
+# Provenance: NOT VERIFIED IN THIS REPOSITORY.
+# This value is NOT observed from AETHER-X operational data.
+# It is NOT a contract-specific demurrage rate.
+# It MUST NOT be interpreted as actual demurrage paid or actual
+# charter-party exposure.
+#
+# Validation status: UNVERIFIED
+# Calibration source: UNKNOWN
+# Upgrade path: replace with a parameter supported by a documented,
+# externally verifiable calibration source.
 DEMURRAGE_BASE_USD_PER_DAY = 32000.0
 TREND_TAU_HOURS = 48.0
 TREND_HORIZONS = (24, 48, 72)

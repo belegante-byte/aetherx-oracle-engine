@@ -1037,7 +1037,7 @@ def assess_logistics_disruption(
 
 
 
-        return {
+        result_payload = {
             "status": status,
             "subject": {
                 "port_id": pid,
@@ -1058,6 +1058,15 @@ def assess_logistics_disruption(
             "next_checks": next_checks,
             "provenance": provenance
         }
+
+        # --- ORDEM EXECUTIVA 06: Phase 4A - Shadow Operational Integration ---
+        try:
+            from src.reconstruction.shadow_pipeline import run_shadow_pipeline
+            run_shadow_pipeline(pid, obj, result_payload)
+        except Exception:
+            pass # Failsafe isolation
+
+        return result_payload
     return _run_tool(lambda **kw: _compute(**kw), "assess_logistics_disruption", port_id=port_id, corridor_id=corridor_id, horizon_hours=horizon_hours, objective=objective)
 
 def _mcp_allowed_hosts() -> list[str]:
