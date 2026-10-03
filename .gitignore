@@ -43,3 +43,6 @@ uvicorn.log
 oracle_hash_before.txt
 data/*.duckdb.bak
 m2m_experiments/
+
+# Banco vivo: nunca versionar (o artefato versionado é seed/oracle_seed.duckdb)
+data/oracle.duckdb
