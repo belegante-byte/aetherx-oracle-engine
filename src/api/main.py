@@ -1540,7 +1540,7 @@ def get_ports_risk(
 
 @app.get("/BingSiteAuth.xml", include_in_schema=False)
 def verification_bing():
-    path = Path(__file__).resolve().parent.parent.parent / "data" / "verification" / "BingSiteAuth.xml"
+    path = Path(__file__).resolve().parent.parent.parent / "static" / "verification" / "BingSiteAuth.xml"
     if not path.exists():
         raise HTTPException(status_code=404, detail="Not found")
     return HTMLResponse(path.read_text(encoding="utf-8"))
@@ -1551,7 +1551,7 @@ def verification_google(token_with_ext: str):
     import re as _re
     if not (_re.fullmatch(r"google[0-9a-f]{10,}\.html", filename)):
         raise HTTPException(status_code=404, detail="Not found")
-    path = Path(__file__).resolve().parent.parent.parent / "data" / "verification" / filename
+    path = Path(__file__).resolve().parent.parent.parent / "static" / "verification" / filename
     if not path.exists():
         raise HTTPException(status_code=404, detail="Not found")
     return HTMLResponse(path.read_text(encoding="utf-8"))
