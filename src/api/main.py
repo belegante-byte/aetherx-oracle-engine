@@ -17,7 +17,7 @@ from src.api.mcp_app import mcp as mcp_server
 from src.api import mcp_quota
 from src.api.rate_limit import PublicRateLimitMiddleware
 from src.api import content_pages
-from src.api.content_pages import PORT_METAS, _SLUG_MAP, fiscal_demo_page
+from src.api.content_pages import PORT_METAS, _SLUG_MAP, COVERAGE_COUNT, fiscal_demo_page
 from src.api.metrics import MetricsMiddleware, metrics_snapshot, record_gate_event
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -69,7 +69,7 @@ EXAMPLE_BATCH_RESPONSE = {
     "results": [EXAMPLE_RISK_RESPONSE, calculate_port_risk("CNSHA")]
 }
 ERROR_401_EXAMPLE = {
-    "detail": "Missing or invalid paid credential: send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the `X-RapidAPI-Proxy-Secret` header."
+    "detail": "Missing or invalid paid credential: send `Authorization: Bearer <chave paga>` (RapidAPI subscription) or the `X-RapidAPI-Proxy-Secret` header."
 }
 ERROR_403_EXAMPLE = {
     "detail": "Upgrade necessário: o endpoint /v1/gp5/fiscal-routing exige o plano GP5 Enterprise. Sua chave é GP5 Pro.",
@@ -211,7 +211,7 @@ LANDING_HTML = """<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aether-X Port Congestion Oracle</title>
-<meta name="description" content="Port congestion signal for 35 ports & global chokepoints: 5 Brazilian ports with LIVE official-authority line-ups (Santos, Paranaguá, Rio, Itaguaí, Niterói) and global coverage as calibrated/static reference seed. Port congestion API, vessel queue API, port delay/demurrage risk API. REST, Python SDK e MCP server.">
+<meta name="description" content="Port congestion signal for __COVERAGE_COUNT__ registered ports & global chokepoints: 5 Brazilian ports with LIVE official-authority line-ups (Santos, Paranaguá, Rio, Itaguaí, Niterói) and global coverage as calibrated/static reference seed. Port congestion API, vessel queue API, port delay/demurrage risk API. REST, Python SDK e MCP server.">
  <meta property="og:title" content="Aether-X Port Congestion Oracle — Live Brasil (autoridade) + cobertura global de referência">
  <meta property="og:description" content="Sinais de congestionamento portuário: 5 portos brasileiros com fila REAL de autoridade (ao-largo, esperados, atracados) + cobertura global de referência. Vessel queue / demurrage risk / corridor risk. REST API, SDK e MCP.">
 <meta property="og:type" content="website">
@@ -267,7 +267,7 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
   </div>
 
   <h1>Aether-X Port Congestion Oracle</h1>
-  <p class="subtitle">MCP &amp; REST Engine &mdash; congestion &amp; demurrage risk. <strong>5 portos BR com estatística oficial ANTAQ (37 meses)</strong> (Santos, Paranaguá, Rio/Itaguaí/Niterói) e sinais de referência calibrada; os 37 portos globais são cobertura de <em>referência</em>. A linha ao vivo entra quando a fonte oficial voltar a responder.</p>
+  <p class="subtitle">MCP &amp; REST Engine &mdash; congestion &amp; demurrage risk. <strong>5 portos BR com estatística oficial ANTAQ (37 meses)</strong> (Santos, Paranaguá, Rio/Itaguaí/Niterói) e sinais de referência calibrada; os 38 portos globais registrados são cobertura de <em>referência</em>. A linha ao vivo entra quando a fonte oficial voltar a responder.</p>
 
   <p class="section-title">Connect in 5 seconds</p>
 
@@ -492,7 +492,7 @@ real-time field data.
 
 **Trend (24h/48h/72h)** — `GET /v1/port-trend?port_id=BRSSZ` returns a **synthetic** projection with a `trend` label: `acelerando`, `estável` or `descongestionando`.
 
-**Free tier** — $0.00, no credit card required. Pay-as-you-go beyond the free tier at $0.02 per query.
+**Free tier** — $0.00, no credit card required. Paid access via RapidAPI subscription or direct contact.
 
 **Other ways to consume it**
 - Python SDK: `pip install aetherx-oracle`
@@ -651,7 +651,7 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                     "detail": "Access denied: Decision Tools require authenticated M2M access.",
                     "access_mode": context.access_mode,
                     "required_permission": "decision.*",
-                    "hint": "Provide 'Authorization: Bearer <API_KEY>' header. Get a 7-day M2M API Key at https://aetherx.aether-grid.io/m2m-keys"
+                    "hint": "Provide 'Authorization: Bearer <API_KEY>' header. Get a 30-day M2M API Key at https://aetherx.aether-grid.io/m2m-keys"
                 }).encode("utf-8")
                 record_usage(context, product="gp5", tool=path, duration_ms=0, status_code=403)
                 from starlette.responses import Response
@@ -760,7 +760,7 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                                     "message": (
                                         f"Access denied: tool '{tool_name}' requires authenticated M2M access "
                                         "(Decision Tool). Call the 'request_m2m_key' tool to self-serve a "
-                                        "free 7-day trial key, then send 'Authorization: Bearer <key>'."
+                                        "free 30-day trial key, then send 'Authorization: Bearer <key>'."
                                     ),
                                     "data": {
                                         "access_mode": context.access_mode,
@@ -795,7 +795,7 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                                         "message": (
                                             "Daily observation quota exceeded "
                                             f"({mcp_quota.OBSERVATION_QUOTA_PER_DAY} calls/IP/day). "
-                                            "Authenticate with an M2M key (free 7-day trial via "
+                                            "Authenticate with an M2M key (free 30-day trial via "
                                             "'request_m2m_key') to remove the limit."
                                         ),
                                     }
@@ -931,6 +931,7 @@ def _render_live_snapshot() -> str:
 def landing_page():
     return HTMLResponse(
         LANDING_HTML.replace("__LIVE_SNAPSHOT__", _render_live_snapshot())
+        .replace("__COVERAGE_COUNT__", str(COVERAGE_COUNT))
         .replace("v0.2.1", f"v{APP_VERSION}")
     )
 
@@ -1026,7 +1027,7 @@ class M2MKeyRequest(BaseModel):
 @app.post(
     "/v1/m2m/request-key",
     tags=["M2M Runtime"],
-    summary="Request a 7-day trial M2M API Key",
+    summary="Request a 30-day trial M2M API Key",
     description="Generates an instant trial API key enabling Decision Tools for LLM agents and M2M clients."
 )
 def request_m2m_key(req: M2MKeyRequest):
@@ -1314,11 +1315,11 @@ def get_gp5_scdew(
         "Returns the current congestion signal for a port: "
         "`congestion_score` (0.0-1.0), `eta_delay_days`, `waiting_vessels`, "
         "`freight_volatility_index`, demurrage exposure and `decision_grade`. "
-        "Every response includes `data_source` and `as_of`. Coverage: 35 ports & chokepoints — "
+        f"Every response includes `data_source` and `as_of`. Coverage: {COVERAGE_COUNT} registered ports & chokepoints — "
         "**5 portos brasileiros com fila LIVE de autoridade** (Santos, Paranaguá, Rio/Itaguaí/Niterói), "
         "demais portos como **referência calibrada/estática** (`reference_seed`, nunca finge telemetria). Unknown ports fall back "
         'to a global statistical estimate with `country="Global"`. Paid access: '
-        "send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the "
+        "send `Authorization: Bearer <chave paga>` (RapidAPI subscription) or the "
         "`X-RapidAPI-Proxy-Secret` header."
     ),
     response_description="The current reference signal for the requested port.",
@@ -1329,7 +1330,7 @@ def get_gp5_scdew(
             "content": {"application/json": {"example": EXAMPLE_RISK_RESPONSE}},
         },
         401: {
-            "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
+            "description": "Missing or invalid paid credential (RapidAPI subscription or X-RapidAPI-Proxy-Secret).",
             "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
         },
         403: {
@@ -1370,7 +1371,7 @@ def get_port_risk(
         "projection point includes `congestion_score`, `eta_delay_days` and the estimated "
         "`estimated_daily_demurrage_usd`. NOTE: the projection is `synthetic_projection` "
         "(derived from the static reference seed), not a live forecast. Paid access: "
-        "send `Authorization: Bearer <chave paga>` (assinatura Stripe) or the "
+        "send `Authorization: Bearer <chave paga>` (RapidAPI subscription) or the "
         "`X-RapidAPI-Proxy-Secret` header."
     ),
     response_description="The 24h, 48h and 72h congestion projections for the requested port.",
@@ -1381,7 +1382,7 @@ def get_port_risk(
             "content": {"application/json": {"example": EXAMPLE_TREND_RESPONSE}},
         },
         401: {
-            "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
+            "description": "Missing or invalid paid credential (RapidAPI subscription or X-RapidAPI-Proxy-Secret).",
             "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
         },
         403: {
@@ -1444,7 +1445,7 @@ def _port_history_enabled() -> bool:
             "description": "Recurso em validação operacional: sem cobertura contínua comprovada de 90 dias (503 FEATURE_IN_VALIDATION).",
         },
         401: {
-            "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
+            "description": "Missing or invalid paid credential (RapidAPI subscription or X-RapidAPI-Proxy-Secret).",
             "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
         },
         403: {
@@ -1498,7 +1499,7 @@ def get_port_history(
         "Returns the congestion signals for up to 20 ports in a single request, preserving "
         "the order of the `port_ids` (comma-separated UN/LOCODEs). Unknown ports fall back "
         "to the global statistical estimate. Paid access: send `Authorization: "
-        "Bearer <chave paga>` (assinatura Stripe) or the `X-RapidAPI-Proxy-Secret` header."
+        "Bearer <chave paga>` (RapidAPI subscription) or the `X-RapidAPI-Proxy-Secret` header."
     ),
     response_description="A list of congestion signals, one per requested port, in the same order.",
     responses={
@@ -1512,7 +1513,7 @@ def get_port_history(
             "content": {"application/json": {"example": ERROR_400_EXAMPLE}},
         },
         401: {
-            "description": "Missing or invalid paid credential (Stripe Bearer key or X-RapidAPI-Proxy-Secret).",
+            "description": "Missing or invalid paid credential (RapidAPI subscription or X-RapidAPI-Proxy-Secret).",
             "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
         },
         422: {

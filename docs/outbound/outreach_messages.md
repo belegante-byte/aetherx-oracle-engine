@@ -10,7 +10,7 @@
   - `evaluate_charter_risk`: cálculo de exposição a demurrage (US$) sob premissas explícitas de laytime/taxa diária.
   - `evaluate_routing_alternatives`: avaliação comparativa de atrasos entre portos alternativos.
   - `get_physical_events`: pacotes de eventos temporais auditáveis (`change-packet.v1`).
-- **Chave de Trial M2M de 7 dias grátis:** Sem cartão de crédito, geração instantânea em **https://aetherx.aether-grid.io/m2m-keys**.
+- **Chave de Trial M2M de 30 dias grátis:** Sem cartão de crédito, geração instantânea em **https://aetherx.aether-grid.io/m2m-keys**.
 - **Conexão Nativa:** MCP Remote Server (`/mcp`), REST API, SDK Python (`aetherx-oracle`), PyPI (`aetherx-mcp`).
 
 ---
@@ -28,7 +28,7 @@ Desenvolvemos o GP5 Maritime, um motor M2M de inteligência física portuária p
 
 Para mesas de operação física e chartering, ele avalia a exposição financeira a demurrage (sobrestadia em US$) e compara atrasos entre portos em uma única chamada M2M ou via agente MCP (Claude/Cursor).
 
-Disponibilizamos uma chave de teste empresarial de 7 dias (grátis, sem cartão):
+Disponibilizamos uma chave de teste empresarial de 30 dias (grátis, sem cartão):
 https://aetherx.aether-grid.io/m2m-keys
 
 Vale 15 minutos de conversa esta semana para apresentarmos o sinal comparado com os dados da {Company}?
@@ -48,11 +48,11 @@ Hi {Person},
 
 {PersHook}
 
-We built GP5 Maritime — a predictive M2M physical queue intelligence engine covering 35 ports & global chokepoints (5 Brazilian ports with live official-authority line-ups: Santos, Paranaguá, Rio, Niterói, Itaguaí), plus rail-wagon delay inference for the Rumo export corridor.
+We built GP5 Maritime — a predictive M2M physical queue intelligence engine covering 38 registered ports & global chokepoints (5 Brazilian ports with live official-authority line-ups: Santos, Paranaguá, Rio, Niterói, Itaguaí), plus rail-wagon delay inference for the Rumo export corridor.
 
 It provides Decision Tools (evaluating daily demurrage financial exposure in USD and comparative port routing alternatives) as raw ChangePackets (physical-event.v1) or MCP agent tools.
 
-Free 7-day M2M trial key (instant generation, no credit card):
+Free 30-day M2M trial key (instant generation, no credit card):
 https://aetherx.aether-grid.io/m2m-keys
 
 Would you be open to a 15-min data integration call this week?
@@ -76,7 +76,7 @@ GP5 Maritime provides an independent physical risk layer for bulk and container 
 
 Beyond static AIS snapshots, it generates temporal physical events (change-packet.v1) and evaluates charter party demurrage risk under explicit user-defined laytime assumptions. Available via REST, Python SDK and hosted MCP server.
 
-Get an instant 7-day trial M2M key:
+Get an instant 30-day trial M2M key:
 https://aetherx.aether-grid.io/m2m-keys
 
 Example live data: https://aetherx.aether-grid.io/v1/gp5/physical-events?port_id=BRPNG

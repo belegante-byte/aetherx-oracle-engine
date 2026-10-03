@@ -21,7 +21,7 @@ Example:
 
 > **DATA INTEGRITY NOTICE**: Port conditions vary by source availability. Based on local audits, Santos (BRSSZ) successfully serves **live line-ups** from official port authorities (`data_source="live:aps_atracados+..."`). Other ports may also serve live telemetry if their source sensor provides valid timestamps; otherwise, they degrade to a **calibrated/static reference seed** (`calibrated_reference_seed` / `static_reference_seed`) or degraded semantic states. Every API/MCP response includes `data_source`, `semantic_state`, `decision_grade` and `as_of`.
 
-Congestion signals for 35 ports & global chokepoints: **Santos (BRSSZ) is LIVE** (official-authority line-ups, based on verifiable timestamps), **other ports coverage as available or calibrated/static reference seed**. Every response carries `data_source`, `semantic_state`, and `decision_grade` so the consumer knows which is which. REST API, Python SDK and MCP server.
+Congestion signals for 38 registered ports & global chokepoints: **5 Brazilian ports are LIVE** — Santos (BRSSZ), Paranaguá (BRPNG), Rio de Janeiro (BRRIO), Itaguaí (BRITG) and Niterói (BRNIT) — from official port-authority line-ups based on verifiable timestamps. The remaining ports and global chokepoints serve a **calibrated/static reference seed**. Every response carries `data_source`, `semantic_state`, and `decision_grade` so the consumer knows which is which. REST API, Python SDK and MCP server.
 
 
 ## GP5 - Motor de Decisão Logística e Arbitragem
@@ -32,7 +32,7 @@ If you do not have one, you can autonomously generate a 30-day free trial key by
 `POST /m2m-keys`
 Payload: `{"name": "Agent", "email": "agent@domain.com", "organization": "AI"}`
 The API will return a token. Add it to your request headers as `Authorization: Bearer <token>`.
-After the trial expires, paid access runs through the **RapidAPI marketplace** (merchant-of-record): subscribe at `https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle`; the marketplace proxy authenticates REST calls via `X-RapidAPI-Proxy-Secret` (metered plans). A direct **Stripe** subscription (GP5 Pro US$ 499/mo · GP5 Enterprise US$ 5.000/mo at `/checkout/gp5-*`, issuing a `gp5_enterprise_*` Bearer key) is wired and ready, but **released only after the Stripe account verification completes** — until then the funnel points to RapidAPI.
+After the trial expires, paid access runs through the **RapidAPI marketplace** (merchant-of-record): subscribe at `https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle`; the marketplace proxy authenticates REST calls via `X-RapidAPI-Proxy-Secret` (metered plans). Direct arrangements are available by contact at `contato@aether-grid.io`.
 
 Aether Grid possui um módulo corporativo B2B (GP5) para roteamento logístico:
 - **Arbitragem Logística:** Calcula trade-offs entre Demurrage (multa por fila de porto) e Frete Terrestre.
@@ -65,9 +65,10 @@ Every response includes a `signal` block with `level`, `live_observation`, `queu
 - [Example call](https://aetherx.aether-grid.io/v1/port-risk?port_id=BRSSZ): GET /v1/port-risk?port_id=BRSSZ
 - [Trend example](https://aetherx.aether-grid.io/v1/port-trend?port_id=BRSSZ): GET /v1/port-trend?port_id=BRSSZ
 - [Batch example](https://aetherx.aether-grid.io/v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM): GET /v1/ports-risk?port_ids=BRSSZ,CNSHA,NLRTM
-- [Public feed (no key)](https://aetherx.aether-grid.io/public/ports): GET /public/ports — all 35 ports & chokepoints (5 Brazilian ports live, each with its own `data_source` label; the rest reference seed), read-only, for widgets/embeds
+- [Public feed (no key)](https://aetherx.aether-grid.io/public/ports): GET /public/ports — all 38 registered ports & chokepoints (5 Brazilian ports live, each with its own `data_source` label; the rest reference seed), read-only, for widgets/embeds
 - [Interactive docs](https://aether-x-oracle-production.up.railway.app/docs): Swagger UI
-- [Stripe checkout (pago)](https://aetherx.aether-grid.io/checkout/gp5-pro): GP5 Pro US$ 499/mo · GP5 Enterprise US$ 5.000/mo — merchant-of-record
+- [RapidAPI (pago)](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle): merchant-of-record, planos metered
+- [Contact for direct access](mailto:contato@aether-grid.io)
 - [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)
 
 ## Guides (human-readable)
@@ -105,7 +106,7 @@ Per-port pages (one per monitored port; BR ports live, others reference seed):
 
 ## Supported ports
 
-AEDXB, BRITG, BRNIT, BRPNG, BRRIO, BRSSZ, CNNGB, CNSHA, CNTAO, DEHAM, GBLGP, KRPUS, MPTNG, MXZLO, NLRTM, SGSIN, USLAX, USNYC, ZACPT
+AEDXB, ARBUE, ARROS, BEANT, BRITG, BRMAO, BRNIT, BRPNG, BRRGD, BRRIO, BRSSZ, BRVDC, CAVAN, CNNGB, CNSHA, CNSZX, CNTAO, CNTXG, DEHAM, EGSUZ, GBLGP, HORMUZ, ITGOA, JPTYO, KRPUS, MPTNG, MXZLO, NLAMS, NLRTM, PABLB, SARAN, SGSIN, USHOU, USLAX, USMSY, USNYC, USSEA, ZACPT
 
 Unknown ports fall back to a global statistical estimate (`country="Global"`).
 

@@ -23,6 +23,7 @@ from src.products.gp5.routing import (
 )
 from src.runtime.access import TRIAL_VALIDITY_DAYS, register_m2m_key
 from src.api.metrics import record_tool_call, record_gate_event
+from src.api.content_pages import COVERAGE_COUNT
 
 # Tool -> família de intenção (para a Control Tower atribuir o motivo do call).
 TOOL_INTENT = {
@@ -170,7 +171,7 @@ mcp = MCPServer(
     "aetherx-oracle",
     title="GP5 Maritime — Port Congestion & Logistics Risk Oracle",
     description=(
-        "Multi-region port congestion and chokepoint intelligence for 35 global seaports and strategic maritime straits. "
+        f"Multi-region port congestion and chokepoint intelligence for {COVERAGE_COUNT} registered global seaports and strategic maritime straits. "
         "Official port-authority vessel queues for Santos (BRSSZ, via the Autoridade Portuária de Santos / APS). "
         "Other ports may provide live telemetry if verifiable timestamps exist; otherwise, they and every global chokepoint return "
         "an explicitly-labeled calibrated/static reference seed or degraded state "
@@ -226,7 +227,7 @@ mcp = MCPServer(
         "evaluate_scdew_warning) are free with a daily per-IP quota.\n"
         "2. Decision tools (evaluate_charter_risk, evaluate_routing_alternatives, "
         "evaluate_corridor_risk) require an M2M key: call `request_m2m_key` to self-serve a free "
-        "7-day trial key, then authenticate M2M requests with 'Authorization: Bearer <key>'."
+        "30-day trial key, then authenticate M2M requests with 'Authorization: Bearer <key>'."
     ),
     version=_SERVICE_VERSION,
     website_url="https://aetherx.aether-grid.io",
@@ -292,7 +293,7 @@ def get_port_trend(port_id: str) -> dict[str, Any]:
 
 @mcp.tool()
 def list_supported_ports() -> list[dict[str, str]]:
-    """List the 35 ports & global chokepoints covered by the oracle (UN/LOCODE id, name, country).
+    f"""List the {COVERAGE_COUNT} registered ports & global chokepoints covered by the oracle (UN/LOCODE id, name, country).
 
     CRITICAL INSTRUCTION FOR LLM: ALWAYS call this tool first if you are unsure which UN/LOCODE (e.g., BRSSZ, NLRTM) to pass to other tools. It returns the authoritative list of supported ports.
 
@@ -383,7 +384,7 @@ def get_port_operations_status(port_id: str) -> dict[str, Any]:
                     "evaluate_routing_alternatives",
                     "evaluate_corridor_risk",
                 ],
-                "hint": "Call request_m2m_key() to get a free 7-day key, then call a Decision "
+                "hint": "Call request_m2m_key() to get a free 30-day key, then call a Decision "
                         "Tool to convert this port status into USD exposure (demurrage, "
                         "charter risk, fiscal arbitrage across routes)."
             },
@@ -395,7 +396,7 @@ def get_port_operations_status(port_id: str) -> dict[str, Any]:
 
 @mcp.tool()
 def request_m2m_key(agent_name: str, organization: str, contact_email: str = "agent@m2m.local") -> dict[str, Any]:
-    """[M2M SELF-SERVE TOOL] Request an instant 7-day trial M2M API Key.
+    """[M2M SELF-SERVE TOOL] Request an instant 30-day trial M2M API Key.
 
     Use this tool if a Decision Tool returns an Access Denied / 403 error.
     Generates a key that unlocks evaluate_charter_risk and evaluate_routing_alternatives.

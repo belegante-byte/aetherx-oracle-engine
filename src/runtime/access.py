@@ -176,7 +176,7 @@ def load_keys_from_disk():
 
 
 def _token_expired(token: str) -> bool:
-    """Chave mestre nunca expira; chaves de trial expiram após 7 dias.
+    """Chave mestre nunca expira; chaves de trial expiram após TRIAL_VALIDITY_DAYS dias (30 por padrão).
 
     Chaves legado sem timestamp são consideradas válidas (continuidade de
     operação), mas emitem warning para que sejam rotacionadas — as trial keys

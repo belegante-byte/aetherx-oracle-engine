@@ -8,6 +8,7 @@ by live line-ups; the rest serve a static reference seed.
 
 import html
 import json
+from pathlib import Path
 
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 from src.products.gp5.fiscal import evaluate_fiscal_routing
@@ -21,7 +22,7 @@ PYPI_MCP = "https://pypi.org/project/aetherx-mcp/"
 REMOTE_CFG = '{"mcpServers": {"aetherx-oracle": {"type": "url", "url": "%s/mcp"}}}' % PRODUCTION_URL
 STDIO_CFG = '{"mcpServers": {"aetherx-oracle": {"command": "uvx", "args": ["aetherx-mcp"]}}}'
 
-# 35 portos & chokepoints monitorados, espelhando src/engine/init_prod_db.py. O slug alimenta
+# Portos & chokepoints monitorados, espelhando src/engine/init_prod_db.py. O slug alimenta
 # o SEO programático (/port-congestion-<slug>) e o sitemap.
 PORT_METAS = [
     {"port_id": "BRSSZ", "slug": "santos", "port_name": "Santos", "country": "Brasil"},
@@ -48,6 +49,7 @@ PORT_METAS = [
     {"port_id": "USNYC", "slug": "new-york", "port_name": "New York", "country": "EUA"},
     {"port_id": "USSEA", "slug": "seattle-tacoma", "port_name": "Seattle / Tacoma", "country": "EUA"},
     {"port_id": "CAVAN", "slug": "vancouver", "port_name": "Vancouver", "country": "Canadá"},
+    {"port_id": "NLAMS", "slug": "amsterdam", "port_name": "Amsterdam", "country": "Holanda"},
     {"port_id": "NLRTM", "slug": "rotterdam", "port_name": "Rotterdam", "country": "Holanda"},
     {"port_id": "DEHAM", "slug": "hamburg", "port_name": "Hamburg", "country": "Alemanha"},
     {"port_id": "BEANT", "slug": "antwerp", "port_name": "Antwerp", "country": "Bélgica"},
@@ -64,6 +66,9 @@ PORT_METAS = [
 ]
 
 _SLUG_MAP = {m["slug"]: m for m in PORT_METAS}
+# Cobertura declarada nos textos públicos. Derivada do dataset para nunca
+# voltar a divergir do que o produto realmente serve.
+COVERAGE_COUNT = len(PORT_METAS)
 
 CSS = """\
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -147,7 +152,7 @@ client = OracleClient(api_key="YOUR_RAPIDAPI_KEY")
 risk = client.get_port_risk("BRSSZ")
 print(risk.congestion_score)
 print(risk.estimated_daily_demurrage_usd)</code></pre></div>
-<p>Get a free 30-day trial key at <a href="{PRODUCTION_URL}/m2m-keys">/m2m-keys</a>; paid plans start at US$ 499/mês via <a href="{PRODUCTION_URL}/checkout/gp5-pro">Stripe checkout</a>.</p>
+<p>Get a free 30-day trial key at <a href="{PRODUCTION_URL}/m2m-keys">/m2m-keys</a>; paid access via <a href="{PRODUCTION_URL}/m2m-keys">RapidAPI subscription</a> or direct contact at <a href="mailto:contato@aether-grid.io">contato@aether-grid.io</a>.</p>
 <a class="cta" href="{PRODUCTION_URL}/fiscal-demo">See the fiscal demo</a>
 <h2>MCP server for AI agents</h2>
 <p>The same signal is exposed over the Model Context Protocol, so agents call <code>get_port_risk</code>, <code>get_ports_risk</code> and <code>get_port_trend</code> directly:</p>
@@ -226,7 +231,7 @@ def port_congestion_api_page() -> str:
 """
     return _page(
         "Port Congestion API — Port Risk, ETA Delay & Demurrage",
-        "Port congestion API, vessel queue intelligence, port delay risk / ETA delay and demurrage exposure for 35 ports & global chokepoints (5 Brazilian ports with live authority line-ups, the rest reference seed). Choose between ports, route cargo and assess demurrage risk.",
+        f"Port congestion API, vessel queue intelligence, port delay risk / ETA delay and demurrage exposure for {COVERAGE_COUNT} registered ports & global chokepoints (5 Brazilian ports with live authority line-ups, the rest reference seed). Choose between ports, route cargo and assess demurrage risk.",
         "Port Congestion API",
         "Port congestion signal, vessel queue, ETA delay and demurrage exposure — live line-ups for Brazilian ports, reference seed elsewhere.",
         body,
@@ -269,7 +274,7 @@ print(risk.congestion_score, risk.eta_delay_days)</code></pre></div>
 
 
 def port_congestion_python_page() -> str:
-    body = f"""<p>You don't need heavy infrastructure to monitor port congestion. With a typed Python SDK you can pull congestion scores, ETA delays and demurrage exposure for 35 ports & global chokepoints (5 Brazilian ports with live authority line-ups, the rest reference seed) in a few lines.</p>
+    body = f"""<p>You don't need heavy infrastructure to monitor port congestion. With a typed Python SDK you can pull congestion scores, ETA delays and demurrage exposure for {COVERAGE_COUNT} registered ports & global chokepoints (5 Brazilian ports with live authority line-ups, the rest reference seed) in a few lines.</p>
 <h2>How to monitor port congestion with Python</h2>
 <div class="snippet-card"><div class="card-header"><span>1. Install</span></div><pre><code>pip install --upgrade aetherx-oracle</code></pre></div>
 <div class="snippet-card"><div class="card-header"><span>2. Call a port</span></div><pre><code>from aetherx import OracleClient
@@ -307,7 +312,7 @@ asyncio.run(main())</code></pre></div>
         "Port Congestion API with Python — Quick Start SDK",
         "Monitor port congestion with Python: install the aetherx-oracle SDK, call Santos, scan a portfolio of ports and add 24/48/72h ETA delay trends.",
         "Port Congestion Monitoring with Python",
-        "A 3-minute, typed-Python quick start for congestion scores, ETA delays and demurrage exposure across 35 ports & global chokepoints (5 Brazilian ports with live authority line-ups, the rest reference seed).",
+        f"A 3-minute, typed-Python quick start for congestion scores, ETA delays and demurrage exposure across {COVERAGE_COUNT} registered ports & global chokepoints (5 Brazilian ports with live authority line-ups, the rest reference seed).",
         body,
         "/port-congestion-python",
     )
@@ -385,7 +390,7 @@ def m2m_keys_page_html() -> str:
       <div class="badge">M2M PRODUCT RUNTIME · ENTERPRISE ACCESS</div>
       <h1>GP5 Maritime — Chaves de Acesso M2M & Decision Tools</h1>
       <p class="subtitle">
-        Obtenha uma credencial autenticada de 7 dias para habilitar o conjunto completo de ferramentas de suporte à decisão (Demurrage Risk, Cargo Routing e ChangePackets) no seu servidor MCP, agentes LLM ou algoritmos de trading.
+        Obtenha uma credencial autenticada de 30 dias para habilitar o conjunto completo de ferramentas de suporte à decisão (Demurrage Risk, Cargo Routing e ChangePackets) no seu servidor MCP, agentes LLM ou algoritmos de trading.
       </p>
     </div>
 
@@ -486,7 +491,7 @@ def m2m_keys_page_html() -> str:
         "GP5 M2M — Chaves de Acesso & Decision Tools",
         "Obtenha credencial M2M autenticada para o GP5 Maritime Product Runtime.",
         "GP5 M2M — Chaves de Acesso & Decision Tools",
-        "Obtenha uma credencial de 7 dias para habilitar Decision Tools (Demurrage, Routing, Corridors) no seu agente MCP ou trading desk.",
+        "Obtenha uma credencial de 30 dias para habilitar Decision Tools (Demurrage, Routing, Corridors) no seu agente MCP ou trading desk.",
         body,
         "/m2m-keys"
     )
@@ -676,8 +681,20 @@ PAGES = [
 ]
 
 
+def _content_lastmod() -> str:
+    """Data da última mudança de conteúdo (mtime do VERSION, que muda a cada
+    deploy). Evita lastmod falso — data fixa ou date.today() penalizam SEO."""
+    from datetime import datetime, timezone
+    try:
+        version_path = Path(__file__).resolve().parent.parent.parent / "VERSION"
+        ts = version_path.stat().st_mtime
+        return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
+    except OSError:
+        return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
 def sitemap_xml() -> str:
-    lastmod = "2026-09-20"
+    lastmod = _content_lastmod()
     base_urls = ["/", "/mcp-page", "/m2m-keys", "/demo", "/port-congestion-api", "/santos-port-congestion-api", "/port-congestion-python"]
     port_urls = [f"/port-congestion-{m['slug']}" for m in PORT_METAS]
     urls = base_urls + port_urls + SEO_URLS
