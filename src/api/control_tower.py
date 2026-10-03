@@ -7,6 +7,9 @@ Acesso protegido pelo proxy secret (rota /internal/* não é pública).
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
+
+_SERVICE_VERSION = (Path(__file__).resolve().parent.parent.parent / "VERSION").read_text(encoding="utf-8").strip()
 
 
 def _fmt_uptime(seconds: int) -> str:
@@ -318,7 +321,7 @@ h1{{font-size:1.4rem;letter-spacing:2px;color:#58a6ff;margin-bottom:1.5rem}}
   <div class="card">
     <h2>SYSTEM</h2>
     <div class="stat">SYSTEM <span class="green">● ONLINE</span></div>
-    <div class="stat">VERSION <span class="val">0.4.x / api 0.2.1</span></div>
+    <div class="stat">VERSION <span class="val">{_SERVICE_VERSION}</span></div>
     <div class="stat">UPTIME <span class="val">{uptime}</span></div>
     <div class="stat">REQUESTS <span class="val big">{req:,}</span></div>
     <div class="stat">MCP CALLS <span class="val big">{mcp_calls:,}</span></div>

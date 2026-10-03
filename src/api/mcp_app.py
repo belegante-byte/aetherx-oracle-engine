@@ -6,6 +6,7 @@ but resolves the signals through the local risk engine instead of HTTP.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
@@ -162,6 +163,9 @@ SUPPORTED_PORTS: list[dict[str, str]] = [
     {"port_id": "ZACPT", "port_name": "Cape Town", "country": "África do Sul"},
 ]
 
+# Fonte única de versão: arquivo VERSION na raiz (alinhado ao CHANGELOG).
+_SERVICE_VERSION = (Path(__file__).resolve().parent.parent.parent / "VERSION").read_text(encoding="utf-8").strip()
+
 mcp = MCPServer(
     "aetherx-oracle",
     title="GP5 Maritime — Port Congestion & Logistics Risk Oracle",
@@ -224,7 +228,7 @@ mcp = MCPServer(
         "evaluate_corridor_risk) require an M2M key: call `request_m2m_key` to self-serve a free "
         "7-day trial key, then authenticate M2M requests with 'Authorization: Bearer <key>'."
     ),
-    version="1.3.0",
+    version=_SERVICE_VERSION,
     website_url="https://aetherx.aether-grid.io",
 )
 

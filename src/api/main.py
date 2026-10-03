@@ -54,9 +54,9 @@ from src.engine.analytics import (
 )
 
 PRODUCTION_URL = os.getenv("PRODUCTION_URL", "https://aetherx.aether-grid.io")
-# Fonte única de versão (metadata OpenAPI + /health + landing). Antes conviviam
-# 0.2.1 (app) e 1.1.0 (/health) — divergência de contrato.
-APP_VERSION = "0.2.1"
+# Fonte única de versão: arquivo VERSION na raiz do repo (alinhado ao CHANGELOG).
+# Consumido por /health, metadata OpenAPI e landing.
+APP_VERSION = (Path(__file__).resolve().parent.parent.parent / "VERSION").read_text(encoding="utf-8").strip()
 DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
 TERMS_PATH = DOCS_DIR / "TERMS_OF_SERVICE.md"
 RAPIDAPI_SPEC_PATH = Path(__file__).resolve().parent.parent.parent / "openapi.rapidapi.json"
@@ -931,6 +931,7 @@ def _render_live_snapshot() -> str:
 def landing_page():
     return HTMLResponse(
         LANDING_HTML.replace("__LIVE_SNAPSHOT__", _render_live_snapshot())
+        .replace("v0.2.1", f"v{APP_VERSION}")
     )
 
 

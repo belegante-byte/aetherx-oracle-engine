@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from src.api.main import app, API_DESCRIPTION, PRODUCTION_URL
+from src.api.main import app, API_DESCRIPTION, PRODUCTION_URL, APP_VERSION
 from src.engine.risk_model import calculate_port_risk, calculate_port_trend
 
 LOGO_URL = "https://raw.githubusercontent.com/belegante-byte/aetherx-mcp/main/assets/logo.png"
@@ -80,7 +80,7 @@ def _minimal_spec():
         "info": {
             "title": "Aether-X Port Congestion Oracle",
             "description": API_DESCRIPTION,
-            "version": "0.2.0",
+            "version": APP_VERSION,
             "termsOfService": f"{PRODUCTION_URL}/terms",
             "contact": {
                 "name": "Aether-X",
