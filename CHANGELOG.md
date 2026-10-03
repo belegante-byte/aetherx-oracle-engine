@@ -25,6 +25,24 @@ Histórico de mudanças relevantes do **Aether-X Oracle Engine**. Formato basead
   ao repositório com o mesmo lock usado por `increment()`, já que a conexão
   DuckDB não é thread-safe.
 - Suíte: **297 testes passando** (4 novos em `test_gate1a_durability.py`).
+- **Gate 1A VALIDADO EM PRODUÇÃO (2026-10-03, F1 = DONE).** Sequência:
+  gravação real via `assess_logistics_disruption` (BRSSZ, MCP, em container)
+  → `SHADOW_DB_PATH=/app/data/shadow.duckdb` (volume) → restart do serviço →
+  recuperação pelo `stable_id`. Evidência: ledger append-only preservado
+  (todos os `logical_id` byte-estáveis), shipment único recuperável
+  (`urn:shipment:shp_urn:portcall:BRSSZ:unknown`, sem linha duplicada),
+  deduplicação operando através do restart (mesmo `logical_id` →
+  DEDUPLICATED, sem linha nova), contadores restaurados do arquivo,
+  Oracle operacional intacto (7 tabelas de negócio iguais ao baseline;
+  `seed_hydration_log` +1 por boot, por design). Dado de probe confinado ao
+  `shadow.duckdb`. **Semântica conhecida (não é falha):** o boot não repovoa
+  os dicts em memória — o primeiro run pós-restart reconstrói o snapshot do
+  shipment só com as evidências novas e faz UPSERT da mesma linha
+  (`stable_id` estável); o ledger permanece a verdade durável e a superfície
+  de leitura (F2) deve compor a reconstrução a partir do ledger
+  (`get_active_evidence_for_entity`), nunca confiar no `evidence_store` do
+  snapshot como completo. Sem superfície de escrita de tombstone em produção
+  (mecanismo coberto pelo teste local; escrita real é escopo F2).
 
 ## [Não lançado] — 2026-10-03 (Fase 0)
 
