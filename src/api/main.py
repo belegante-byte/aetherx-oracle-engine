@@ -1145,7 +1145,7 @@ def get_verified_queue(
     summary="Get temporal physical events for a port (change-packet.v1)",
     description="Returns normalized physical state transitions for vessels and land operations."
 )
-def get_gp5_physical_events(port_id: str = Query(..., example="BRPNG")):
+def get_gp5_physical_events(port_id: str = Query(..., examples=["BRPNG"])):
     try:
         packet = get_port_physical_events(port_id)
         return packet.model_dump()
@@ -1160,8 +1160,8 @@ def get_gp5_physical_events(port_id: str = Query(..., example="BRPNG")):
     description="Calculates exposure basis (USD), assumptions, uncertainties, and physical basis."
 )
 def get_gp5_charter_risk(
-    port_id: str = Query(..., example="BRPNG"),
-    commodity: str = Query("SOJA", example="SOJA"),
+    port_id: str = Query(..., examples=["BRPNG"]),
+    commodity: str = Query("SOJA", examples=["SOJA"]),
     demurrage_rate_usd_day: float = Query(32000.0),
     expected_laytime_days: float = Query(2.0)
 ):
@@ -1179,9 +1179,9 @@ def get_gp5_charter_risk(
     description="Comparative condition analysis between Port A and Port B."
 )
 def get_gp5_routing_eval(
-    port_a: str = Query(..., example="BRPNG"),
-    port_b: str = Query(..., example="BRSSZ"),
-    commodity: str = Query("SOJA", example="SOJA")
+    port_a: str = Query(..., examples=["BRPNG"]),
+    port_b: str = Query(..., examples=["BRSSZ"]),
+    commodity: str = Query("SOJA", examples=["SOJA"])
 ):
     try:
         res = evaluate_routing_alternatives(port_a, port_b, commodity)
@@ -1197,9 +1197,9 @@ def get_gp5_routing_eval(
     description="Full trade corridor analysis (e.g. Paranaguá BRPNG -> Qingdao CNTAO). Cites sea transit, origin queue and CFR cost per ton."
 )
 def get_gp5_corridor_eval(
-    origin_port: str = Query(..., example="BRPNG"),
-    destination_port: str = Query(..., example="CNTAO"),
-    commodity: str = Query("SOJA", example="SOJA"),
+    origin_port: str = Query(..., examples=["BRPNG"]),
+    destination_port: str = Query(..., examples=["CNTAO"]),
+    commodity: str = Query("SOJA", examples=["SOJA"]),
     vessel_capacity_tons: float = Query(60000.0)
 ):
     try:
@@ -1222,10 +1222,10 @@ def get_gp5_corridor_eval(
     },
 )
 def get_gp5_fiscal_routing(
-    intended_port_id: str = Query(..., example="BRSSZ"),
-    commodity: str = Query(..., example="FERTILIZANTES"),
+    intended_port_id: str = Query(..., examples=["BRSSZ"]),
+    commodity: str = Query(..., examples=["FERTILIZANTES"]),
     cargo_value_usd: float = Query(10000000.0),
-    inland_uf: str = Query("MT", example="MT"),
+    inland_uf: str = Query("MT", examples=["MT"]),
     cargo_tons: float = Query(60000.0)
 ):
     try:
@@ -1239,7 +1239,7 @@ def get_gp5_fiscal_routing(
     summary="Get Port Congestion Index (PCI, 0-100)",
     description="Calculates composite Port Congestion Index (0-100) with financial impact estimates."
 )
-def get_gp5_pci(port_id: str = Query(..., example="SGSIN")):
+def get_gp5_pci(port_id: str = Query(..., examples=["SGSIN"])):
     try:
         return calculate_pci(port_id)
     except Exception as e:
@@ -1252,7 +1252,7 @@ def get_gp5_pci(port_id: str = Query(..., example="SGSIN")):
     summary="Get Chokepoint Disruption Risk (CDR, 0-100)",
     description="MANDATORY FOR CHOKEPOINT QUERIES: Calculates the real-time disruption risk (0-100) of major global maritime chokepoints (e.g., HORMUZ, PANAMA, SUEZ). Use this tool to assess delays caused by geopolitical events, canal blockages, or high traffic."
 )
-def get_gp5_cdr(chokepoint_id: str = Query(..., example="HORMUZ")):
+def get_gp5_cdr(chokepoint_id: str = Query(..., examples=["HORMUZ"])):
     try:
         return calculate_cdr(chokepoint_id)
     except Exception as e:
@@ -1266,7 +1266,7 @@ def get_gp5_cdr(chokepoint_id: str = Query(..., example="HORMUZ")):
     description="PREDICT VESSEL QUEUES (VQPM): Forecasts how many ships will be waiting at a specific port (e.g., CNSHA) over the next 1 to 14 days. Critical for estimating future demurrage costs and scheduling arrivals."
 )
 def get_gp5_vqpm(
-    port_id: str = Query(..., example="CNSHA"),
+    port_id: str = Query(..., examples=["CNSHA"]),
     horizon_days: int = Query(7, ge=1, le=14)
 ):
     try:
@@ -1281,7 +1281,7 @@ def get_gp5_vqpm(
     summary="Get Intermodal Rail Delay Index (IRDI, 0-100)",
     description="MANDATORY FOR INLAND LOGISTICS: Calculates the Inland Route Disruption Index (IRDI) for a specific port (e.g., NLRTM for Rotterdam, BRSSZ for Santos). Use this tool to check if the land-based supply chain (rail/trucks) moving goods out of a port is congested or blocked."
 )
-def get_gp5_irdi(identifier: str = Query(..., example="NLRTM")):
+def get_gp5_irdi(identifier: str = Query(..., examples=["NLRTM"])):
     try:
         return calculate_irdi(identifier)
     except Exception as e:
@@ -1295,9 +1295,9 @@ def get_gp5_irdi(identifier: str = Query(..., example="NLRTM")):
     description="EARLY WARNING (SCDEW): Evaluates the complete end-to-end supply chain risk (0-100) between an origin port (e.g., BRPNG) and a destination port (e.g., CNTAO), optionally passing through a chokepoint (e.g., HORMUZ). Use this for high-level logistical risk assessment."
 )
 def get_gp5_scdew(
-    origin_port: str = Query(..., example="BRPNG"),
-    destination_port: str = Query(..., example="CNTAO"),
-    chokepoint_id: Optional[str] = Query(None, example="HORMUZ")
+    origin_port: str = Query(..., examples=["BRPNG"]),
+    destination_port: str = Query(..., examples=["CNTAO"]),
+    chokepoint_id: Optional[str] = Query(None, examples=["HORMUZ"])
 ):
     try:
         return calculate_scdew(origin_port, destination_port, chokepoint_id)

@@ -44,5 +44,14 @@ oracle_hash_before.txt
 data/*.duckdb.bak
 m2m_experiments/
 
+# Detritos de sessões de agente (patches, audits, scripts one-off) — nunca versionar
+*.patch
+mega_patch.py
+mega_patch_tests.py
+make_md_patch.py
+pytest_final_audit.txt
+pytest_output_final.txt
+scripts/mock_db_weather_delay.py
+
 # Banco vivo: nunca versionar (o artefato versionado é seed/oracle_seed.duckdb)
 data/oracle.duckdb
