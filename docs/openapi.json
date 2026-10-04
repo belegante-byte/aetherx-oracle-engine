@@ -1543,11 +1543,11 @@
                       "waiting_vessels": 24,
                       "freight_volatility_index": 0.4,
                       "estimated_daily_demurrage_usd": 56800,
-                      "updated_at": "2026-10-04 12:16 UTC",
-                      "as_of": "2026-10-04 12:16 UTC",
+                      "updated_at": "2026-10-04 12:40 UTC",
+                      "as_of": "2026-10-04 12:40 UTC",
                       "data_source": "calibrated_reference_seed",
                       "data_source_label": "Calibrated reference seed (static model baseline, NOT live telemetry). Reference conditions: Median wait 32.9h.",
-                      "live_detail": "{\"port_name\": \"Shanghai\", \"country\": \"China\", \"congestion_score\": 0.62, \"eta_delay_days\": 1.4, \"waiting_vessels\": 24, \"median_wait_hours\": 32.9, \"berth_occupancy_pct\": 76.0, \"status\": \"MODERATE\", \"sources\": [\"calibrated_reference_seed\"], \"as_of\": \"2026-10-04 12:16 UTC\", \"source\": \"calibrated_reference_seed\"}",
+                      "live_detail": "{\"port_name\": \"Shanghai\", \"country\": \"China\", \"congestion_score\": 0.62, \"eta_delay_days\": 1.4, \"waiting_vessels\": 24, \"median_wait_hours\": 32.9, \"berth_occupancy_pct\": 76.0, \"status\": \"MODERATE\", \"sources\": [\"calibrated_reference_seed\"], \"as_of\": \"2026-10-04 12:40 UTC\", \"source\": \"calibrated_reference_seed\"}",
                       "decision_grade": "reference",
                       "signal": {
                         "level": "ELEVATED OPERATIONAL PRESSURE",
@@ -1557,7 +1557,7 @@
                         "demurrage_expected_usd": 44800,
                         "provenance": "calibrated_reference_seed",
                         "decision_implication": "Reference baseline only \u2014 NOT a live observation. Indicates modeled reference conditions at Shanghai (China); do not use as real-time field data.",
-                        "as_of": "2026-10-04 12:16 UTC"
+                        "as_of": "2026-10-04 12:40 UTC"
                       }
                     }
                   ]
@@ -2393,7 +2393,7 @@
                 "waiting_vessels": 0
               },
               {
-                "as_of": "2026-10-04 12:16 UTC",
+                "as_of": "2026-10-04 12:40 UTC",
                 "congestion_score": 0.62,
                 "country": "China",
                 "data_source": "calibrated_reference_seed",
@@ -2402,11 +2402,11 @@
                 "estimated_daily_demurrage_usd": 56800,
                 "eta_delay_days": 1.4,
                 "freight_volatility_index": 0.4,
-                "live_detail": "{\"port_name\": \"Shanghai\", \"country\": \"China\", \"congestion_score\": 0.62, \"eta_delay_days\": 1.4, \"waiting_vessels\": 24, \"median_wait_hours\": 32.9, \"berth_occupancy_pct\": 76.0, \"status\": \"MODERATE\", \"sources\": [\"calibrated_reference_seed\"], \"as_of\": \"2026-10-04 12:16 UTC\", \"source\": \"calibrated_reference_seed\"}",
+                "live_detail": "{\"port_name\": \"Shanghai\", \"country\": \"China\", \"congestion_score\": 0.62, \"eta_delay_days\": 1.4, \"waiting_vessels\": 24, \"median_wait_hours\": 32.9, \"berth_occupancy_pct\": 76.0, \"status\": \"MODERATE\", \"sources\": [\"calibrated_reference_seed\"], \"as_of\": \"2026-10-04 12:40 UTC\", \"source\": \"calibrated_reference_seed\"}",
                 "port_id": "CNSHA",
                 "port_name": "Shanghai",
                 "signal": {
-                  "as_of": "2026-10-04 12:16 UTC",
+                  "as_of": "2026-10-04 12:40 UTC",
                   "decision_implication": "Reference baseline only \u2014 NOT a live observation. Indicates modeled reference conditions at Shanghai (China); do not use as real-time field data.",
                   "demurrage_expected_usd": 44800,
                   "expected_delay_days": 1.4,
@@ -2415,7 +2415,7 @@
                   "provenance": "calibrated_reference_seed",
                   "queue_vessels": 24
                 },
-                "updated_at": "2026-10-04 12:16 UTC",
+                "updated_at": "2026-10-04 12:40 UTC",
                 "waiting_vessels": 24
               }
             ]

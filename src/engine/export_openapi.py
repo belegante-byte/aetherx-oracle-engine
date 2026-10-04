@@ -300,6 +300,55 @@ def generate_openapi():
 
     _sanitize_30(rapidapi)
 
+    # Respostas declaradas sem response_model geram "schema": {} — o importador
+    # do RapidAPI trata schema vazio como erro crítico. Trocamos por um objeto
+    # permissivo (a rota devolve um dict; nada é inventado sobre os campos).
+    for path_item in rapidapi.get("paths", {}).values():
+        for operation in path_item.values():
+            if not isinstance(operation, dict):
+                continue
+            for response in operation.get("responses", {}).values():
+                if not isinstance(response, dict):
+                    continue
+                for media in response.get("content", {}).values():
+                    if isinstance(media, dict) and media.get("schema") == {}:
+                        media["schema"] = {"type": "object"}
+
+    # Rotas de encanamento interno nunca vão para o marketplace: checkout,
+    # webhook de cobrança, fulfillment de chave e emissão de trial/cortesia.
+    # O RapidAPI rejeita spec que expõe fluxo de pagamento, e essas rotas não
+    # são consumíveis por uma máquina compradora. O spec NATIVO (docs/openapi.json)
+    # continua completo — só a projeção de marketplace é filtrada.
+    INTERNAL_PATH_PREFIXES = (
+        "/checkout/",
+        "/webhook/",
+        "/m2m-keys/",
+        "/v1/m2m/",
+    )
+    rapidapi["paths"] = {
+        path: item
+        for path, item in rapidapi.get("paths", {}).items()
+        if not path.startswith(INTERNAL_PATH_PREFIXES)
+    }
+    schemas = rapidapi.get("components", {}).get("schemas", {})
+    for orphan in ("M2MKeyRequest",):
+        schemas.pop(orphan, None)
+
+    # Toda tag usada precisa estar declarada no topo, senão o importador
+    # acusa referência pendente. Preserva a descrição das já declaradas.
+    declared = {t["name"] for t in rapidapi.get("tags", [])}
+    used: set[str] = set()
+    for path_item in rapidapi.get("paths", {}).values():
+        for operation in path_item.values():
+            if isinstance(operation, dict):
+                used.update(operation.get("tags", []))
+    rapidapi["tags"] = [t for t in rapidapi.get("tags", []) if t["name"] in used]
+    for name in sorted(used - declared):
+        rapidapi["tags"].append({
+            "name": name,
+            "description": f"Operations tagged {name}.",
+        })
+
     rapidapi_path = os.path.join(docs_dir, "openapi.rapidapi.json")
     with open(rapidapi_path, "w", encoding="utf-8") as f:
         json.dump(rapidapi, f, indent=2)
