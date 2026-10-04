@@ -25,16 +25,22 @@ colateral".**
 - Escada de preços (vive no `PLANS` de monetization.py; o canal de cobrança
    é a listing RapidAPI): Pro US$ 499/mo (US$ 4.990/ano) e Enterprise
    US$ 5.000/mo (US$ 50.000/ano).
-- **Níveis de acessoapplied no servidor (1.4.0):** cada chave carrega um nível
+- **Níveis de acesso aplicados no servidor (1.4.0):** cada chave carrega um nível
   (`trial` | `pro` | `enterprise`) persistido em `m2m_keys_meta.json`
-  (`_KEY_LEVELS`). O que cada nível entrega está em `MIN_LEVEL_BY_PATH`,
-  `SLOT_LIMITS` e `DAILY_CALL_QUOTA` em `src/runtime/access.py` — **esses mapas
-  são a referência única do contrato comercial**; mudou o que o cliente paga,
-  muda o mapa + teste em `tests/test_tier_restrictions.py`.
+  (`_KEY_LEVELS`). O que cada nível entrega está em `MIN_LEVEL_BY_PATH` e
+  `MIN_LEVEL_BY_PREFIX` (rotas com componente dinâmico), `SLOT_LIMITS` e
+  `DAILY_CALL_QUOTA` em `src/runtime/access.py` — **esses mapas são a referência
+  única do contrato comercial**; mudou o que o cliente paga, muda o mapa + teste
+  em `tests/test_tier_restrictions.py`. A resolução é feita por
+  `required_level_for_path`: exact-match tem precedência; depois casa por árvore
+  de rota — o prefixo casa o próprio caminho ou qualquer descendente, mas NÃO
+  irmãos como `/v1/reconstruction-mirror`.
   - `trial`: só MCP (funil free). NUNCA abre REST paga.
   - `pro`: sinais dos 5 portos BR ao-vivo (`port-risk`, `port-trend`,
     `ports-risk`, `port-history` até 90d observados, índice físico, charter/
-    corridor risk, PCI/CDR/VQPM/IRDI/SCDEW) + 1 slot + quota diária própria.
+    corridor risk, PCI/CDR/VQPM/IRDI/SCDEW) + reconstrução por ledger
+    (`/v1/reconstructions`, `/v1/reconstruction/{stable_id}`) + 1 slot + quota
+    diária própria.
   - `enterprise`: Pro + `routing-eval`/`fiscal-routing` (arbitragem) +
     `verified-queue` (evidência ANTAQ) + até 5 slots + quota maior.
   - Slots são **integrações simultâneas**, nunca quantidade de chamadas; a quota

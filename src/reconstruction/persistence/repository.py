@@ -73,6 +73,48 @@ class ReconstructionRepository:
             evidences.append(evidence_from_dict(d))
         return evidences
 
+    def list_shipments(self) -> List[tuple]:
+        """Índice durável de agregadores: [(stable_id, port_call_id)]."""
+        return self.conn.execute("""
+            SELECT stable_id, port_call_id
+            FROM shipment_reconstructions
+            ORDER BY stable_id ASC
+        """).fetchall()
+
+    def get_retracted_evidence_for_entity(self, entity_raw_name: str) -> List[RichEvidence]:
+        """Evidência cuja retração está registrada no ledger (tombstone aponta
+        para ela). A linha original permanece — o ledger é append-only; o que
+        muda é a leitura ativa (que a exclui)."""
+        rows = self.conn.execute("""
+            SELECT logical_id, evidence_id, source, claim_field, claim_value, epistemic_state,
+                   confidence, entity, source_observed_at, retrieved_at, origin_order_id
+            FROM evidence_ledger
+            WHERE is_tombstone = FALSE
+              AND json_extract_string(entity, '$.raw_name') = ?
+              AND logical_id IN (
+                  SELECT target_logical_id FROM evidence_ledger
+                  WHERE is_tombstone = TRUE AND target_logical_id IS NOT NULL
+              )
+            ORDER BY created_at ASC
+        """, (entity_raw_name,)).fetchall()
+
+        evidences = []
+        for r in rows:
+            d = {
+                "evidence_id": r[1],
+                "source": r[2],
+                "claim_field": r[3],
+                "claim_value": json.loads(r[4]),
+                "epistemic_state": r[5],
+                "confidence": r[6],
+                "entity": json.loads(r[7]),
+                "source_observed_at": r[8],
+                "retrieved_at": r[9],
+                "origin_order_id": r[10]
+            }
+            evidences.append(evidence_from_dict(d))
+        return evidences
+
     def save_shipment(self, shipment: ShipmentReconstruction):
         pc_id = shipment.port_call.current_value if shipment.port_call.current_value else "unknown"
         payload = shipment_to_json(shipment)

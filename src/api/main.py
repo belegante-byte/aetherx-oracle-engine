@@ -34,6 +34,7 @@ from src.runtime.access import (
     release_slot,
     consume_call_quota,
     MIN_LEVEL_BY_PATH,
+    required_level_for_path,
     PLAN_LABEL,
     SLOT_LIMITS,
 )
@@ -585,7 +586,11 @@ app = FastAPI(
         {
             "name": "Port Risk",
             "description": "Predictive congestion, ETA delay and freight volatility signals per port.",
-        }
+        },
+        {
+            "name": "Reconstruction",
+            "description": "Shipment reconstruction views composed exclusively from the durable evidence ledger (Fase 2, read surface).",
+        },
     ],
 )
 
@@ -639,8 +644,11 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
         request.state.client_context = context
 
         # Expõe o client_id ao contexto da requisição (para tool_errors auditáveis).
-        from src.runtime.metering import current_client_id
+        from src.runtime.metering import current_client_id, current_client_plan
         token = current_client_id.set(context.client_id)
+        # Espelho do plano (já decidido acima pelas regras do gateway) para a
+        # camada de tool diferenciar resposta (redação de parte para trial).
+        plan_token = current_client_plan.set(context.plan or "")
 
         path = request.url.path
 
@@ -665,7 +673,8 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
         # Aqui o RapidAPIGuard (mais externo) já validou a chave como paga, então
         # credencial inválida nunca chega — sem fallback legacy na REST paga.
         slot_token = ""
-        if not is_rapidapi_paid and path in MIN_LEVEL_BY_PATH:
+        path_level = required_level_for_path(path)
+        if not is_rapidapi_paid and path_level:
             raw = (request.headers.get("authorization") or "").strip()
             if raw.lower().startswith("bearer "):
                 raw = raw[7:].strip()
@@ -731,7 +740,7 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                 return Response(content=body, status_code=429, media_type="application/json")
             request.state.call_quota = q
             request.state.plan_header = gate["plan"]
-        elif is_rapidapi_paid and path in MIN_LEVEL_BY_PATH:
+        elif is_rapidapi_paid and path_level:
             request.state.plan_header = "enterprise"
 
         # ── 3. Boundary: Decision MCP tools + quota de observation ──────────
@@ -853,6 +862,10 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
                 pass
         try:
             current_client_id.reset(token)
+        except Exception:
+            pass
+        try:
+            current_client_plan.reset(plan_token)
         except Exception:
             pass
         return response
@@ -1538,6 +1551,94 @@ def get_ports_risk(
         return {"results": [calculate_port_risk(pid) for pid in ids]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Fase 2 (READ SURFACE): reconstrução de shipment a partir do ledger ─────────
+# Composição exclusivamente do evidence_ledger persistente (read_surface.py);
+# o snapshot durável é usado apenas como índice de escopo. Nenhuma fonte nova,
+# nenhuma migração de schema do Oracle (usa apenas shadow.duckdb).
+
+@app.get(
+    "/v1/reconstructions",
+    tags=["Reconstruction"],
+    summary="List durable shipment reconstructions",
+    description=(
+        "Lista os agregadores duráveis de reconstrução com resumo epistêmico "
+        "por campo. Composto EXCLUSIVAMENTE do `evidence_ledger` persistente "
+        "(a fonte de verdade após restart — ver Gate 1A); nenhum dict em "
+        "memória é consultado. Cada entrada traz `is_provisional`: "
+        "`urn:shipment:{portcall_id}` é agregador operacional provisório, não "
+        "identidade comercial. Paid access: `Authorization: Bearer <chave "
+        "paga>` ou `X-RapidAPI-Proxy-Secret`. Plano mínimo: Pro."
+    ),
+    responses={
+        200: {"description": "Lista de reconstruções duráveis."},
+        401: {
+            "description": "Missing or invalid paid credential (RapidAPI subscription or X-RapidAPI-Proxy-Secret).",
+            "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
+        },
+        403: {
+            "description": "Plan tier below Pro: upgrade to the plan named in `upgrade_hint`.",
+            "content": {"application/json": {"example": ERROR_403_EXAMPLE}},
+        },
+    },
+)
+def list_reconstructions(port_id: str | None = Query(
+    None,
+    description="Filter by scope port (UN/LOCODE), e.g. BRSSZ.",
+    examples=["BRSSZ"],
+)):
+    from src.reconstruction.read_surface import list_active_reconstructions
+    try:
+        return list_active_reconstructions(port_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/reconstruction/{shipment_stable_id:path}",
+    tags=["Reconstruction"],
+    summary="Get one shipment reconstruction with its evidence chain",
+    description=(
+        "Recupera a reconstrução ativa de um shipment composta EXCLUSIVAMENTE "
+        "do `evidence_ledger` (replay determinístico; tombstones respeitados; "
+        "evidência retraída nunca vira valor). Cada campo expõe sua cadeia de "
+        "evidência com `epistemic_state` (observed/derived/estimated/inferred/"
+        "hypothesis/contradiction/retracted), `source` e `logical_id`. "
+        "Contradição é exposta, nunca mesclada; ausência de evidência é "
+        "`unknown`, nunca um número fabricado. `stable_id` é agregador "
+        "operacional PROVISÓRIO. `not_probability`: confidence é força de "
+        "evidência, não probabilidade. Paid access: `Authorization: Bearer "
+        "<chave paga>` ou `X-RapidAPI-Proxy-Secret`. Plano mínimo: Pro."
+    ),
+    responses={
+        200: {"description": "A reconstruction view (schema aetherx.reconstruction.view/v1)."},
+        401: {
+            "description": "Missing or invalid paid credential (RapidAPI subscription or X-RapidAPI-Proxy-Secret).",
+            "content": {"application/json": {"example": ERROR_401_EXAMPLE}},
+        },
+        403: {
+            "description": "Plan tier below Pro: upgrade to the plan named in `upgrade_hint`.",
+            "content": {"application/json": {"example": ERROR_403_EXAMPLE}},
+        },
+        404: {
+            "description": "No durable reconstruction for this stable_id (found=false).",
+        },
+    },
+)
+def get_reconstruction(shipment_stable_id: str):
+    from src.reconstruction.read_surface import build_reconstruction_view
+    view = build_reconstruction_view(shipment_stable_id)
+    if not view.get("found"):
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "RECONSTRUCTION_NOT_FOUND",
+                "stable_id": view.get("stable_id"),
+                "reason": view.get("reason", "no_durable_snapshot"),
+            },
+        )
+    return view
 
 
 @app.get("/BingSiteAuth.xml", include_in_schema=False)

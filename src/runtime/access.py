@@ -79,6 +79,34 @@ MIN_LEVEL_BY_PATH: dict[str, str] = {
     "/v1/verified-queue": PLAN_ENTERPRISE,
 }
 
+# Endpoints REST paga com componente dinâmico no caminho (não cabe
+# exact-match em MIN_LEVEL_BY_PATH). São árvores de rota: o prefixo casa o
+# próprio caminho ou qualquer descendente. As duas rotas da Fase 2 são Pro
+# (irmãs de /v1/port-risk): exposição de reconstrução com cadeia de evidência.
+MIN_LEVEL_BY_PREFIX: dict[str, str] = {
+    "/v1/reconstruction": PLAN_PRO,
+    "/v1/reconstructions": PLAN_PRO,
+}
+
+
+def required_level_for_path(path: str) -> str | None:
+    """Nível mínimo exigido pelo endpoint, com suporte a prefixo dinâmico.
+
+    Exact-match tem precedência; depois casa por árvore de rota: o prefixo
+    casa o próprio caminho (`/v1/reconstruction`) ou qualquer descendente
+    (`/v1/reconstruction/{stable_id}`). O prefixo NÃO casa irmãos
+    (`/v1/reconstruction-mirror`).
+    """
+    clean = (path or "").rsplit("?", 1)[0].rstrip("/")
+    exact = MIN_LEVEL_BY_PATH.get(clean)
+    if exact:
+        return exact
+    for prefix, level in MIN_LEVEL_BY_PREFIX.items():
+        base = prefix.rstrip("/")
+        if clean == base or clean.startswith(base + "/"):
+            return level
+    return None
+
 # Slots = integrações/consumidores simultâneos autorizados (NÃO quantidade de
 # chamadas) — limite de concorrência por chave, por instância.
 SLOT_LIMITS: dict[str, int] = {PLAN_PRO: 1, PLAN_ENTERPRISE: 5}
@@ -377,7 +405,7 @@ def authorization_gate(token: str, path: str) -> dict:
       {"allowed": False, "code": "PLAN_REQUIRED", "required_plan": level,
        "plan": current, "endpoint": path, "feature": path}
     """
-    required = MIN_LEVEL_BY_PATH.get(path.rsplit("?", 1)[0].rstrip("/"))
+    required = required_level_for_path(path)
     level = get_key_level(token)
     if required and LEVEL_ORDER.get(level, 0) < LEVEL_ORDER.get(required, 0):
         return {

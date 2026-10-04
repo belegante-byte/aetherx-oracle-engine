@@ -3,6 +3,62 @@
 Histórico de mudanças relevantes do **Aether-X Oracle Engine**. Formato baseado em
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [Não lançado] — 2026-10-03 (Fase 2)
+
+### Adicionado (Fase 2 — superfície de leitura da Reconstruction)
+- **`src/reconstruction/read_surface.py` — leitura composta EXCLUSIVAMENTE do
+  `evidence_ledger` persistente.** `build_reconstruction_view(stable_id)` faz
+  replay determinístico das evidências ativas (ordem `created_at ASC`) através
+  do `ReconstructionEngine`, sem consultar os dicts de memória do `ShadowStore`
+  (Gate 1A: o boot não repovoa esses dicts). O snapshot durável é usado apenas
+  como índice (`identity`, `scope`, `hypotheses`), declarado em
+  `composition.durable_snapshot_used_for`. `list_active_reconstructions(port_id)`
+  lista reconstruções ativas.
+- **Contrato da view** (`aetherx.reconstruction.view/v1`): 9 campos fixos com
+  `epistemic_state` (OBSERVED/DERIVED/ESTIMATED/INFERRED/HYPOTHESIS/UNKNOWN/
+  CONTRADICTION/RETRACTED), cadeia de evidências por campo com papéis
+  (`supporting`/`conflicting`/`corroborating`/`superseded`/`retracted`),
+  tombstones respeitados (evidência tomada → `retracted`, `value=None`),
+  contradição exposta sem merge (`value=None` + `distinct_values`),
+  multi-fonte nunca deduplicada, `epistemic_distribution`,
+  `economic_signal`/`economic_value` (impactos ≤ ESTIMATED), invariantes
+  `not_probability: true` e `stable_id_is_operational: true` (identidade
+  provisória explícita), `read_limitations` declarando as fronteiras da leitura.
+  `found: false` com `reason` para `stable_id` desconhecido.
+- **Redação de trial** (`redact_view_for_trial`): esconde valores de
+  parte (`shipper`/`consignee`) e de identidade de parte em
+  `economic_signal`/`economic_value`, mantendo estados, contagens e caveats
+  (que declaram ausência, não identidade). Mantém a cadeia de evidência de
+  campo não-partidária.
+- **Repositório** (`persistence/repository.py`): `list_shipments()` e
+  `get_retracted_evidence_for_entity()` (evidências tomadas por tombstone).
+- **Exposição MCP/REST gated em Pro:**
+  - REST `GET /v1/reconstructions` e `GET /v1/reconstruction/{stable_id}`
+    (`src/api/main.py`), tag OpenAPI "Reconstruction"; 404 com
+    `RECONSTRUCTION_NOT_FOUND` para `stable_id` desconhecido.
+  - Gate de plano via `required_level_for_path` (`src/runtime/access.py`) com
+    `MIN_LEVEL_BY_PREFIX` (casamento por árvore de rota, sem colateral em
+    irmãos como `/v1/reconstruction-mirror`), usado pelo middleware em vez do
+    exact-match anterior. `authorization_gate` passa a usar a mesma função.
+  - MCP `get_shipment_reconstruction` e `list_active_reconstructions`
+    (`src/api/mcp_app.py`) em `DECISION_TOOLS` (permission `decision.*`);
+    redação de trial aplicada dentro da tool via contextvar
+    `current_client_plan` (`src/runtime/metering.py`), espelho do plano já
+    decidido pelo middleware — não reordena nem dispensa gate existente.
+- **Testes:** `tests/test_reconstruction_read_surface.py` — 24 testes cobrindo
+  os oito itens obrigatórios (restart, ledger-only, tombstone, multi-evidência,
+  contradição, ausência, idempotência, isolamento do Oracle) + invariantes de
+  contrato + redação + tier REST/MCP. Suíte completa: **321 testes passando**
+  (baseline 297 + 24).
+- `AGENTS.md`: `MIN_LEVEL_BY_PREFIX` documentado como parte da referência
+  única do contrato comercial; plano Pro inclui as rotas de reconstrução.
+
+### Não alterado (escopo Fase 2)
+- Nenhuma mudança no Oracle operacional nem migração de schema do Oracle.
+- Nenhuma fonte nova; F3 (BL/ANTAQ), F4 (propagação) e F5 (probabilidades)
+  permanecem bloqueadas até nova decisão.
+- Nenhum deploy realizado (F2 não autorizou deploy).
+
 ## [Não lançado] — 2026-10-03 (Fase 1)
 
 ### Adicionado (Fase 1 — persistência durável da reconstrução)

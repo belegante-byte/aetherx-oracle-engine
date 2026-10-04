@@ -43,6 +43,9 @@ TOOL_INTENT = {
     "forecast_vessel_queue_delays": "queue",
     "get_inland_logistics_bottlenecks": "delay",
     "evaluate_end_to_end_supply_chain_risk": "economic",
+    # Fase 2 — superfície de leitura da reconstrução (ledger durável)
+    "get_shipment_reconstruction": "economic",
+    "list_active_reconstructions": "observation",
 }
 
 
@@ -54,6 +57,10 @@ DECISION_TOOLS = {
     "evaluate_routing_alternatives",
     "evaluate_corridor_risk",
     "evaluate_fiscal_routing",
+    # Fase 2 — superfície de leitura da reconstrução (ledger durável).
+    # Exigem credencial M2M válida; trial recebe resposta redigida.
+    "get_shipment_reconstruction",
+    "list_active_reconstructions",
 }
 FREE_UNLIMITED_TOOLS = {
     "list_supported_ports",
@@ -73,6 +80,18 @@ def _extract_port_id(args: dict) -> str | None:
         first = next((p for p in ids if p and str(p).strip()), None)
         return str(first).strip().upper() if first else None
     return None
+
+
+def _current_plan() -> str:
+    """Plano contratado do request corrente ("" quando anônimo/legado).
+
+    Espelho lido de `current_client_plan`, setado pelo M2MGatewayMiddleware.
+    """
+    try:
+        from src.runtime.metering import current_client_plan
+        return current_client_plan() or ""
+    except Exception:
+        return ""
 
 
 def _run_tool(fn, tool_name: str, **kwargs):
@@ -1073,6 +1092,73 @@ def assess_logistics_disruption(
 
         return result_payload
     return _run_tool(lambda **kw: _compute(**kw), "assess_logistics_disruption", port_id=port_id, corridor_id=corridor_id, horizon_hours=horizon_hours, objective=objective)
+
+
+# ── Fase 2 — superfície de leitura da reconstrução (READ SURFACE) ──────────────
+# Ambas exigem credencial M2M válida (DECISION_TOOLS) e fazem redação de
+# identificação de parte para trial (current_client_plan). A REST paga é Pro;
+# no MCP o plano controla a redação, não o acesso.
+
+@mcp.tool()
+def get_shipment_reconstruction(stable_id: str) -> dict[str, Any]:
+    """Recover a shipment reconstruction with its full evidence chain (ledger-persisted).
+
+    Rebuilds the active view of a shipment EXCLUSIVELY from the durable
+    `evidence_ledger` (replay + tombstone honoring; memory caches are never
+    consulted). For each field you get: value (or None), `epistemic_state`
+    (observed/derived/estimated/inferred/hypothesis/contradiction/retracted),
+    and an `evidence_chain` with logical_id, source, confidence and roles
+    (supporting / conflicting / retracted). Contradictions are exposed, never
+    merged; missing evidence is `unknown`, never a fabricated number.
+
+    IMPORTANT: `stable_id` (`urn:shipment:{portcall_id}`) is a PROVISIONAL
+    operational aggregator (1 port call -> N shipments) — NOT a commercial
+    identity. `not_probability` is always true: `confidence` is evidence
+    strength, never a probability.
+
+    Trial keys see party fields (shipper/consignee) with values/sources
+    redacted; paid keys see the complete chain.
+
+    Args:
+        stable_id: e.g. "urn:shipment:shp_urn:portcall:BRSSZ:unknown".
+    """
+    def _compute(**kwargs):
+        from src.reconstruction.read_surface import build_reconstruction_view, redact_view_for_trial
+        view = build_reconstruction_view(str(kwargs.get("stable_id") or "").strip())
+        if not view.get("found"):
+            return {
+                "schema": view.get("schema"),
+                "found": False,
+                "stable_id": view.get("stable_id"),
+                "reason": view.get("reason", "no_durable_snapshot"),
+            }
+        if _current_plan() == "trial":
+            view = redact_view_for_trial(view)
+        return view
+
+    return _run_tool(_compute, "get_shipment_reconstruction", stable_id=stable_id)
+
+
+@mcp.tool()
+def list_active_reconstructions(port_id: str | None = None) -> dict[str, Any]:
+    """List durable shipment reconstructions with an epistemic summary per field.
+
+    Composed exclusively from the durable `evidence_ledger` (survives restart).
+    Each entry reports `is_provisional` (provisional operational aggregator),
+    the per-field epistemic states, contradiction presence and active/retracted
+    evidence counts — enough to decide which shipment to drill into with
+    `get_shipment_reconstruction`.
+
+    Args:
+        port_id: Optional scope filter (UN/LOCODE), e.g. "BRSSZ".
+    """
+    def _compute(**kwargs):
+        from src.reconstruction.read_surface import list_active_reconstructions as _list
+        pid = kwargs.get("port_id")
+        return _list(str(pid).strip().upper() if pid else None)
+
+    return _run_tool(_compute, "list_active_reconstructions", port_id=port_id)
+
 
 def _mcp_allowed_hosts() -> list[str]:
     """Host aceitos no /mcp (proteção contra DNS rebinding).

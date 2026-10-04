@@ -119,6 +119,19 @@ def test_authorization_gate_matrix():
     assert authorization_gate(ent, "/v1/verified-queue")["allowed"] is True
 
 
+def test_reconstruction_routes_are_pro_and_prefix_is_not_greedy():
+    """Fase 2: rotas de reconstrução são Pro por árvore de rota; prefixo não casa irmãos."""
+    pro = _pro_key()
+    assert authorization_gate(pro, "/v1/reconstructions")["allowed"] is True
+    assert authorization_gate(pro, "/v1/reconstruction")["required_plan"] == PLAN_PRO
+    assert authorization_gate(
+        pro, "/v1/reconstruction/urn:shipment:shp_urn:portcall:BRSSZ:unknown"
+    )["required_plan"] == PLAN_PRO
+    # O prefixo NÃO casa irmãos nem sufixos de outro nome de rota.
+    assert authorization_gate(pro, "/v1/reconstruction-mirror")["required_plan"] is None
+    assert authorization_gate(pro, "/v1/reconstructions-archive")["required_plan"] is None
+
+
 # ── Regra 2: Pro entrega os dados dos 5 portos BR + histórico ────────────────
 
 def test_pro_key_reads_live_br_port_signals():

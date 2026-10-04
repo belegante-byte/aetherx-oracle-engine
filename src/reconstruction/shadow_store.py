@@ -54,6 +54,12 @@ class ShadowStore:
         from src.reconstruction.persistence.repository import ReconstructionRepository
         self._repository = ReconstructionRepository(self.conn)
 
+    @property
+    def repository(self):
+        # Leitura/escrita duráveis. O read surface importa ShadowStore (não a
+        # referência do módulo) para enxergar o singleton rebindado em testes.
+        return self._repository
+
     def _persist(self, fn, *args):
         # DuckDB: uma conexão não é thread-safe; serializa com o lock do store.
         with self._lock:

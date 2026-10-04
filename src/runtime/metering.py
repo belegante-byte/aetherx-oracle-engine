@@ -14,6 +14,14 @@ current_client_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "m2m_current_client_id", default=None
 )
 
+# Plano contratado ("" | trial | pro | enterprise), exposto à camada de tool
+# para diferenciação de resposta DENTRO da tool (ex.: redação de identificação
+# de parte para trial na superfície de leitura). É um espelho do plano já
+# decidido pelo middleware — não reordena nem dispensa nenhum gate existente.
+current_client_plan: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "m2m_current_client_plan", default=None
+)
+
 
 def _mask_client_id(client_id: str) -> str:
     """Não grava PII (nome/email do cliente) em logs estruturados.
