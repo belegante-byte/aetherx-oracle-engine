@@ -268,6 +268,38 @@ def generate_openapi():
     for unused in ("HTTPValidationError", "ValidationError"):
         schemas.pop(unused, None)
 
+    # Sanitização OpenAPI 3.0 estrita: o importador do RapidAPI rejeita
+    # construtos 3.1 que o FastAPI emite mesmo com openapi="3.0.3".
+    #   - anyOf/oneOf com {type: null}  -> nullable: true no tipo real
+    #   - "examples": [...] (array)     -> "example": <primeiro> (singular)
+    def _sanitize_30(node):
+        if isinstance(node, dict):
+            for key in ("anyOf", "oneOf"):
+                branch = node.get(key)
+                if isinstance(branch, list):
+                    non_null = [b for b in branch if isinstance(b, dict) and b.get("type") != "null"]
+                    has_null = any(isinstance(b, dict) and b.get("type") == "null" for b in branch)
+                    if has_null and len(non_null) == 1:
+                        merged = dict(non_null[0])
+                        merged["nullable"] = True
+                        node.pop(key, None)
+                        for k, v in merged.items():
+                            node[k] = v
+                    elif has_null and len(non_null) == 0:
+                        node.pop(key, None)
+                        node["nullable"] = True
+            if "examples" in node and isinstance(node["examples"], list) and "example" not in node:
+                if node["examples"]:
+                    node["example"] = node["examples"][0]
+                del node["examples"]
+            for v in node.values():
+                _sanitize_30(v)
+        elif isinstance(node, list):
+            for v in node:
+                _sanitize_30(v)
+
+    _sanitize_30(rapidapi)
+
     rapidapi_path = os.path.join(docs_dir, "openapi.rapidapi.json")
     with open(rapidapi_path, "w", encoding="utf-8") as f:
         json.dump(rapidapi, f, indent=2)
