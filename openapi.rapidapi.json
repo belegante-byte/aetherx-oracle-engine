@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Aether-X Port Congestion Oracle",
-    "description": "Port congestion reference signals for global trade, supply chain and quantitative finance.\n\n**IMPORTANT \u00b7 Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.\nBrazilian ports (BRSSZ, BRPNG, BRRIO, BRNIT, BRITG) serve live line-ups: `data_source=\"live:appa+santos+lachmann\"` (BRSSZ/BRPNG) and `data_source=\"live:portosrio_silog\"` (BRRIO/BRNIT/BRITG). The remaining ports\nserve a **static reference seed**: `data_source=\"static_reference_seed\"` means the value is a seeded baseline, not a\nlive measurement. The 24/48/72h trend is a `synthetic_projection`, not a live forecast. Do not treat seed numbers as\nreal-time field data.\n\n**The signal** \u2014 `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0\u20131.0 reference congestion level (seeded) |\n| `eta_delay_days` | Reference delay applied to incoming vessels |\n| `waiting_vessels` | Reference ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n| `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |\n| `data_source` | `live:appa+santos+lachmann`, `live:portosrio_silog` or `live:shipinfo_ais:<port>` for live observations; otherwise `calibrated_reference_seed` / `static_reference_seed` (reference baseline, NOT live telemetry) |\n| `as_of` | Timestamp of the seed (not a live refresh) |\n\n**Trend (24h/48h/72h)** \u2014 `GET /v1/port-trend?port_id=BRSSZ` returns a **synthetic** projection with a `trend` label: `acelerando`, `est\u00e1vel` or `descongestionando`.\n\n**Free tier** \u2014 $0.00, no credit card required. Paid access via RapidAPI subscription or direct contact.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) \u2014 tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`\n\n**Coverage** \u2014 Brasil como produto principal (5 portos com fila REAL de autoridade: BRSSZ, BRPNG, BRRIO, BRNIT, BRITG \u2014 `live:appa+santos+lachmann` / `live:portosrio_silog`, calibrados contra a s\u00e9rie ANTAQ) + 31 portos globais como cobertura de **refer\u00eancia calibrada/est\u00e1tica** (`calibrated_reference_seed`/`static_reference_seed`) \u2014 nenhuma resposta finge ser telemetria viva (ver `decision_grade` e `data_source`). A integra\u00e7\u00e3o AIS-ShipInfo existe no engine e entra como live no ciclo quando o sensor entrega dado consistente. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
+    "title": "Aether-X Port Delay Intelligence",
+    "description": "Decision-grade port delay signals for logistics automation.\nReturns p50/p90 delay confidence intervals, parametric demurrage\nexposure, and calibration status for ports in Brazil, Europe,\nNorth America, and Asia. Built for M2M agents, freight systems,\nand supply chain automation that require traceable, audit-ready\nrisk signals \u2014 not just congestion scores.\n\n**IMPORTANT \u00b7 Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.\nBrazilian ports (BRSSZ, BRPNG, BRRIO, BRNIT, BRITG) serve live line-ups: `data_source=\"live:appa+santos+lachmann\"` (BRSSZ/BRPNG) and `data_source=\"live:portosrio_silog\"` (BRRIO/BRNIT/BRITG). The remaining ports\nserve a **static reference seed**: `data_source=\"static_reference_seed\"` means the value is a seeded baseline, not a\nlive measurement. The 24/48/72h trend is a `synthetic_projection`, not a live forecast. Do not treat seed numbers as\nreal-time field data.\n\n**The signal** \u2014 `GET /v1/port-risk?port_id=BRSSZ` returns:\n\n| Field | Meaning |\n|-------|---------|\n| `congestion_score` | Normalized 0.0\u20131.0 reference congestion level (seeded) |\n| `eta_delay_days` | Reference delay applied to incoming vessels |\n| `waiting_vessels` | Reference ships anchored or queued |\n| `freight_volatility_index` | Pressure indicator for freight pricing |\n| `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |\n| `historical_expected_wait_h` | p50 expected wait (hours), calibrated against the ANTAQ series |\n| `p90_wait_h` | 90th-percentile expected wait (hours) |\n| `expected_demurrage_usd` | Parametric demurrage exposure (p50 \u00d7 reference daily rate) |\n| `p90_demurrage_usd` | Parametric demurrage exposure (p90 \u00d7 reference daily rate) |\n| `confidence` | Calibration confidence (0.0\u20131.0), computed by formula v1 |\n| `paired_windows` | Number of matched observation\u2194ANTAQ windows |\n| `calibration_status` | Calibration maturity: `CALIBRATED`, `QUALIFIED`, `LIMITED` or `INSUFFICIENT` |\n| `data_source` | `live:appa+santos+lachmann`, `live:portosrio_silog` or `live:shipinfo_ais:<port>` for live observations; otherwise `calibrated_reference_seed` / `static_reference_seed` (reference baseline, NOT live telemetry) |\n| `as_of` | Timestamp of the seed (not a live refresh) |\n\n**Trend (24h/48h/72h)** \u2014 `GET /v1/port-trend?port_id=BRSSZ` returns a **synthetic** projection with a `trend` label: `acelerando`, `est\u00e1vel` or `descongestionando`.\n\n**Free tier** \u2014 $0.00, no credit card required. Paid access via RapidAPI subscription or direct contact.\n\n**Other ways to consume it**\n- Python SDK: `pip install aetherx-oracle`\n- MCP server for AI agents: `uvx aetherx-mcp` (or the hosted `/mcp` endpoint) \u2014 tools: `get_port_risk`, `get_ports_risk`, `get_port_trend`\n\n**Coverage** \u2014 Brasil como produto principal (5 portos com fila REAL de autoridade: BRSSZ, BRPNG, BRRIO, BRNIT, BRITG \u2014 `live:appa+santos+lachmann` / `live:portosrio_silog`, calibrados contra a s\u00e9rie ANTAQ) + 31 portos globais como cobertura de **refer\u00eancia calibrada/est\u00e1tica** (`calibrated_reference_seed`/`static_reference_seed`) \u2014 nenhuma resposta finge ser telemetria viva (ver `decision_grade` e `data_source`). A integra\u00e7\u00e3o AIS-ShipInfo existe no engine e entra como live no ciclo quando o sensor entrega dado consistente. Unknown ports return a global statistical estimate (`country=\"Global\"`).\n\nSignals are provided \"AS IS\" and do not constitute investment advice.\n",
     "termsOfService": "https://aetherx.aether-grid.io/terms",
     "contact": {
       "name": "Aether-X",
@@ -16,7 +16,7 @@
     "version": "1.5.0",
     "x-logo": {
       "url": "https://raw.githubusercontent.com/belegante-byte/aetherx-mcp/main/assets/logo.png",
-      "altText": "Aether-X Port Congestion Oracle"
+      "altText": "Aether-X Port Delay Intelligence"
     }
   },
   "servers": [
@@ -937,7 +937,7 @@
                     "espera_atracacao_h_p90": 151.1,
                     "atracado_h_avg": 50.1,
                     "estadia_h_avg": 101.3,
-                    "validado_em": "2026-09-19 01:49:06"
+                    "validado_em": "2026-10-04 01:17:53"
                   },
                   "live": {
                     "ao_largo": 0,
@@ -952,11 +952,20 @@
                     "queue_vessels": 0,
                     "expected_delay_days": 0.2,
                     "demurrage_expected_usd": 6400,
-                    "confidence": 0.94,
+                    "confidence": 0.3,
                     "provenance": "live:santos+santos_painel",
                     "decision_implication": "Live stream indicates operational pressure at Santos.",
                     "as_of": "2026-10-03 11:30:37"
-                  }
+                  },
+                  "historical_expected_wait_h": 78.2,
+                  "p90_wait_h": 242.1,
+                  "confidence": 0.3,
+                  "paired_windows": 0,
+                  "fonte": "calibracao_v1_antaq_distribuicao_somente",
+                  "semantica": "referencia historica (sem fila observada na fonte)",
+                  "expected_demurrage_usd": 104266,
+                  "p90_demurrage_usd": 322800,
+                  "calibration_status": "INSUFFICIENT"
                 }
               }
             }
@@ -1268,7 +1277,7 @@
                         "espera_atracacao_h_p90": 151.1,
                         "atracado_h_avg": 50.1,
                         "estadia_h_avg": 101.3,
-                        "validado_em": "2026-09-19 01:49:06"
+                        "validado_em": "2026-10-04 01:17:53"
                       },
                       "live": {
                         "ao_largo": 0,
@@ -1283,11 +1292,20 @@
                         "queue_vessels": 0,
                         "expected_delay_days": 0.2,
                         "demurrage_expected_usd": 6400,
-                        "confidence": 0.94,
+                        "confidence": 0.3,
                         "provenance": "live:santos+santos_painel",
                         "decision_implication": "Live stream indicates operational pressure at Santos.",
                         "as_of": "2026-10-03 11:30:37"
-                      }
+                      },
+                      "historical_expected_wait_h": 78.2,
+                      "p90_wait_h": 242.1,
+                      "confidence": 0.3,
+                      "paired_windows": 0,
+                      "fonte": "calibracao_v1_antaq_distribuicao_somente",
+                      "semantica": "referencia historica (sem fila observada na fonte)",
+                      "expected_demurrage_usd": 104266,
+                      "p90_demurrage_usd": 322800,
+                      "calibration_status": "INSUFFICIENT"
                     },
                     {
                       "port_id": "CNSHA",
@@ -1298,11 +1316,11 @@
                       "waiting_vessels": 24,
                       "freight_volatility_index": 0.4,
                       "estimated_daily_demurrage_usd": 56800,
-                      "updated_at": "2026-10-03 20:05 UTC",
-                      "as_of": "2026-10-03 20:05 UTC",
+                      "updated_at": "2026-10-04 11:10 UTC",
+                      "as_of": "2026-10-04 11:10 UTC",
                       "data_source": "calibrated_reference_seed",
                       "data_source_label": "Calibrated reference seed (static model baseline, NOT live telemetry). Reference conditions: Median wait 32.9h.",
-                      "live_detail": "{\"port_name\": \"Shanghai\", \"country\": \"China\", \"congestion_score\": 0.62, \"eta_delay_days\": 1.4, \"waiting_vessels\": 24, \"median_wait_hours\": 32.9, \"berth_occupancy_pct\": 76.0, \"status\": \"MODERATE\", \"sources\": [\"calibrated_reference_seed\"], \"as_of\": \"2026-10-03 20:05 UTC\", \"source\": \"calibrated_reference_seed\"}",
+                      "live_detail": "{\"port_name\": \"Shanghai\", \"country\": \"China\", \"congestion_score\": 0.62, \"eta_delay_days\": 1.4, \"waiting_vessels\": 24, \"median_wait_hours\": 32.9, \"berth_occupancy_pct\": 76.0, \"status\": \"MODERATE\", \"sources\": [\"calibrated_reference_seed\"], \"as_of\": \"2026-10-04 11:10 UTC\", \"source\": \"calibrated_reference_seed\"}",
                       "decision_grade": "reference",
                       "signal": {
                         "level": "ELEVATED OPERATIONAL PRESSURE",
@@ -1313,7 +1331,7 @@
                         "confidence": null,
                         "provenance": "calibrated_reference_seed",
                         "decision_implication": "Reference baseline only \u2014 NOT a live observation. Indicates modeled reference conditions at Shanghai (China); do not use as real-time field data.",
-                        "as_of": "2026-10-03 20:05 UTC"
+                        "as_of": "2026-10-04 11:10 UTC"
                       }
                     }
                   ]
@@ -1340,6 +1358,137 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/v1/reconstructions": {
+      "get": {
+        "tags": [
+          "Reconstruction"
+        ],
+        "summary": "List durable shipment reconstructions",
+        "description": "Lista os agregadores dur\u00e1veis de reconstru\u00e7\u00e3o com resumo epist\u00eamico por campo. Composto EXCLUSIVAMENTE do `evidence_ledger` persistente (a fonte de verdade ap\u00f3s restart \u2014 ver Gate 1A); nenhum dict em mem\u00f3ria \u00e9 consultado. Cada entrada traz `is_provisional`: `urn:shipment:{portcall_id}` \u00e9 agregador operacional provis\u00f3rio, n\u00e3o identidade comercial. Paid access: `Authorization: Bearer <chave paga>` ou `X-RapidAPI-Proxy-Secret`. Plano m\u00ednimo: Pro.",
+        "operationId": "list_reconstructions_v1_reconstructions_get",
+        "parameters": [
+          {
+            "name": "port_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by scope port (UN/LOCODE), e.g. BRSSZ.",
+              "examples": [
+                "BRSSZ"
+              ],
+              "title": "Port Id"
+            },
+            "description": "Filter by scope port (UN/LOCODE), e.g. BRSSZ."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de reconstru\u00e7\u00f5es dur\u00e1veis.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid paid credential (RapidAPI subscription or X-RapidAPI-Proxy-Secret).",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Missing or invalid paid credential: send `Authorization: Bearer <chave paga>` (RapidAPI subscription) or the `X-RapidAPI-Proxy-Secret` header."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Plan tier below Pro: upgrade to the plan named in `upgrade_hint`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Upgrade necess\u00e1rio: o endpoint /v1/gp5/fiscal-routing exige o plano GP5 Enterprise. Sua chave \u00e9 GP5 Pro.",
+                  "code": "PLAN_REQUIRED",
+                  "required_plan": "enterprise",
+                  "feature": "/v1/gp5/fiscal-routing",
+                  "plan": "pro",
+                  "access_mode": "authenticated",
+                  "upgrade_hint": "Este endpoint exige o plano GP5 Enterprise (evid\u00eancia ANTAQ validada, arbitragem de corredor e fiscal-routing). Upgrade em https://aetherx.aether-grid.io/m2m-keys ou via RapidAPI.",
+                  "request_id": "req_9f2c1a7b3d4e"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reconstruction/{shipment_stable_id}": {
+      "get": {
+        "tags": [
+          "Reconstruction"
+        ],
+        "summary": "Get one shipment reconstruction with its evidence chain",
+        "description": "Recupera a reconstru\u00e7\u00e3o ativa de um shipment composta EXCLUSIVAMENTE do `evidence_ledger` (replay determin\u00edstico; tombstones respeitados; evid\u00eancia retra\u00edda nunca vira valor). Cada campo exp\u00f5e sua cadeia de evid\u00eancia com `epistemic_state` (observed/derived/estimated/inferred/hypothesis/contradiction/retracted), `source` e `logical_id`. Contradi\u00e7\u00e3o \u00e9 exposta, nunca mesclada; aus\u00eancia de evid\u00eancia \u00e9 `unknown`, nunca um n\u00famero fabricado. `stable_id` \u00e9 agregador operacional PROVIS\u00d3RIO. `not_probability`: confidence \u00e9 for\u00e7a de evid\u00eancia, n\u00e3o probabilidade. Paid access: `Authorization: Bearer <chave paga>` ou `X-RapidAPI-Proxy-Secret`. Plano m\u00ednimo: Pro.",
+        "operationId": "get_reconstruction_v1_reconstruction__shipment_stable_id__get",
+        "parameters": [
+          {
+            "name": "shipment_stable_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shipment Stable Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A reconstruction view (schema aetherx.reconstruction.view/v1).",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid paid credential (RapidAPI subscription or X-RapidAPI-Proxy-Secret).",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Missing or invalid paid credential: send `Authorization: Bearer <chave paga>` (RapidAPI subscription) or the `X-RapidAPI-Proxy-Secret` header."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Plan tier below Pro: upgrade to the plan named in `upgrade_hint`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Upgrade necess\u00e1rio: o endpoint /v1/gp5/fiscal-routing exige o plano GP5 Enterprise. Sua chave \u00e9 GP5 Pro.",
+                  "code": "PLAN_REQUIRED",
+                  "required_plan": "enterprise",
+                  "feature": "/v1/gp5/fiscal-routing",
+                  "plan": "pro",
+                  "access_mode": "authenticated",
+                  "upgrade_hint": "Este endpoint exige o plano GP5 Enterprise (evid\u00eancia ANTAQ validada, arbitragem de corredor e fiscal-routing). Upgrade em https://aetherx.aether-grid.io/m2m-keys ou via RapidAPI.",
+                  "request_id": "req_9f2c1a7b3d4e"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No durable reconstruction for this stable_id (found=false)."
           }
         }
       }
@@ -1690,6 +1839,17 @@
             ],
             "title": "Semantica"
           },
+          "calibration_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Status"
+          },
           "signal": {
             "anyOf": [
               {
@@ -1733,6 +1893,8 @@
         "examples": [
           {
             "as_of": "2026-10-03 11:30:37",
+            "calibration_status": "INSUFFICIENT",
+            "confidence": 0.3,
             "congestion_score": 0.25,
             "country": "Brasil",
             "data_source": "live:santos+santos_painel",
@@ -1740,7 +1902,10 @@
             "decision_grade": "decision",
             "estimated_daily_demurrage_usd": 42000,
             "eta_delay_days": 0.2,
+            "expected_demurrage_usd": 104266,
+            "fonte": "calibracao_v1_antaq_distribuicao_somente",
             "freight_volatility_index": 0.4,
+            "historical_expected_wait_h": 78.2,
             "live": {
               "ao_largo": 0,
               "atracados": 32,
@@ -1748,12 +1913,16 @@
               "programados": 122
             },
             "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 32, \"programados\": 122}",
+            "p90_demurrage_usd": 322800,
+            "p90_wait_h": 242.1,
+            "paired_windows": 0,
             "port_id": "BRSSZ",
             "port_name": "Santos",
             "provenance": "[{\"source\": \"Lachmann\", \"source_url\": \"https://www.lachmann.com.br/arquivos_download/schedules_deadlines/Schedule_e_Deadlines_Paranagua.xls\", \"source_observed_at\": null, \"source_timestamp_quality\": \"unknown\", \"retrieved_at\": \"2026-10-03T11:30:03Z\"}, {\"source\": \"Santos_Painel\", \"source_url\": \"https://www.portodesantos.com.br/painel-de-monitoramento-das-operacoes-portuarias/\", \"source_observed_at\": null, \"source_timestamp_quality\": \"unknown\", \"retrieved_at\": \"2026-10-03T11:30:03Z\"}]",
+            "semantica": "referencia historica (sem fila observada na fonte)",
             "signal": {
               "as_of": "2026-10-03 11:30:37",
-              "confidence": 0.94,
+              "confidence": 0.3,
               "decision_implication": "Live stream indicates operational pressure at Santos.",
               "demurrage_expected_usd": 6400,
               "expected_delay_days": 0.2,
@@ -1774,7 +1943,7 @@
               "n_atracacoes": 500,
               "n_com_imo": 491,
               "source": "antaq_estatistico_aquaviario",
-              "validado_em": "2026-09-19 01:49:06"
+              "validado_em": "2026-10-04 01:17:53"
             },
             "waiting_vessels": 0
           }
@@ -1891,6 +2060,8 @@
             "results": [
               {
                 "as_of": "2026-10-03 11:30:37",
+                "calibration_status": "INSUFFICIENT",
+                "confidence": 0.3,
                 "congestion_score": 0.25,
                 "country": "Brasil",
                 "data_source": "live:santos+santos_painel",
@@ -1898,7 +2069,10 @@
                 "decision_grade": "decision",
                 "estimated_daily_demurrage_usd": 42000,
                 "eta_delay_days": 0.2,
+                "expected_demurrage_usd": 104266,
+                "fonte": "calibracao_v1_antaq_distribuicao_somente",
                 "freight_volatility_index": 0.4,
+                "historical_expected_wait_h": 78.2,
                 "live": {
                   "ao_largo": 0,
                   "atracados": 32,
@@ -1906,12 +2080,16 @@
                   "programados": 122
                 },
                 "live_detail": "{\"ao_largo\": 0, \"esperados\": 0, \"atracados\": 32, \"programados\": 122}",
+                "p90_demurrage_usd": 322800,
+                "p90_wait_h": 242.1,
+                "paired_windows": 0,
                 "port_id": "BRSSZ",
                 "port_name": "Santos",
                 "provenance": "[{\"source\": \"Lachmann\", \"source_url\": \"https://www.lachmann.com.br/arquivos_download/schedules_deadlines/Schedule_e_Deadlines_Paranagua.xls\", \"source_observed_at\": null, \"source_timestamp_quality\": \"unknown\", \"retrieved_at\": \"2026-10-03T11:30:03Z\"}, {\"source\": \"Santos_Painel\", \"source_url\": \"https://www.portodesantos.com.br/painel-de-monitoramento-das-operacoes-portuarias/\", \"source_observed_at\": null, \"source_timestamp_quality\": \"unknown\", \"retrieved_at\": \"2026-10-03T11:30:03Z\"}]",
+                "semantica": "referencia historica (sem fila observada na fonte)",
                 "signal": {
                   "as_of": "2026-10-03 11:30:37",
-                  "confidence": 0.94,
+                  "confidence": 0.3,
                   "decision_implication": "Live stream indicates operational pressure at Santos.",
                   "demurrage_expected_usd": 6400,
                   "expected_delay_days": 0.2,
@@ -1932,12 +2110,12 @@
                   "n_atracacoes": 500,
                   "n_com_imo": 491,
                   "source": "antaq_estatistico_aquaviario",
-                  "validado_em": "2026-09-19 01:49:06"
+                  "validado_em": "2026-10-04 01:17:53"
                 },
                 "waiting_vessels": 0
               },
               {
-                "as_of": "2026-10-03 20:05 UTC",
+                "as_of": "2026-10-04 11:10 UTC",
                 "congestion_score": 0.62,
                 "country": "China",
                 "data_source": "calibrated_reference_seed",
@@ -1946,11 +2124,11 @@
                 "estimated_daily_demurrage_usd": 56800,
                 "eta_delay_days": 1.4,
                 "freight_volatility_index": 0.4,
-                "live_detail": "{\"port_name\": \"Shanghai\", \"country\": \"China\", \"congestion_score\": 0.62, \"eta_delay_days\": 1.4, \"waiting_vessels\": 24, \"median_wait_hours\": 32.9, \"berth_occupancy_pct\": 76.0, \"status\": \"MODERATE\", \"sources\": [\"calibrated_reference_seed\"], \"as_of\": \"2026-10-03 20:05 UTC\", \"source\": \"calibrated_reference_seed\"}",
+                "live_detail": "{\"port_name\": \"Shanghai\", \"country\": \"China\", \"congestion_score\": 0.62, \"eta_delay_days\": 1.4, \"waiting_vessels\": 24, \"median_wait_hours\": 32.9, \"berth_occupancy_pct\": 76.0, \"status\": \"MODERATE\", \"sources\": [\"calibrated_reference_seed\"], \"as_of\": \"2026-10-04 11:10 UTC\", \"source\": \"calibrated_reference_seed\"}",
                 "port_id": "CNSHA",
                 "port_name": "Shanghai",
                 "signal": {
-                  "as_of": "2026-10-03 20:05 UTC",
+                  "as_of": "2026-10-04 11:10 UTC",
                   "decision_implication": "Reference baseline only \u2014 NOT a live observation. Indicates modeled reference conditions at Shanghai (China); do not use as real-time field data.",
                   "demurrage_expected_usd": 44800,
                   "expected_delay_days": 1.4,
@@ -1959,7 +2137,7 @@
                   "provenance": "calibrated_reference_seed",
                   "queue_vessels": 24
                 },
-                "updated_at": "2026-10-03 20:05 UTC",
+                "updated_at": "2026-10-04 11:10 UTC",
                 "waiting_vessels": 24
               }
             ]
@@ -2075,6 +2253,10 @@
     {
       "name": "Port Risk",
       "description": "Predictive congestion, ETA delay and freight volatility signals per port."
+    },
+    {
+      "name": "Reconstruction",
+      "description": "Shipment reconstruction views composed exclusively from the durable evidence ledger (Fase 2, read surface)."
     }
   ]
 }

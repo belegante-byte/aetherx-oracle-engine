@@ -211,9 +211,9 @@ LANDING_HTML = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Aether-X Port Congestion Oracle</title>
+<title>Aether-X Port Delay Intelligence</title>
 <meta name="description" content="Port congestion signal for __COVERAGE_COUNT__ registered ports & global chokepoints: 5 Brazilian ports with LIVE official-authority line-ups (Santos, Paranaguá, Rio, Itaguaí, Niterói) and global coverage as calibrated/static reference seed. Port congestion API, vessel queue API, port delay/demurrage risk API. REST, Python SDK e MCP server.">
- <meta property="og:title" content="Aether-X Port Congestion Oracle — Live Brasil (autoridade) + cobertura global de referência">
+ <meta property="og:title" content="Aether-X Port Delay Intelligence — Live Brasil (autoridade) + cobertura global de referência">
  <meta property="og:description" content="Sinais de congestionamento portuário: 5 portos brasileiros com fila REAL de autoridade (ao-largo, esperados, atracados) + cobertura global de referência. Vessel queue / demurrage risk / corridor risk. REST API, SDK e MCP.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://aetherx.aether-grid.io/">
@@ -267,7 +267,7 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
     <span class="pill pill-blue">Glama Grade A</span>
   </div>
 
-  <h1>Aether-X Port Congestion Oracle</h1>
+  <h1>Aether-X Port Delay Intelligence</h1>
   <p class="subtitle">MCP &amp; REST Engine &mdash; congestion &amp; demurrage risk. <strong>5 portos BR com estatística oficial ANTAQ (37 meses)</strong> (Santos, Paranaguá, Rio/Itaguaí/Niterói) e sinais de referência calibrada; os 38 portos globais registrados são cobertura de <em>referência</em>. A linha ao vivo entra quando a fonte oficial voltar a responder.</p>
 
   <p class="section-title">Connect in 5 seconds</p>
@@ -353,7 +353,7 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
   </div>
 
   <div class="footer">
-    Aether-X Port Congestion Oracle v0.2.1 &middot; MIT &middot; Free tier $0.00
+    Aether-X Port Delay Intelligence v0.2.1 &middot; MIT &middot; Free tier $0.00
     &middot; <a href="mailto:contato@aether-grid.io">contato@aether-grid.io</a>
   </div>
 </div>
@@ -472,7 +472,12 @@ class VerifiedQueueResponse(BaseModel):
     as_of: str | None = None
 
 
-API_DESCRIPTION = """Port congestion reference signals for global trade, supply chain and quantitative finance.
+API_DESCRIPTION = """Decision-grade port delay signals for logistics automation.
+Returns p50/p90 delay confidence intervals, parametric demurrage
+exposure, and calibration status for ports in Brazil, Europe,
+North America, and Asia. Built for M2M agents, freight systems,
+and supply chain automation that require traceable, audit-ready
+risk signals — not just congestion scores.
 
 **IMPORTANT · Data integrity notice**: every response includes `data_source`, `data_source_label` and `as_of`.
 Brazilian ports (BRSSZ, BRPNG, BRRIO, BRNIT, BRITG) serve live line-ups: `data_source="live:appa+santos+lachmann"` (BRSSZ/BRPNG) and `data_source="live:portosrio_silog"` (BRRIO/BRNIT/BRITG). The remaining ports
@@ -489,6 +494,13 @@ real-time field data.
 | `waiting_vessels` | Reference ships anchored or queued |
 | `freight_volatility_index` | Pressure indicator for freight pricing |
 | `estimated_daily_demurrage_usd` | Estimated daily demurrage (USD) for a vessel queued at the port |
+| `historical_expected_wait_h` | p50 expected wait (hours), calibrated against the ANTAQ series |
+| `p90_wait_h` | 90th-percentile expected wait (hours) |
+| `expected_demurrage_usd` | Parametric demurrage exposure (p50 × reference daily rate) |
+| `p90_demurrage_usd` | Parametric demurrage exposure (p90 × reference daily rate) |
+| `confidence` | Calibration confidence (0.0–1.0), computed by formula v1 |
+| `paired_windows` | Number of matched observation↔ANTAQ windows |
+| `calibration_status` | Calibration maturity: `CALIBRATED`, `QUALIFIED`, `LIMITED` or `INSUFFICIENT` |
 | `data_source` | `live:appa+santos+lachmann`, `live:portosrio_silog` or `live:shipinfo_ais:<port>` for live observations; otherwise `calibrated_reference_seed` / `static_reference_seed` (reference baseline, NOT live telemetry) |
 | `as_of` | Timestamp of the seed (not a live refresh) |
 
@@ -566,7 +578,7 @@ def _cors_origins() -> list[str]:
 
 app = FastAPI(
     lifespan=lifespan,
-    title="Aether-X Port Congestion Oracle",
+    title="Aether-X Port Delay Intelligence",
     description=API_DESCRIPTION,
     version=APP_VERSION,
     servers=[
@@ -613,7 +625,6 @@ class M2MGatewayMiddleware(BaseHTTPMiddleware):
         "/v1/gp5/charter-risk",
         "/v1/gp5/routing-eval",
         "/v1/gp5/corridor-risk",
-        "/v1/gp5/port-exposure",
         "/v1/gp5/fiscal-routing",
     )
 

@@ -34,6 +34,37 @@ RESPONSE_SCHEMA = {
         "freight_volatility_index": {"type": "number", "format": "double", "example": 0.42},
         "estimated_daily_demurrage_usd": {"type": "integer", "example": 63200},
         "updated_at": {"type": "string", "example": "2026-09-17 15:46:53"},
+        # Calibração v1 (observação de fila ↔ série ANTAQ). None quando o porto
+        # não tem janela ANTAQ: ausência de valor é publicada como ausência.
+        "historical_expected_wait_h": {
+            "type": "number", "format": "double", "nullable": True, "example": 183.0,
+            "description": "Median (p50) expected wait in hours, calibrated against the ANTAQ series.",
+        },
+        "p90_wait_h": {
+            "type": "number", "format": "double", "nullable": True, "example": 590.4,
+            "description": "90th-percentile expected wait in hours.",
+        },
+        "expected_demurrage_usd": {
+            "type": "integer", "nullable": True, "example": 244000,
+            "description": "Parametric demurrage exposure at p50 (USD), under a declared reference daily rate.",
+        },
+        "p90_demurrage_usd": {
+            "type": "integer", "nullable": True, "example": 787199,
+            "description": "Parametric demurrage exposure at p90 (USD).",
+        },
+        "confidence": {
+            "type": "number", "format": "double", "nullable": True, "example": 0.8,
+            "description": "Calibration confidence (0.0-1.0), computed by formula v1. Never a fixed constant.",
+        },
+        "paired_windows": {
+            "type": "integer", "nullable": True, "example": 5,
+            "description": "Number of matched observation-ANTAQ windows backing the calibration.",
+        },
+        "calibration_status": {
+            "type": "string", "nullable": True, "example": "LIMITED",
+            "enum": ["CALIBRATED", "QUALIFIED", "LIMITED", "INSUFFICIENT"],
+            "description": "Calibration maturity. INSUFFICIENT means no paired window; no number is published in that case.",
+        },
     },
 }
 
@@ -78,7 +109,7 @@ def _minimal_spec():
     return {
         "openapi": "3.0.3",
         "info": {
-            "title": "Aether-X Port Congestion Oracle",
+            "title": "Aether-X Port Delay Intelligence",
             "description": API_DESCRIPTION,
             "version": APP_VERSION,
             "termsOfService": f"{PRODUCTION_URL}/terms",
@@ -87,7 +118,7 @@ def _minimal_spec():
                 "url": PRODUCTION_URL,
                 "email": "contato@aether-grid.io",
             },
-            "x-logo": {"url": LOGO_URL, "altText": "Aether-X Port Congestion Oracle"},
+            "x-logo": {"url": LOGO_URL, "altText": "Aether-X Port Delay Intelligence"},
         },
         "servers": [{"url": PRODUCTION_URL, "description": "Production (Railway)"}],
         "tags": [
@@ -213,7 +244,7 @@ def generate_openapi():
     rapidapi = copy.deepcopy(openapi_data)
     rapidapi["openapi"] = "3.0.3"
     rapidapi["servers"] = [{"url": PRODUCTION_URL, "description": "Production (Railway)"}]
-    rapidapi["info"]["x-logo"] = {"url": LOGO_URL, "altText": "Aether-X Port Congestion Oracle"}
+    rapidapi["info"]["x-logo"] = {"url": LOGO_URL, "altText": rapidapi["info"]["title"]}
 
     examples_by_path = {
         "/v1/port-risk": EXAMPLE_RESPONSE,

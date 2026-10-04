@@ -21,7 +21,7 @@ def test_health_check():
     resp = client.get("/")
     assert resp.status_code == 200
     assert "text/html" in resp.headers["content-type"]
-    assert "Aether-X Port Congestion Oracle" in resp.text
+    assert "Aether-X Port Delay Intelligence" in resp.text
     assert "https://aetherx.aether-grid.io/mcp" in resp.text
     assert 'href="/docs"' in resp.text
     assert 'href="/llms.txt"' in resp.text

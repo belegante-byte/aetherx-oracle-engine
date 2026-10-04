@@ -130,11 +130,11 @@ def _page(title: str, meta_description: str, h1: str, lede: str, body: str, cano
 </head>
 <body>
 <div class="container">
-<div class="breadcrumb"><a href="/">Aether Grid Port Congestion Oracle</a> /</div>
+<div class="breadcrumb"><a href="/">Aether Grid Port Delay Intelligence</a> /</div>
 <h1>{h1}</h1>
 <p class="lede muted">{lede}</p>
 {body}
-<div class="footer">Aether Grid Port Congestion Oracle &middot; Free trial 30 dias <a href="{PRODUCTION_URL}/m2m-keys">/m2m-keys</a> &middot; <a href="{RAPIDAPI_URL}">RapidAPI</a> &middot; <a href="{PYPI_SDK}">PyPI SDK</a> &middot; <a href="{PYPI_MCP}">MCP server</a> &middot; MCP Registry: {REGISTRY_URL}</div>
+<div class="footer">Aether Grid Port Delay Intelligence &middot; Free trial 30 dias <a href="{PRODUCTION_URL}/m2m-keys">/m2m-keys</a> &middot; <a href="{RAPIDAPI_URL}">RapidAPI</a> &middot; <a href="{PYPI_SDK}">PyPI SDK</a> &middot; <a href="{PYPI_MCP}">MCP server</a> &middot; MCP Registry: {REGISTRY_URL}</div>
 </div>
 </body>
 </html>"""
