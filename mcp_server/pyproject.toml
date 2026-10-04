@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aetherx-mcp"
-version = "0.2.4"
-description = "Aether-X MCP server — Port Congestion, Maritime Logistics & Supply Chain AI (vessel queues, ETA delay risk, demurrage, shipping chokepoints)"
+version = "0.2.5"
+description = "Aether-X MCP server — Port Delay Intelligence: calibrated p50/p90 delay confidence intervals and parametric demurrage exposure for global seaports, with a free public feed and no-auth discovery tool."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"

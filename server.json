@@ -3,7 +3,7 @@
   "name": "io.github.belegante-byte/aetherx-mcp",
   "title": "Aether-X Port Delay Intelligence",
   "description": "Port delay exposure with p50/p90 confidence intervals and parametric demurrage impact. Live official-authority line-ups for 5 Brazilian ports; calibrated reference coverage globally. Free public feed, REST, SDK and MCP server.",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "websiteUrl": "https://aetherx.aether-grid.io",
   "repository": {
     "url": "https://github.com/belegante-byte/aetherx-oracle-engine",
@@ -15,7 +15,7 @@
     {
       "registryType": "pypi",
       "identifier": "aetherx-mcp",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "transport": {
         "type": "stdio"
       }
