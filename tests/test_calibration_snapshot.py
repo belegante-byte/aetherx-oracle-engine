@@ -12,6 +12,11 @@ import scripts.snapshot_history as sh  # noqa: E402
 
 
 def _env_raw(tmp_path):
+    from datetime import datetime, timedelta, timezone
+
+    # Observação FRESCA: o pipeline (Gate 0.6) recusa par com line-up velho —
+    # uma observação de dias atrás geraria um par datado de hoje (falso).
+    ing = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
     raw = tmp_path / "raw.duckdb"
     c = duckdb.connect(str(raw))
     c.execute("""
@@ -21,12 +26,14 @@ def _env_raw(tmp_path):
             dwt DOUBLE, ingested_at TIMESTAMP
         )
     """)
-    c.execute("""
+    c.execute(
+        f"""
         INSERT INTO raw_port_lineup VALUES
-        ('1','BRPNG','NAVIO A','2026-09-20','AO_LARGO','SOJA','X','appa',80000,'2026-09-19 20:00:00'),
-        ('2','BRPNG','NAVIO B','2026-09-20','ESPERADO','MILHO','Y','appa',60000,'2026-09-19 20:00:00'),
-        ('3','BRPNG','NAVIO C','2026-09-19','ATRACADO','MILHO','Z','appa',60000,'2026-09-19 20:00:00')
-    """)
+        ('1','BRPNG','NAVIO A','2026-09-20','AO_LARGO','SOJA','X','appa',80000,'{ing}'),
+        ('2','BRPNG','NAVIO B','2026-09-20','ESPERADO','MILHO','Y','appa',60000,'{ing}'),
+        ('3','BRPNG','NAVIO C','2026-09-19','ATRACADO','MILHO','Z','appa',60000,'{ing}')
+    """
+    )
     c.close()
     return raw
 

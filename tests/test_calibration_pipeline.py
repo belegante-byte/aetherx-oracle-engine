@@ -52,14 +52,18 @@ def _oracle(tmp_path, janelas: dict):
     return oracle
 
 
-def _raw(tmp_path, linhas):
+def _raw(tmp_path, linhas, idade_h: float = 1.0):
+    """Grava line-up com observação com `idade_h` horas (default: fresca)."""
+    from datetime import datetime, timedelta, timezone
+
     raw = tmp_path / "raw.duckdb"
+    ing = (datetime.now(timezone.utc) - timedelta(hours=idade_h)).strftime("%Y-%m-%d %H:%M:%S")
     c = duckdb.connect(str(raw))
     c.execute(RAW_DDL)
     for i, (port_id, status, source) in enumerate(linhas):
         c.execute(
-            "INSERT INTO raw_port_lineup VALUES (?, ?, 'NAVIO', '2026-10-03', ?, 'GRANEL', 'AG', ?, 50000.0, '2026-10-03 11:30:00')",
-            [str(i), port_id, status, source],
+            "INSERT INTO raw_port_lineup VALUES (?, ?, 'NAVIO', '2026-10-03', ?, 'GRANEL', 'AG', ?, 50000.0, ?)",
+            [str(i), port_id, status, source, ing],
         )
     c.close()
     return raw
@@ -265,3 +269,96 @@ def test_missing_raw_database_is_silent_noop(tmp_path):
     )
     conn.close()
     assert written == []
+
+
+# ── Gate 0.6: guarda de frescor (observação velha ≠ observação de hoje) ──────
+
+def test_stale_observation_produces_no_pair(tmp_path):
+    """Ingestão falha deixa line-up velho: NÃO pode virar par 'de hoje'."""
+    oracle = _oracle(tmp_path, {"BRPNG": (100.0, 50.0, 200.0)})
+    raw = tmp_path / "raw.duckdb"
+    c = duckdb.connect(str(raw))
+    c.execute(RAW_DDL)
+    c.execute(
+        "INSERT INTO raw_port_lineup VALUES ('1','BRPNG','NAVIO','2026-10-03','AO_LARGO','GRANEL','AG','appa',50000.0,'2026-09-20 08:00:00')"
+    )
+    c.close()
+    conn = duckdb.connect(str(oracle))
+    written = pp.register_pairs(conn, raw_path=str(raw), print_fn=None, max_age_hours=6.0)
+    conn.close()
+    assert written == [], "observação de dias atrás não pode gerar par datado de hoje"
+    conn = duckdb.connect(str(oracle), read_only=True)
+    assert conn.execute("SELECT COUNT(*) FROM calibration_pairs").fetchone()[0] == 0
+    conn.close()
+
+
+def test_recent_observation_still_produces_pair(tmp_path):
+    """Contraprova: dentro da janela de frescor, o par nasce normalmente."""
+    from datetime import datetime, timedelta, timezone
+
+    oracle = _oracle(tmp_path, {"BRPNG": (100.0, 50.0, 200.0)})
+    recente = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+    raw = tmp_path / "raw.duckdb"
+    c = duckdb.connect(str(raw))
+    c.execute(RAW_DDL)
+    c.execute(
+        f"INSERT INTO raw_port_lineup VALUES ('1','BRPNG','NAVIO','2026-10-03','AO_LARGO','GRANEL','AG','appa',50000.0,'{recente}')"
+    )
+    c.close()
+    conn = duckdb.connect(str(oracle))
+    written = pp.register_pairs(conn, raw_path=str(raw), print_fn=None, max_age_hours=6.0)
+    conn.close()
+    assert len(written) == 1
+    assert written[0]["waiting_vessels"] == 1
+
+
+# ── Gate 0.6: invariâncias do porto-alvo (script/calibration_report.py) ─────
+
+def _report(port_id, matched, conf, status, live=True, antaq=True, newest_days=0, n=5):
+    return {
+        "ports": [
+            {
+                "port_id": port_id,
+                "matched_windows": matched,
+                "confidence": conf,
+                "calibration_status": status,
+                "pair_age_distribution": {"n": n, "newest_days": newest_days},
+                "coverage": {"live_lineup": live, "antaq_history": antaq},
+            }
+        ]
+    }
+
+
+def test_gate06_check_passes_when_qualified():
+    import scripts.calibration_report as cr
+
+    report = _report("BRPNG", 6, 0.80, "QUALIFIED")
+    assert cr.check_invariants(report) == []
+
+
+def test_gate06_check_fails_on_each_invariant():
+    import scripts.calibration_report as cr
+
+    # hoje: 5 matched, conf 0.8, LIMITED → falha no matched e no status
+    fails = cr.check_invariants(_report("BRPNG", 5, 0.80, "LIMITED"))
+    assert any("matched=5" in f for f in fails)
+    assert any("LIMITED" in f for f in fails)
+
+    for kwargs, needle in (
+        ({"conf": 0.59}, "confidence"),
+        ({"newest_days": 3}, "ciclo diário"),
+        ({"live": False}, "line-up vivo"),
+        ({"antaq": False}, "janela ANTAQ"),
+        ({"n": 0}, "menos de 2 pares"),
+    ):
+        base = dict(port_id="BRPNG", matched=6, conf=0.80, status="QUALIFIED")
+        base.update(kwargs)
+        fails = cr.check_invariants(_report(**base))
+        assert any(needle in f for f in fails), f"{needle} não detectado: {fails}"
+
+
+def test_gate06_check_reports_missing_target():
+    import scripts.calibration_report as cr
+
+    fails = cr.check_invariants(_report("BRRIO", 6, 0.80, "QUALIFIED"), target_port="BRPNG")
+    assert fails == ["BRPNG ausente no relatório"]

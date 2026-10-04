@@ -93,12 +93,19 @@ def summarize_lineup(raw_conn, port_id: str) -> dict | None:
         {str(r[0]) for r in rows})}
 
 
-def register_pairs(conn, raw_path: str | None = None, print_fn=print) -> list[dict]:
+def register_pairs(
+    conn, raw_path: str | None = None, print_fn=print, max_age_hours: float = 6.0
+) -> list[dict]:
     """Escreve um par por porto/dia a partir do line-up raw (idempotente).
 
     Percorre os portos presentes no raw; para cada um com janela ANTAQ vigente
     (via register_pair v1) e sem par hoje, anexa o par em calibration_pairs.
     NÃO altera pares existentes. Retorna a lista de pares efetivamente escritos.
+
+    Guarda de frescor (Gate 0.6): um porto só pareia se a observação raw mais
+    recente dele tem menos de `max_age_hours` horas. Sem isso, uma ingestão
+    falha produziria um par "de hoje" com line-up de dias atrás — observação
+    velha rotulada como atual (o par registers observed_at do dia da escrita).
     """
     import duckdb
 
@@ -113,7 +120,8 @@ def register_pairs(conn, raw_path: str | None = None, print_fn=print) -> list[di
             print_fn(f"[PAIRS] raw inexistente ({raw_path}); nenhum par.")
         return []
 
-    today = datetime.now(timezone.utc).date()
+    now_utc = datetime.now(timezone.utc)
+    today = now_utc.date()
     raw = duckdb.connect(raw_path, read_only=True)
     written: list[dict] = []
     try:
@@ -132,6 +140,22 @@ def register_pairs(conn, raw_path: str | None = None, print_fn=print) -> list[di
             summary = summarize_lineup(raw, port_id)
             if not summary:
                 continue
+            ts = raw.execute(
+                "SELECT MAX(ingested_at) FROM raw_port_lineup WHERE port_id=?",
+                [port_id],
+            ).fetchone()[0]
+            if ts is not None:
+                if getattr(ts, "tzinfo", None) is not None:
+                    ts = ts.astimezone(timezone.utc).replace(tzinfo=None)
+                idade_h = (now_utc.replace(tzinfo=None) - ts).total_seconds() / 3600.0
+                if idade_h > max_age_hours:
+                    if print_fn:
+                        print_fn(
+                            f"[PAIRS] {port_id}: observação raw velha "
+                            f"({idade_h:.1f}h > {max_age_hours}h) — sem par hoje "
+                            "(ingestão falhou? nenhuma observação fresca, nenhum par)."
+                        )
+                    continue
             counts = summary["counts"]
             par = register_pair(
                 conn,

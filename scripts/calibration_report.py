@@ -184,6 +184,40 @@ STATUS_ICON = {
 }
 
 
+def check_invariants(report: dict, target_port: str = "BRPNG") -> list[str]:
+    """Invariâncias do Gate 0.6 para o porto-alvo. Retorna lista de falhas;
+    lista vazia = todas passam. Não altera dados."""
+    failures: list[str] = []
+    port = next((p for p in report["ports"] if p["port_id"] == target_port), None)
+    if port is None:
+        return [f"{target_port} ausente no relatório"]
+    if port["matched_windows"] < 6:
+        failures.append(
+            f"matched={port['matched_windows']} < 6 (maturação mínima não atingida)"
+        )
+    if (port["confidence"] or 0.0) < 0.80:
+        failures.append(
+            f"confidence={port['confidence']} < 0.80 (teto v1 não sustentado)"
+        )
+    if port["calibration_status"] != "QUALIFIED":
+        failures.append(
+            f"status={port['calibration_status']} != QUALIFIED"
+        )
+    age = port.get("pair_age_distribution")
+    if not age or age["n"] < 2:
+        failures.append("menos de 2 pares — sem como verificar monotonicidade/estabilidade")
+    else:
+        if age["newest_days"] > 1:
+            failures.append(
+                f"par mais recente tem {age['newest_days']}d — ciclo diário pode ter falhado"
+            )
+    if not port["coverage"]["live_lineup"]:
+        failures.append("sem line-up vivo na última ingestão")
+    if not port["coverage"]["antaq_history"]:
+        failures.append("sem janela ANTAQ (impossível parear)")
+    return failures
+
+
 def render_text(report: dict) -> str:
     out = []
     out.append("=" * 88)
@@ -218,10 +252,32 @@ def render_text(report: dict) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="Saída só em JSON")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Modo Gate 0.6: verifica invariâncias do porto-alvo; sai com código 1 se falhar.",
+    )
+    parser.add_argument(
+        "--target-port", default="BRPNG", help="Porto-alvo do --check (default: BRPNG)."
+    )
     args = parser.parse_args()
 
     load_env()
     report = build_report()
+    if args.check:
+        failures = check_invariants(report, target_port=args.target_port)
+        if failures:
+            print(f"[GATE-0.6] {args.target_port} NÃO PASSA ({len(failures)} falhas):")
+            for f in failures:
+                print(f"  - {f}")
+            return 1
+        port = next(p for p in report["ports"] if p["port_id"] == args.target_port)
+        print(
+            f"[GATE-0.6] {args.target_port} PASSA: matched={port['matched_windows']} "
+            f"conf={port['confidence']} status={port['calibration_status']} "
+            f"p50={port['p50_wait_h']}h p90={port['p90_wait_h']}h"
+        )
+        return 0
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2, default=str))
     else:
