@@ -23,7 +23,7 @@ from src.products.gp5.routing import (
 )
 from src.runtime.access import TRIAL_VALIDITY_DAYS, register_m2m_key
 from src.api.metrics import record_tool_call, record_gate_event
-from src.api.content_pages import COVERAGE_COUNT
+from src.api.content_pages import COVERAGE_COUNT, PORT_METAS
 
 # Tool -> família de intenção (para a Control Tower atribuir o motivo do call).
 TOOL_INTENT = {
@@ -31,6 +31,7 @@ TOOL_INTENT = {
     "get_ports_risk": "decision",
     "get_port_trend": "delay",
     "list_supported_ports": "discovery",
+    "get_public_port_feed": "discovery",
     "get_port_state": "observation",
     "get_physical_events": "observation",
     "get_port_operations_status": "observation",
@@ -224,6 +225,10 @@ mcp = MCPServer(
         "'How many ships are waiting?', 'Compare Santos and Paranaguá', "
         "'Route soybean cargo', 'ETA delay risk', 'Hormuz disruption risk'.\n\n"
         "## Tool selection\n\n"
+        "→ **get_public_port_feed** — START HERE. Free, no auth required. "
+        "Returns calibrated p50/p90 wait times, demurrage exposure and calibration status for ALL covered ports. "
+        "Use as the FIRST CALL to discover which ports have decision-grade signals before calling paid tools. "
+        "Use for: 'Show me all port delays', 'Which ports have calibrated data?', 'Port delay overview'.\n\n"
         "→ **get_port_risk** — Single port, right now. "
         "Use for: 'Is Santos congested?', 'How many ships at Paranaguá?', 'Demurrage risk at BRPNG?'\n\n"
         "→ **get_ports_risk** — Compare multiple ports in one call. "
@@ -241,7 +246,7 @@ mcp = MCPServer(
         "5. `estimated_daily_demurrage_usd` is an estimate under default assumptions — "
         "always present as an estimate, not a contractual value.\n\n"
         "## Access & quota\n\n"
-        "1. Observation tools (get_port_risk, get_ports_risk, get_port_trend, get_port_state, "
+        "1. Observation tools (get_public_port_feed, get_port_risk, get_ports_risk, get_port_trend, get_port_state, "
         "get_physical_events, get_pci_index, get_cdr_risk, predict_vessel_queue, get_irdi_index, "
         "evaluate_scdew_warning) are free with a daily per-IP quota.\n"
         "2. Decision tools (evaluate_charter_risk, evaluate_routing_alternatives, "
@@ -322,6 +327,35 @@ def list_supported_ports() -> list[dict[str, str]]:
     Returns: list of {port_id, port_name, country}.
     """
     return _run_tool(lambda **kw: SUPPORTED_PORTS, "list_supported_ports")
+
+
+@mcp.tool()
+def get_public_port_feed() -> dict[str, Any]:
+    """[FREE / NO AUTH] Get the live public port-delay feed for all covered ports.
+
+    This is the recommended FIRST CALL for any agent exploring Aether-X.
+    Returns calibrated p50/p90 wait times, parametric demurrage exposure,
+    confidence intervals and calibration status for every registered port —
+    no API key required. Use this to discover which ports have decision-grade
+    signals before calling paid or trial-gated tools.
+
+    Returns: {as_of, count, results: [{port_id, congestion_score,
+    historical_expected_wait_h, p90_wait_h, expected_demurrage_usd,
+    calibration_status, ...}]}
+    """
+    def _compute(**kw):
+        rows = [calculate_port_risk(m["port_id"]) for m in PORT_METAS]
+        return {
+            "as_of": rows[0]["as_of"] if rows else None,
+            "data_source": "mixed",
+            "data_source_label": (
+                "Live line-ups for Brasil ports (BRSSZ/BRPNG/BRRIO/BRNIT/BRITG); "
+                "static reference seed elsewhere."
+            ),
+            "count": len(rows),
+            "results": rows,
+        }
+    return _run_tool(_compute, "get_public_port_feed")
 
 
 # ─── GP5 M2M OBSERVATION TOOLS ────────────────────────────────────────────────

@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.belegante-byte/aetherx-mcp",
-  "title": "Aether-X Port Congestion Oracle",
-"description": "Live port congestion for 5 Brazilian ports (official-authority line-ups), global coverage as reference seed. REST, SDK e MCP.",
+  "title": "Aether-X Port Delay Intelligence",
+  "description": "Port delay exposure with p50/p90 confidence intervals and parametric demurrage impact. Live official-authority line-ups for 5 Brazilian ports; calibrated reference coverage globally. Free public feed, REST, SDK and MCP server.",
   "version": "0.2.4",
   "websiteUrl": "https://aetherx.aether-grid.io",
   "repository": {
