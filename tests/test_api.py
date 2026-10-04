@@ -184,6 +184,53 @@ def test_bpng_calibrated_fields_exposed_via_api():
         assert body["expected_demurrage_usd"] > 0
 
 
+def test_confidence_is_never_hardcoded():
+    """Regressão (Ação 1): `signal.confidence` era 0.94 fixo para todo porto
+    vivo — um número fabricado, independente do dado. A confiança publicada
+    passa a ser a calibrada: um valor do cálculo, ou None (ausência explícita),
+    nunca uma constante otimista."""
+    for port_id in ("BRPNG", "BRSSZ", "CNSHA", "AEDXB"):
+        body = client.get("/v1/port-risk", params={"port_id": port_id}).json()
+        assert body["signal"]["confidence"] != 0.94, port_id
+        conf = body["signal"]["confidence"]
+        if conf is not None:
+            assert 0.0 <= conf <= 1.0, port_id
+
+
+def test_calibrated_port_exposes_economic_exposure_under_declared_basis():
+    """BRPNG tem pares casados: a espera calibrada vira exposição econômica.
+    A exposição é ESTIMADA sob premissa declarada (espera calibrada × taxa
+    diária de referência) — coerente com o p50/p90 que a originou.
+    """
+    body = client.get("/v1/port-risk", params={"port_id": "BRPNG"}).json()
+    if body.get("confidence") is None:
+        pytest.skip("BRPNG sem pares casados no dataset desta execução")
+    p50 = body["historical_expected_wait_h"]
+    p90 = body["p90_wait_h"]
+    assert p50 is not None and p90 is not None and p90 >= p50
+    assert body["paired_windows"] >= 1
+    assert "ANTAQ" in (body["fonte"] or "").upper() or "observ" in (body["semantica"] or "")
+    from src.engine.risk_model import DEMURRAGE_BASE_USD_PER_DAY
+    assert body["expected_demurrage_usd"] == int((p50 / 24.0) * DEMURRAGE_BASE_USD_PER_DAY)
+    assert body["p90_demurrage_usd"] == int((p90 / 24.0) * DEMURRAGE_BASE_USD_PER_DAY)
+    assert body["p90_demurrage_usd"] >= body["expected_demurrage_usd"]
+    assert body["calibration_status"] in {
+        "CALIBRATED", "QUALIFIED", "LIMITED", "INSUFFICIENT",
+    }
+
+
+def test_uncalibrated_port_writes_absence_not_number():
+    """Sem janela ANTAQ não há calibração: os campos ficam ausentes (None),
+    nunca preenchidos com um número plausível."""
+    body = client.get("/v1/port-risk", params={"port_id": "BRIQI"}).json()
+    assert body["calibration_status"] in {None, "INSUFFICIENT"}
+    if body["calibration_status"] is None:
+        assert body["historical_expected_wait_h"] is None
+        assert body["p90_wait_h"] is None
+        assert body["confidence"] is None
+        assert body["expected_demurrage_usd"] is None
+
+
 def test_bpng_live_waiting_is_real_queue():
     """Regressão: waiting_vessels deve ser a fila real (ao_largo), não a soma
     com esperados/programados (chegadas futuras)."""

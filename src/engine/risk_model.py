@@ -79,6 +79,60 @@ def _estimate_demurrage(congestion_score: float) -> int:
     return int(DEMURRAGE_BASE_USD_PER_DAY * (1 + 1.25 * congestion_score))
 
 
+def _enrich_with_calibration(result: dict, port_id: str) -> dict:
+    """Anexa a calibração v1 (observação → espera histórica ANTAQ) à resposta.
+
+    Preenche os campos calibrados que JÁ existem no schema de resposta — a
+    fórmula v1 (src/engine/calibration.py) não é alterada, apenas EXIBIDA.
+    Sem janela ANTAQ no porto, os campos permanecem None: ausência de valor é
+    escrita como ausência, nunca como número.
+
+    Exposição econômica: `expected_demurrage_usd`/`p90_demurrage_usd` são
+    EXPOSIÇÃO ESTIMADA sob premissas declaradas (espera calibrada × taxa
+    diária de referência, ver DEMURRAGE_BASE_USD_PER_DAY) — nunca custo
+    observado nem demurrage realizada.
+    """
+    try:
+        from src.engine.calibration import calibrate
+        from src.engine.pair_pipeline import classification_status
+
+        conn = _get_conn()
+        calib = calibrate(port_id, conn=conn)
+        if not calib:
+            return result
+
+        p50 = calib.get("historical_expected_wait_h")
+        p90 = calib.get("p90_wait_h")
+        conf = calib.get("confidence")
+
+        result["historical_expected_wait_h"] = p50
+        result["p90_wait_h"] = p90
+        result["confidence"] = conf
+        result["paired_windows"] = calib.get("paired_windows")
+        result["fonte"] = calib.get("fonte")
+        result["semantica"] = calib.get("semantica")
+
+        if p50 is not None:
+            result["expected_demurrage_usd"] = int((p50 / 24.0) * DEMURRAGE_BASE_USD_PER_DAY)
+        if p90 is not None:
+            result["p90_demurrage_usd"] = int((p90 / 24.0) * DEMURRAGE_BASE_USD_PER_DAY)
+
+        matched = calib.get("paired_windows") or 0
+        total = conn.execute(
+            "SELECT COUNT(*) FROM calibration_pairs WHERE port_id = ?", [port_id]
+        ).fetchone()[0]
+        result["calibration_status"] = classification_status(matched, conf or 0.0, total)
+
+        # A confiança publicada passa a ser a calibrada (nunca um valor fixo).
+        if result.get("signal"):
+            result["signal"]["confidence"] = conf
+        return result
+    except Exception:
+        # Falha de calibração nunca derruba a resposta do oráculo: os campos
+        # ficam None (ausência explícita), não um número inventado.
+        return result
+
+
 def invalidate_cache():
     try:
         from src.products.gp5.fiscal import evaluate_fiscal_routing
@@ -244,7 +298,7 @@ def calculate_port_risk(port_id: str) -> dict:
                         "queue_vessels": pinfo["waiting_vessels"],
                         "expected_delay_days": pinfo["eta_delay_days"],
                         "demurrage_expected_usd": int(pinfo["eta_delay_days"] * DEMURRAGE_BASE_USD_PER_DAY),
-                        "confidence": 0.94,
+                        "confidence": None,
                         "provenance": f"live:{'+'.join(live_sources)}",
                         "decision_implication": f"Live stream indicates {pinfo.get('status', 'operational').lower()} conditions at {pinfo['port_name']} ({pinfo['country']}).",
                         "as_of": pinfo["as_of"],
@@ -359,13 +413,13 @@ def calculate_port_risk(port_id: str) -> dict:
             "queue_vessels": result.get("waiting_vessels", 0),
             "expected_delay_days": result.get("eta_delay_days", 0),
             "demurrage_expected_usd": int(result.get("eta_delay_days", 0) * DEMURRAGE_BASE_USD_PER_DAY),
-            "confidence": 0.94 if is_live else None,
+            "confidence": None,
             "provenance": result.get("data_source"),
             "decision_implication": f"{'Live stream' if is_live else 'Reference seed'} indicates operational pressure at {result['port_name']}.",
             "as_of": result.get("as_of")
         }
 
-    return result
+    return _enrich_with_calibration(result, port_id)
 
 
 def _project_score(current: float, target: float, hours: float) -> float:

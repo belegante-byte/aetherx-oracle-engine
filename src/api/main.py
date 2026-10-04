@@ -401,6 +401,7 @@ class PortRiskResponse(BaseModel):
     paired_windows: int | None = None
     fonte: str | None = None
     semantica: str | None = None
+    calibration_status: str | None = None
     signal: dict | None = None
     decision_grade: str | None = None
 
