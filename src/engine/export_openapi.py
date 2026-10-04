@@ -116,7 +116,7 @@ def _minimal_spec():
             "contact": {
                 "name": "Aether-X",
                 "url": PRODUCTION_URL,
-                "email": "contato@aether-grid.io",
+                "email": "contact@aether-grid.io",
             },
             "x-logo": {"url": LOGO_URL, "altText": "Aether-X Port Delay Intelligence"},
         },

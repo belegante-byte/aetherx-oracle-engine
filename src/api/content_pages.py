@@ -152,7 +152,7 @@ client = OracleClient(api_key="YOUR_RAPIDAPI_KEY")
 risk = client.get_port_risk("BRSSZ")
 print(risk.congestion_score)
 print(risk.estimated_daily_demurrage_usd)</code></pre></div>
-<p>Get a free 30-day trial key at <a href="{PRODUCTION_URL}/m2m-keys">/m2m-keys</a>; paid access via <a href="{PRODUCTION_URL}/m2m-keys">RapidAPI subscription</a> or direct contact at <a href="mailto:contato@aether-grid.io">contato@aether-grid.io</a>.</p>
+<p>Get a free 30-day trial key at <a href="{PRODUCTION_URL}/m2m-keys">/m2m-keys</a>; paid access via <a href="{PRODUCTION_URL}/m2m-keys">RapidAPI subscription</a> or direct contact at <a href="mailto:contact@aether-grid.io">contact@aether-grid.io</a>.</p>
 <a class="cta" href="{PRODUCTION_URL}/fiscal-demo">See the fiscal demo</a>
 <h2>MCP server for AI agents</h2>
 <p>The same signal is exposed over the Model Context Protocol, so agents call <code>get_port_risk</code>, <code>get_ports_risk</code> and <code>get_port_trend</code> directly:</p>

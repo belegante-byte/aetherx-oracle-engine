@@ -32,7 +32,7 @@ If you do not have one, you can autonomously generate a 30-day free trial key by
 `POST /m2m-keys`
 Payload: `{"name": "Agent", "email": "agent@domain.com", "organization": "AI"}`
 The API will return a token. Add it to your request headers as `Authorization: Bearer <token>`.
-After the trial expires, paid access runs through the **RapidAPI marketplace** (merchant-of-record): subscribe at `https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle`; the marketplace proxy authenticates REST calls via `X-RapidAPI-Proxy-Secret` (metered plans). Direct arrangements are available by contact at `contato@aether-grid.io`.
+After the trial expires, paid access runs through the **RapidAPI marketplace** (merchant-of-record): subscribe at `https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle`; the marketplace proxy authenticates REST calls via `X-RapidAPI-Proxy-Secret` (metered plans). Direct arrangements are available by contact at `contact@aether-grid.io`.
 
 Aether Grid possui um módulo corporativo B2B (GP5) para roteamento logístico:
 - **Arbitragem Logística:** Calcula trade-offs entre Demurrage (multa por fila de porto) e Frete Terrestre.
@@ -68,7 +68,7 @@ Every response includes a `signal` block with `level`, `live_observation`, `queu
 - [Public feed (no key)](https://aetherx.aether-grid.io/public/ports): GET /public/ports — all 38 registered ports & chokepoints (5 Brazilian ports live, each with its own `data_source` label; the rest reference seed), read-only, for widgets/embeds
 - [Interactive docs](https://aether-x-oracle-production.up.railway.app/docs): Swagger UI
 - [RapidAPI (pago)](https://rapidapi.com/belegante/api/aether-x-port-congestion-oracle): merchant-of-record, planos metered
-- [Contact for direct access](mailto:contato@aether-grid.io)
+- [Contact for direct access](mailto:contact@aether-grid.io)
 - [Terms of Service](https://aether-x-oracle-production.up.railway.app/terms)
 
 ## Guides (human-readable)

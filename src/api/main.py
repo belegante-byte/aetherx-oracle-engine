@@ -354,7 +354,7 @@ details.raw pre{margin-top:0.5rem;max-height:18rem;overflow:auto}
 
   <div class="footer">
     Aether-X Port Delay Intelligence v0.2.1 &middot; MIT &middot; Free tier $0.00
-    &middot; <a href="mailto:contato@aether-grid.io">contato@aether-grid.io</a>
+    &middot; <a href="mailto:contact@aether-grid.io">contact@aether-grid.io</a>
   </div>
 </div>
 <script>
@@ -589,7 +589,7 @@ app = FastAPI(
     contact={
         "name": "Aether-X",
         "url": "https://aetherx.aether-grid.io",
-        "email": "contato@aether-grid.io",
+        "email": "contact@aether-grid.io",
     },
     license_info={
         "name": "Machine-to-Machine Data Distribution (see /terms)",
