@@ -120,68 +120,18 @@ def snapshot(print_fn=print, per_port_latest_day: bool = True) -> int:
 
 
 def register_calibration(conn, print_fn=print) -> None:
-    """Acumula pares de calibração BRPNG (Fase 2 — anchor).
+    """Acumula pares de calibração para todo porto com line-up vivo (Gate 0.5).
 
-    Lê a fila real observada (ao_largo + esperados) do raw DB e emparelha com a
-    janela ANTAQ vigente. Um par por porto/dia (idempotente por data).
+    Antes: hardcoded BRPNG com vocabulário APPA — que não pareava Santos
+    (vocabulário EM_OPERACAO/PROGRAMADO) e somava espelhos duplicados
+    (appa + appa_paranagua = mesmos navios contados duas vezes). Agora delega
+    ao pipeline genérico (src/engine/pair_pipeline.py): vocabulário por fonte,
+    dedup por fonte dominante por categoria, idempotência por porto/dia.
+    A fórmula de calibração v1 (engine/calibration.py) não é tocada.
     """
-    from src.engine.calibration import ensure_calibration_table, register_pair
+    from src.engine.pair_pipeline import register_pairs
 
-    ensure_calibration_table(conn)
-    hoje = datetime.now(timezone.utc).date()
-    ja_registrado = conn.execute(
-        "SELECT COUNT(*) FROM calibration_pairs WHERE port_id='BRPNG' AND observed_at=?",
-        [hoje],
-    ).fetchone()[0]
-    if ja_registrado:
-        return
-
-    raw_path = os.getenv("RAW_DATABASE_PATH", "data/processed/aether_oracle.duckdb")
-    if not os.path.exists(raw_path):
-        return
-    import duckdb
-
-    raw = duckdb.connect(raw_path, read_only=True)
-    try:
-        r = raw.execute(
-            """
-            SELECT
-              SUM(CASE WHEN status='AO_LARGO' THEN 1 ELSE 0 END),
-              SUM(CASE WHEN status='AO_LARGO' THEN 1 ELSE 0 END),
-              SUM(CASE WHEN status='ESPERADO' THEN 1 ELSE 0 END),
-              SUM(CASE WHEN status='ATRACADO' THEN 1 ELSE 0 END)
-            FROM raw_port_lineup WHERE port_id='BRPNG'
-            """
-        ).fetchone()
-    finally:
-        raw.close()
-    # Fila REAL de hoje = ao_largo (esperados são programação futura, não fila
-    # presente; ficam apenas como metadado diagnóstico no par).
-    if not r or not r[0]:
-        return
-
-    par = register_pair(
-        conn, "BRPNG",
-        waiting_vessels=int(r[0]), ao_largo=int(r[1]),
-        esperados=int(r[2]), atracados=int(r[3] or 0),
-        source="appa",
-    )
-    if par:
-        conn.execute(
-            """
-            INSERT INTO calibration_pairs (
-                port_id, observed_at, waiting_vessels, ao_largo, esperados,
-                atracados, source, antaq_espera_avg_h, antaq_espera_med_h,
-                antaq_espera_p90_h, antaq_janela, matched
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            list(par.values()),
-        )
-        if print_fn:
-            print_fn(
-                f"[CALIB] par BRPNG {par['observed_at']}: fila={par['waiting_vessels']} "
-                f"↔ ANTAQ {par['antaq_janela']} avg={round(par['antaq_espera_avg_h'],1)}h"
-            )
+    register_pairs(conn, print_fn=print_fn)
 
 
 def main() -> int:

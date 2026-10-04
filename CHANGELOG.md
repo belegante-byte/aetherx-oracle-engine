@@ -3,6 +3,62 @@
 Histórico de mudanças relevantes do **Aether-X Oracle Engine**. Formato baseado em
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [Não lançado] — 2026-10-04 (Gate 0.5 — Calibration Data Pipeline)
+
+### Adicionado (Gate 0.5 — pareamento operacional multi-porto)
+- **`src/engine/pair_pipeline.py` — writer de pares generalizado.** O writer v1
+  (`snapshot_history.register_calibration`) era hardcoded em BRPNG com o
+  vocabulário de status da APPA; Santos nunca pareava. O pipeline novo:
+  vocabulário por fonte mapeado em categorias canônicas (`AO_LARGO`→waiting;
+  `ATRACADO`/`EM_OPERACAO`→berthed; `ESPERADO`/`PROGRAMADO`→scheduled;
+  desconhecido ignorado); **dedup por fonte dominante por categoria** (corrige
+  dupla contagem: `appa` e `appa_paranagua` espelham os mesmos navios — o par
+  de 2026-10-03 do writer velho registrou waiting=80 somando espelhos; a partir
+  de 2026-10-04 o mesmo line-up rende waiting=40); idempotência por
+  (port_id, dia UTC); porto com line-up vivo mas sem janela ANTAQ (BRIQI) não
+  gera par. Pares existentes NÃO são reescritos.
+- **`scripts/calibration_report.py` — relatório de qualidade, porto a porto**,
+  com os campos do contrato: `source_history`, `history_last_month`,
+  `live_source`, `last_live_observation`, `paired_windows`,
+  `pair_age_distribution`, `confidence`, `p50`, `p90`, `calibration_status`,
+  `coverage`. Estados: CALIBRATED (≥18 matched e conf ≥0.80) / QUALIFIED
+  (≥6 matched e conf ≥0.70) / LIMITED / INSUFFICIENT
+  (`classification_status` em `pair_pipeline.py`).
+- **`tests/test_calibration_pipeline.py` — 11 testes**: vocabulário Santos
+  (matched=0 honesto), status desconhecido ignorado, dedup de espelho,
+  idempotência, semântica BRPNG preservada, porto fora do universo ANTAQ,
+  observação live → `calibrate()` sem seed, matched=0 não credita confiança,
+  cap da fórmula v1 (0.80) intocado, limiares de classificação, raw ausente.
+- `snapshot_history.register_calibration` delega ao pipeline genérico
+  (mesma tolerância: calibração nunca quebra o snapshot).
+
+### Diagnosticado (provas, não correções)
+- **BRSSZ não pareava por duas causas provadas:** (1) writer hardcoded em
+  BRPNG; (2) vocabulário por fonte — Santos emite `EM_OPERACAO`/`PROGRAMADO`
+  (sem `AO_LARGO`), somando waiting=0 → matched=0. O primeiro par de Santos
+  foi escrito em 2026-10-04 (matched=0, honesto: sem fila observada, score
+  permanece None).
+- **Dupla contagem de espelhos no writer v1** (BRPNG waiting=80 em 2026-10-03
+  em vez de 40) — corrigida no pipeline novo; o par contaminado de 2026-10-03
+  permanece no histórico (não-rewrite), e `calibrate()` já consome o par limpo
+  mais recente.
+- **Série ANTAQ:** `validate_antaq.py --refresh` re-baixou o mirror
+  HuggingFace em 2026-10-03 — o mirror upstream termina em 2026-01 (185
+  janelas; o limite é o fornecedor, não o cache local). `recent_antaq`
+  (≥2025-01) segue verdadeiro para os 5 portos → base de confiança 0.45.
+- **Ciclo demonstrado sem intervenção humana:** observação live de 2026-10-03
+  11:30 → 5 pares novos (BRITG matched=1, BRNIT matched=0, BRPNG matched=1
+  waiting=40 dedup, BRRIO matched=1, BRSSZ matched=0) → `calibrate()`
+  reflete; segunda execução = 0 pares novos (idempotência real).
+
+### Não alterado (escopo Gate 0.5)
+- **Fórmula de calibração v1 (`src/engine/calibration.py`) intocada** —
+  `confidence()` (cap 0.80), `calibrate()`, `register_pair()` (Gate 0.6 é
+  outro gate, não autorizado).
+- Nenhuma mudança no contrato MCP, REST, tier, pricing, F2/reconstruction;
+  nenhum F3/F4/F5; nenhum trabalho em VQPM.
+- Nenhum deploy realizado (Gate 0.5 não autorizou deploy).
+
 ## [Não lançado] — 2026-10-03 (Fase 2)
 
 ### Adicionado (Fase 2 — superfície de leitura da Reconstruction)
